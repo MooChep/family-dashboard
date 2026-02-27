@@ -1,0 +1,28 @@
+# Dépendances
+node_modules/
+
+# Build Next.js
+.next/
+out/
+
+# Prisma
+prisma/migrations/
+
+# Variables d'environnement — ne jamais committer le .env réel
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
