@@ -1,6 +1,6 @@
-import type { NextConfig } from 'next'
+/** @type {import('next').NextConfig} */
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   // App Router est actif par défaut en Next.js 14
   // On désactive le strict mode React en prod pour éviter les double-renders en dev
   reactStrictMode: true,
@@ -11,4 +11,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+module.exports = nextConfig

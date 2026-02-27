@@ -1,15 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@config "../../tailwind.config.ts";
+@import "tailwindcss";
 
-@import './themes.css';
-
-/* ─── Reset & base ───────────────────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Ensuite tes styles globaux, par exemple : */
+@import "./themes.css";
 
 html {
   /* Thème dark appliqué par défaut avant que ThemeProvider se monte

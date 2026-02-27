@@ -46,6 +46,7 @@ export function CardHeader({
   action,
 }: CardHeaderProps): ReactElement {
   return (
+    // styled with rounded edges
     <div className="flex items-start justify-between gap-4 mb-4">
       <div>
         <h2
