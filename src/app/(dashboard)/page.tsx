@@ -11,7 +11,7 @@ export default async function DashboardPage(): Promise<ReactElement> {
   const user = session!.user
 
   const MODULES = [
-    { label: 'Épargne',    href: '/epargne',   icon: '◈', description: "Suivi des comptes et objectifs d'épargne", soon: true },
+    { label: 'Épargne',    href: '/epargne',   icon: '◈', description: "Suivi des comptes et objectifs d'épargne", soon: false },
     { label: 'Ménage',     href: '/menage',    icon: '⌂', description: 'Organisation des tâches ménagères', soon: true },
     { label: 'Projets',    href: '/projets',   icon: '◉', description: 'Suivi des projets familiaux', soon: true },
     { label: 'Habitudes',  href: '/habitudes', icon: '◎', description: 'Suivi des habitudes quotidiennes', soon: true },
@@ -56,6 +56,7 @@ export default async function DashboardPage(): Promise<ReactElement> {
         </h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {MODULES.map((module) => (
+            <a href={module.href}>
             <div
               key={module.href}
               className="rounded-xl p-5 flex flex-col gap-3"
@@ -73,12 +74,13 @@ export default async function DashboardPage(): Promise<ReactElement> {
                     {module.label}
                   </span>
                 </div>
-                {module.soon && <Badge variant="default">bientôt</Badge>}
+                {module.soon && <Badge variant="success">bientôt</Badge>}
               </div>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
                 {module.description}
               </p>
             </div>
+          </a>
           ))}
         </div>
       </div>

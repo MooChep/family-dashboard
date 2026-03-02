@@ -1,4 +1,3 @@
-Bonne idée. Voici le fichier — je le nomme `BUILD.md` à la racine du projet.
 # Family Dashboard — Guide de démarrage
 
 ## Prérequis
@@ -33,18 +32,47 @@ Coller la valeur générée dans `.env` :
 NEXTAUTH_SECRET=la_valeur_generee
 ```
 
+> ⚠️ Si ton mot de passe contient des caractères spéciaux (ex: `&`, `@`, `!`),
+> encode-les dans `DATABASE_URL` uniquement :
+> - `&` → `%26`
+> - `@` → `%40`
+> - `!` → `%21`
+> 
+> Exemple : `mysql://user:motde%26passe@localhost:3306/family_dashboard`
+> 
+> Les autres variables (`MARIADB_PASSWORD` etc.) gardent le caractère brut.
+
 ---
 
 ## 2. Mode développement (sans Docker)
 
 Dans ce mode, Next.js tourne en local avec hot reload.
-La base de données MariaDB tourne elle dans Docker.
+La base de données MariaDB tourne dans Docker.
 
 ### Démarrer uniquement la base de données
 ```bash
 docker compose up db -d
 ```
 > `-d` = detached, le container tourne en arrière-plan
+
+> Dans `.env`, `DATABASE_URL` doit pointer vers `localhost` (pas `db`)
+> car `db` n'est résolu que dans le réseau Docker interne :
+> ```
+> DATABASE_URL="mysql://user:password@localhost:3306/family_dashboard"
+> ```
+
+### Donner les droits à l'utilisateur BDD (première fois uniquement)
+```bash
+docker compose exec db mariadb -u root -p
+```
+```sql
+GRANT ALL PRIVILEGES ON *.* TO 'user'@'%' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+EXIT;
+```
+> Remplace `user` par la valeur de `MARIADB_USER` dans ton `.env`.
+> Ces droits sont nécessaires pour que Prisma puisse créer la shadow database
+> lors des migrations.
 
 ### Appliquer les migrations et seed
 ```bash
@@ -54,7 +82,7 @@ npm run prisma:seed
 
 ### Créer le premier utilisateur
 ```bash
-npm run create-user -- --name "User" --email "email@famille.fr" --password "userPassword"
+npm run create-user -- --name "Prénom" --email "email@famille.fr" --password "motdepasse"
 ```
 
 ### Lancer l'app en développement
@@ -68,6 +96,12 @@ L'app est accessible sur http://localhost:3000
 ## 3. Mode production (tout en Docker)
 
 Dans ce mode, tout tourne dans des containers : app Next.js + MariaDB.
+
+> ⚠️ Dans `.env`, `DATABASE_URL` doit pointer vers `db` (pas `localhost`)
+> car les deux services communiquent dans le réseau Docker interne :
+> ```
+> DATABASE_URL="mysql://user:password@db:3306/family_dashboard"
+> ```
 
 ### Builder et démarrer tous les services
 ```bash
@@ -126,22 +160,48 @@ Tu peux t'y connecter avec DBeaver, TablePlus ou tout autre client SQL :
 Host     : localhost
 Port     : 3306
 Database : family_dashboard
-User     : user
-Password : password
+User     : <valeur de MARIADB_USER>
+Password : <valeur de MARIADB_PASSWORD>
 ```
 
 ---
 
-## 6. Ajouter un nouveau module (phases suivantes)
+## 6. Points de configuration importants
 
-1. Créer le dossier `src/app/<module>/`
+### next.config.js
+Next.js 14 ne supporte pas `next.config.ts` — utiliser obligatoirement `next.config.js` :
+```js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+}
+module.exports = nextConfig
+```
+
+### postcss.config.js
+Fichier obligatoire pour que Tailwind CSS fonctionne :
+```js
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+### Import CSS dans layout.tsx
+Les fichiers CSS doivent être importés séparément — ne pas utiliser `@import` dans `globals.css` :
+```tsx
+import '@/styles/globals.css'
+import '@/styles/themes.css'
+```
+
+---
+
+## 7. Ajouter un nouveau module (phases suivantes)
+
+1. Créer le dossier `src/app/(dashboard)/<module>/`
 2. Ajouter `page.tsx`, `error.tsx`, `loading.tsx`
 3. Ajouter le lien dans `src/components/layout/Sidebar.tsx`
 4. Si besoin de nouvelles tables : modifier `prisma/schema.prisma` puis `npm run prisma:migrate`
 ```
-
----
-
-Ce fichier est volontairement autonome — quelqu'un qui arrive sur le projet sans contexte peut suivre les étapes dans l'ordre sans se poser de questions.
-
-Dis-moi quand tu es prêt pour l'étape 3.

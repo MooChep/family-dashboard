@@ -4,29 +4,29 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  // "mysql" est le provider Prisma compatible MariaDB
   url      = env("DATABASE_URL")
 }
 
 model User {
   id        String      @id @default(cuid())
-  // cuid() = identifiant unique généré automatiquement, plus sûr qu'un auto-increment
   name      String
   email     String      @unique
   password  String
-  config    UserConfig?
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+  config    UserConfig?
 }
 
 model UserConfig {
   id          String   @id @default(cuid())
   userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   themeId     String   @default("dark")
-  theme       Theme    @relation(fields: [themeId], references: [name])
-  preferences Json     @default("{}")
+  preferences String   @db.LongText
   updatedAt   DateTime @updatedAt
+  theme       Theme    @relation(fields: [themeId], references: [name])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([themeId], map: "UserConfig_themeId_fkey")
 }
 
 model Theme {
@@ -36,4 +36,70 @@ model Theme {
   isDefault Boolean      @default(false)
   createdAt DateTime     @default(now())
   configs   UserConfig[]
+}
+
+model Category {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  type         CategoryType
+  isFixed      Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  fixedCharges FixedCharge[]
+  transactions Transaction[]
+}
+
+model Transaction {
+  id         String   @id @default(cuid())
+  month      DateTime
+  amount     Float
+  detail     String?
+  pointed    Boolean  @default(false)
+  categoryId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId], map: "Transaction_categoryId_fkey")
+}
+
+model FixedCharge {
+  id         String   @id @default(cuid())
+  month      DateTime
+  estimated  Float
+  categoryId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([month, categoryId])
+  @@index([categoryId], map: "FixedCharge_categoryId_fkey")
+}
+
+model SavingsProject {
+  id            String              @id @default(cuid())
+  name          String
+  targetAmount  Float?
+  currentAmount Float               @default(0)
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  allocations   SavingsAllocation[]
+}
+
+model SavingsAllocation {
+  id         String         @id @default(cuid())
+  month      DateTime
+  percentage Float
+  amount     Float
+  projectId  String
+  createdAt  DateTime       @default(now())
+  project    SavingsProject @relation(fields: [projectId], references: [id])
+
+  @@unique([month, projectId])
+  @@index([projectId], map: "SavingsAllocation_projectId_fkey")
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
 }

@@ -49,7 +49,7 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({
   children,
-  initialTheme = 'dark',
+  initialTheme = 'light',
 }: ThemeProviderProps): ReactNode {
   const { data: session, status } = useSession()
   const [theme, setThemeState] = useState<ThemeName>(initialTheme)
