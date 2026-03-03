@@ -24,13 +24,14 @@ export async function PUT(
     return NextResponse.json({ error: 'Transaction introuvable' }, { status: 404 })
   }
 
-  let body: {
-    month?: string
-    amount?: number
-    categoryId?: string
-    detail?: string
-    pointed?: boolean
-  }
+let body: {
+  month?: string
+  amount?: number
+  categoryId?: string
+  detail?: string
+  tags?: string[]
+  pointed?: boolean
+}
 
   try {
     body = await request.json()
@@ -38,17 +39,18 @@ export async function PUT(
     return NextResponse.json({ error: 'Corps de requête invalide' }, { status: 400 })
   }
 
-  const transaction = await prisma.transaction.update({
-    where: { id: params.id },
-    data: {
-      ...(body.month && { month: normalizeMonth(body.month) }),
-      ...(body.amount !== undefined && { amount: body.amount }),
-      ...(body.categoryId && { categoryId: body.categoryId }),
-      ...(body.detail !== undefined && { detail: body.detail }),
-      ...(body.pointed !== undefined && { pointed: body.pointed }),
-    },
-    include: { category: true },
-  })
+const transaction = await prisma.transaction.update({
+  where: { id: params.id },
+  data: {
+    ...(body.month      && { month: normalizeMonth(body.month) }),
+    ...(body.amount     !== undefined && { amount: body.amount }),
+    ...(body.categoryId && { categoryId: body.categoryId }),
+    ...(body.detail     !== undefined && { detail: body.detail }),
+    ...(body.tags !== undefined && { tags: JSON.stringify(body.tags) }),    
+    ...(body.pointed    !== undefined && { pointed: body.pointed }),
+  },
+  include: { category: true },
+})
 
   return NextResponse.json(transaction)
 }

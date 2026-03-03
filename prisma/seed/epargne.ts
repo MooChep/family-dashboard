@@ -33,7 +33,6 @@ async function main(): Promise<void> {
     { name: 'Shopping',        type: CategoryType.EXPENSE, isFixed: false },
     { name: 'Santé',           type: CategoryType.EXPENSE, isFixed: false },
     { name: 'Bébé',            type: CategoryType.EXPENSE, isFixed: false },
-    { name: 'Tabac',           type: CategoryType.EXPENSE, isFixed: false },
     { name: 'Autres dépenses', type: CategoryType.EXPENSE, isFixed: false },
   ]
 

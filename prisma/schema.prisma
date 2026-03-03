@@ -53,6 +53,7 @@ model Transaction {
   month      DateTime
   amount     Float
   detail     String?
+  tags  String   @default("[]") @db.LongText
   pointed    Boolean  @default(false)
   categoryId String
   createdAt  DateTime @default(now())

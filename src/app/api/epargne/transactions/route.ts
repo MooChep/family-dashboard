@@ -37,6 +37,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     amount: number
     categoryId: string
     detail?: string
+    tags: string
     pointed?: boolean
   }
 
@@ -61,14 +62,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Catégorie introuvable' }, { status: 404 })
   }
 
-  const transaction = await prisma.transaction.create({
-    data: {
-      month: normalizeMonth(body.month),
-      amount: body.amount,
-      detail: body.detail ?? null,
-      pointed: body.pointed ?? false,
-      categoryId: body.categoryId,
-    },
+const transaction = await prisma.transaction.create({
+  data: {
+    month: normalizeMonth(body.month),
+    amount: body.amount,
+    detail: body.detail ?? null,
+    tags: JSON.stringify(body.tags ?? []),
+    pointed: body.pointed ?? false,
+    categoryId: body.categoryId,
+  },
     include: { category: true },
   })
 

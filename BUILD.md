@@ -204,4 +204,17 @@ import '@/styles/themes.css'
 2. Ajouter `page.tsx`, `error.tsx`, `loading.tsx`
 3. Ajouter le lien dans `src/components/layout/Sidebar.tsx`
 4. Si besoin de nouvelles tables : modifier `prisma/schema.prisma` puis `npm run prisma:migrate`
+
+## 8. Ajouter des transactions 
+# Tout interactif — demande fichier et mois
+npx ts-node scripts/import-transactions.ts
+
+# Fichier passé en argument, mois demandé
+npx ts-node scripts/import-transactions.ts --file ./data/export.csv
+
+# Tout en argument (comportement original)
+npx ts-node scripts/import-transactions.ts --file ./data/export.csv --month 2025-09
+
+# Dry-run combinable avec n'importe quel mode
+npx ts-node scripts/import-transactions.ts --dry-run
 ```

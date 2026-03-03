@@ -38,25 +38,49 @@ function shiftMonth(monthStr: string, delta: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
+// Extrait tous les tags uniques depuis une liste de transactions
+function extractUniqueTags(txs: TransactionWithCategory[]): string[] {
+  const set = new Set<string>()
+  for (const tx of txs) {
+    let parsed: string[] = []
+    try {
+      parsed = typeof tx.tags === 'string'
+        ? (JSON.parse(tx.tags) as string[])
+        : Array.isArray(tx.tags)
+        ? (tx.tags as string[])
+        : []
+    } catch {
+      parsed = []
+    }
+    for (const tag of parsed) {
+      if (tag) set.add(tag)
+    }
+  }
+  return Array.from(set).sort()
+}
+
 export default function MoisPage(): ReactElement {
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth())
   const [transactions, setTransactions] = useState<TransactionWithCategory[]>([])
-  const [charges, setCharges] = useState<FixedChargeRow[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [projects, setProjects] = useState<SavingsProject[]>([])
-  const [allocations, setAllocations] = useState<AllocationRow[]>([])
-  const [reste, setReste] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [charges, setCharges]           = useState<FixedChargeRow[]>([])
+  const [categories, setCategories]     = useState<Category[]>([])
+  const [projects, setProjects]         = useState<SavingsProject[]>([])
+  const [allocations, setAllocations]   = useState<AllocationRow[]>([])
+  const [reste, setReste]               = useState(0)
+  const [isLoading, setIsLoading]       = useState(true)
+  const [isFormOpen, setIsFormOpen]     = useState(false)
   const [editingTransaction, setEditingTransaction] =
     useState<TransactionWithCategory | null>(null)
+
+  // Tags déjà utilisés — chargés une fois et enrichis à chaque loadAll
+  const [existingTags, setExistingTags] = useState<string[]>([])
 
   const loadAll = useCallback(async (): Promise<void> => {
     setIsLoading(true)
     try {
       const prevMonth = shiftMonth(currentMonth, -1)
 
-      const [txRes, chargesRes, catsRes, projetsRes, allocRes, prevAllocRes] =
+      const [txRes, chargesRes, catsRes, projetsRes, allocRes, prevAllocRes, allTxRes] =
         await Promise.all([
           fetch(`/api/epargne/transactions?month=${currentMonth}`),
           fetch(`/api/epargne/charges-fixes?month=${currentMonth}`),
@@ -64,9 +88,11 @@ export default function MoisPage(): ReactElement {
           fetch('/api/epargne/projets'),
           fetch(`/api/epargne/allocations?month=${currentMonth}`),
           fetch(`/api/epargne/allocations?month=${prevMonth}`),
+          // Charge toutes les transactions pour extraire les tags existants
+          fetch('/api/epargne/transactions'),
         ])
 
-      const [txData, chargesData, catsData, projetsData, allocData, prevAllocData] =
+      const [txData, chargesData, catsData, projetsData, allocData, prevAllocData, allTxData] =
         await Promise.all([
           txRes.json() as Promise<TransactionWithCategory[]>,
           chargesRes.json() as Promise<FixedChargeRow[]>,
@@ -74,6 +100,7 @@ export default function MoisPage(): ReactElement {
           projetsRes.json() as Promise<SavingsProject[]>,
           allocRes.json() as Promise<{ allocations: AllocationRow[]; reste: number }>,
           prevAllocRes.json() as Promise<{ allocations: AllocationRow[]; reste: number }>,
+          allTxRes.json() as Promise<TransactionWithCategory[]>,
         ])
 
       setTransactions(txData)
@@ -81,6 +108,7 @@ export default function MoisPage(): ReactElement {
       setCategories(catsData)
       setProjects(projetsData)
       setReste(allocData.reste)
+      setExistingTags(extractUniqueTags(Array.isArray(allTxData) ? allTxData : []))
 
       if (allocData.allocations.length > 0) {
         setAllocations(allocData.allocations)
@@ -98,6 +126,7 @@ export default function MoisPage(): ReactElement {
     categoryId: string
     amount: number
     detail?: string
+    tags: string[]
     pointed: boolean
   }): Promise<void> {
     const url = editingTransaction
@@ -116,17 +145,13 @@ export default function MoisPage(): ReactElement {
   }
 
   async function handleDeleteTransaction(id: string): Promise<void> {
-    const res = await fetch(`/api/epargne/transactions/${id}`, {
-      method: 'DELETE',
-    })
+    const res = await fetch(`/api/epargne/transactions/${id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error('Erreur suppression')
     await loadAll()
   }
 
   async function handleTogglePointage(id: string): Promise<void> {
-    await fetch(`/api/epargne/transactions/${id}/pointage`, {
-      method: 'PATCH',
-    })
+    await fetch(`/api/epargne/transactions/${id}/pointage`, { method: 'PATCH' })
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, pointed: !t.pointed } : t)),
     )
@@ -156,7 +181,6 @@ export default function MoisPage(): ReactElement {
     await loadAll()
   }
 
-  // Sélecteur de mois — passé en stickySubHeader à EpargneLayout
   const monthSelector = (
     <div className="flex items-center gap-4">
       <button
@@ -217,10 +241,7 @@ export default function MoisPage(): ReactElement {
             {/* Transactions */}
             <div
               className="rounded-xl overflow-hidden"
-              style={{
-                backgroundColor: 'var(--surface)',
-                border: '1px solid var(--border)',
-              }}
+              style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
             >
               <div
                 className="flex items-center justify-between px-5 py-4"
@@ -228,10 +249,7 @@ export default function MoisPage(): ReactElement {
               >
                 <h2
                   className="text-base font-semibold"
-                  style={{
-                    color: 'var(--text)',
-                    fontFamily: 'var(--font-display)',
-                  }}
+                  style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}
                 >
                   Transactions
                 </h2>
@@ -260,21 +278,12 @@ export default function MoisPage(): ReactElement {
             {/* Charges fixes */}
             <div
               className="rounded-xl overflow-hidden"
-              style={{
-                backgroundColor: 'var(--surface)',
-                border: '1px solid var(--border)',
-              }}
+              style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
             >
-              <div
-                className="px-5 py-4"
-                style={{ borderBottom: '1px solid var(--border)' }}
-              >
+              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
                 <h2
                   className="text-base font-semibold"
-                  style={{
-                    color: 'var(--text)',
-                    fontFamily: 'var(--font-display)',
-                  }}
+                  style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}
                 >
                   Charges fixes
                 </h2>
@@ -291,21 +300,12 @@ export default function MoisPage(): ReactElement {
             {/* Allocations épargne */}
             <div
               className="rounded-xl overflow-hidden"
-              style={{
-                backgroundColor: 'var(--surface)',
-                border: '1px solid var(--border)',
-              }}
+              style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
             >
-              <div
-                className="px-5 py-4"
-                style={{ borderBottom: '1px solid var(--border)' }}
-              >
+              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
                 <h2
                   className="text-base font-semibold"
-                  style={{
-                    color: 'var(--text)',
-                    fontFamily: 'var(--font-display)',
-                  }}
+                  style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}
                 >
                   Affectation épargne
                 </h2>
@@ -333,6 +333,7 @@ export default function MoisPage(): ReactElement {
         onSave={handleSaveTransaction}
         transaction={editingTransaction}
         categories={categories}
+        existingTags={existingTags}
       />
     </EpargneLayout>
   )

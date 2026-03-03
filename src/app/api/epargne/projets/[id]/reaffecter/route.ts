@@ -35,16 +35,12 @@ export async function PATCH(
     )
   }
 
-  const source = await prisma.savingsProject.findUnique({
-    where: { id: params.id },
-  })
-
-  const target = await prisma.savingsProject.findUnique({
-    where: { id: body.targetProjectId },
-  })
+  const source = await prisma.savingsProject.findUnique({ where: { id: params.id } })
+  const target = await prisma.savingsProject.findUnique({ where: { id: body.targetProjectId } })
 
   if (!source) return NextResponse.json({ error: 'Projet source introuvable' }, { status: 404 })
   if (!target) return NextResponse.json({ error: 'Projet cible introuvable' }, { status: 404 })
+
   if (source.id === target.id) {
     return NextResponse.json(
       { error: 'Le projet source et cible doivent être différents' },
@@ -55,25 +51,40 @@ export async function PATCH(
   const montantATransferer = source.currentAmount
   const month = new Date(body.month)
 
-  // Transaction Prisma — les deux opérations réussissent ou échouent ensemble
-  // $transaction = garantit l'atomicité des opérations BDD
+  // Récupère les allocations existantes pour ce mois
+  const [existingSource, existingTarget] = await Promise.all([
+    prisma.savingsAllocation.findUnique({
+      where: { month_projectId: { month, projectId: source.id } },
+    }),
+    prisma.savingsAllocation.findUnique({
+      where: { month_projectId: { month, projectId: target.id } },
+    }),
+  ])
+
+  // Upsert sur les deux allocations — additionne si une entrée existe déjà ce mois
   await prisma.$transaction([
-    // Entrée négative sur le projet source pour tracer la réaffectation
-    prisma.savingsAllocation.create({
-      data: {
+    prisma.savingsAllocation.upsert({
+      where: { month_projectId: { month, projectId: source.id } },
+      create: {
         month,
         percentage: 0,
         amount: -montantATransferer,
         projectId: source.id,
       },
+      update: {
+        amount: (existingSource?.amount ?? 0) - montantATransferer,
+      },
     }),
-    // Entrée positive sur le projet cible
-    prisma.savingsAllocation.create({
-      data: {
+    prisma.savingsAllocation.upsert({
+      where: { month_projectId: { month, projectId: target.id } },
+      create: {
         month,
         percentage: 0,
         amount: montantATransferer,
         projectId: target.id,
+      },
+      update: {
+        amount: (existingTarget?.amount ?? 0) + montantATransferer,
       },
     }),
   ])
