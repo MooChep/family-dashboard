@@ -3,8 +3,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Period } from '@/components/epargne/analyses/PeriodPicker'
 
+export interface TransactionRow {
+  id: string
+  month: string
+  date: string
+  amount: number
+  isIncome: boolean
+  category: string
+  tags: string[]
+}
+
 export interface AnalysesData {
   period: { from: string; to: string }
+  periodStart: string   // borne minimale du sélecteur (ex: "2024-10")
   expensesByMonth: Record<string, Record<string, number>>
   revenueByMonth: Record<string, number>
   savingsByMonth: Record<string, Record<string, number>>
@@ -24,8 +35,9 @@ export interface AnalysesData {
     category: string
     total: number
     count: number
-    entries: { month: string; amount: number }[]
+    entries: { month: string; amount: number; isIncome: boolean }[]
   }[]
+  txsByTag: Record<string, TransactionRow[]>
   projects: { id: string; name: string }[]
 }
 
@@ -37,9 +49,9 @@ function buildUrl(period: Period): string {
 }
 
 export function useAnalyses(period: Period) {
-  const [data, setData]       = useState<AnalysesData | null>(null)
+  const [data, setData]           = useState<AnalysesData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError]     = useState<string | null>(null)
+  const [error, setError]         = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -61,7 +73,7 @@ export function useAnalyses(period: Period) {
   return { data, isLoading, error, reload: load }
 }
 
-// Liste de tous les mois disponibles entre deux dates ISO
+// Tous les mois entre deux dates ISO "YYYY-MM" inclus
 export function getAvailableMonths(from: string, to: string): string[] {
   const months: string[] = []
   const [fy, fm] = from.split('-').map(Number)

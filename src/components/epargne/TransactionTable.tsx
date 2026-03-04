@@ -34,11 +34,7 @@ export function TransactionTable({
 
   async function handleDelete(id: string): Promise<void> {
     setDeletingId(id)
-    try {
-      await onDelete(id)
-    } finally {
-      setDeletingId(null)
-    }
+    try { await onDelete(id) } finally { setDeletingId(null) }
   }
 
   if (transactions.length === 0) {
@@ -47,9 +43,7 @@ export function TransactionTable({
         className="rounded-xl p-8 text-center"
         style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
       >
-        <p className="text-sm" style={{ color: 'var(--muted)' }}>
-          Aucune transaction ce mois
-        </p>
+        <p className="text-sm" style={{ color: 'var(--muted)' }}>Aucune transaction ce mois</p>
       </div>
     )
   }
@@ -63,7 +57,6 @@ export function TransactionTable({
         <TableHead>
           <tr>
             <Th>Catégorie</Th>
-            <Th>Détail</Th>
             <Th>Tags</Th>
             <Th align="right">Montant</Th>
             <Th align="center">Pointé</Th>
@@ -80,7 +73,6 @@ export function TransactionTable({
                     {t.category.name}
                   </Badge>
                 </Td>
-                <Td muted>{t.detail ?? '—'}</Td>
                 <Td>
                   {tags.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
@@ -130,9 +122,7 @@ export function TransactionTable({
                 </Td>
                 <Td align="right">
                   <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => onEdit(t)}>
-                      Modifier
-                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => onEdit(t)}>Modifier</Button>
                     <Button
                       variant="danger"
                       size="sm"

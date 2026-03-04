@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { toYearMonth } from '@/lib/analyses'
 
+// Première transaction en BDD (pour borner le sélecteur de période)
+const PERIOD_START = '2024-10'
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
@@ -25,20 +28,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } else {
     const period = parseInt(periodParam ?? '6', 10)
     if (![3, 6, 12].includes(period)) {
-      return NextResponse.json({ error: 'Période invalide : 3, 6 ou 12' }, { status: 400 })
+      return NextResponse.json({ error: 'Période invalide' }, { status: 400 })
     }
     endDate   = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1))
     startDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() - period + 1, 1))
   }
 
   if (startDate > endDate) {
-    return NextResponse.json({ error: 'La date de début doit être avant la date de fin' }, { status: 400 })
+    return NextResponse.json({ error: 'Date début > date fin' }, { status: 400 })
   }
 
   const transactions = await prisma.transaction.findMany({
     where: { month: { gte: startDate, lte: endDate } },
     include: { category: true },
-    orderBy: { month: 'asc' },
+    orderBy: [{ month: 'asc' }, { createdAt: 'asc' }],
   })
 
   const allocations = await prisma.savingsAllocation.findMany({
@@ -54,33 +57,76 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const expensesByMonth: Record<string, Record<string, number>> = {}
   const revenueByMonth: Record<string, number> = {}
-  const tagsByMonth: Record<string, { tag: string; category: string; amount: number; month: string }[]> = {}
+
+  // Transactions individuelles indexées par tag (pour la vue analyses/tags)
+  // Structure : { [tag]: TransactionRow[] }
+  interface TransactionRow {
+    id: string
+    month: string
+    date: string        // ISO date complète pour tri
+    amount: number
+    isIncome: boolean
+    category: string
+    tags: string[]
+  }
+  const txsByTag: Record<string, TransactionRow[]> = {}
+
+  // tagsSummary agrégé (pour les cards par tag)
+  const tagsSummaryMap: Record<string, {
+    tag: string
+    category: string
+    total: number
+    count: number
+    entries: { month: string; amount: number; isIncome: boolean }[]
+  }> = {}
 
   for (const tx of transactions) {
     const monthKey = toYearMonth(tx.month)
+    const isIncome = tx.category.type === 'INCOME'
 
-    if (tx.category.type === 'EXPENSE') {
+    if (!isIncome) {
       if (!expensesByMonth[monthKey]) expensesByMonth[monthKey] = {}
       expensesByMonth[monthKey][tx.category.name] =
         (expensesByMonth[monthKey][tx.category.name] ?? 0) + tx.amount
-    }
-
-    if (tx.category.type === 'INCOME') {
+    } else {
       revenueByMonth[monthKey] = (revenueByMonth[monthKey] ?? 0) + tx.amount
     }
 
-    // Tags : toujours stockés en String JSON — JSON.parse obligatoire
     let parsedTags: string[] = []
     try {
-      parsedTags = typeof tx.tags === 'string'
-        ? (JSON.parse(tx.tags) as string[])
-        : Array.isArray(tx.tags) ? (tx.tags as string[]) : []
+      parsedTags = typeof tx.tags === 'string' ? (JSON.parse(tx.tags) as string[]) : []
     } catch { parsedTags = [] }
 
+    if (parsedTags.length === 0) continue
+
+    const txRow: TransactionRow = {
+      id:       tx.id,
+      month:    monthKey,
+      date:     tx.month.toISOString(),
+      amount:   tx.amount,
+      isIncome,
+      category: tx.category.name,
+      tags:     parsedTags,
+    }
+
     for (const tag of parsedTags) {
-      if (!tag || typeof tag !== 'string') continue
-      if (!tagsByMonth[monthKey]) tagsByMonth[monthKey] = []
-      tagsByMonth[monthKey].push({ tag, category: tx.category.name, amount: tx.amount, month: monthKey })
+      if (!tag) continue
+
+      // Index par tag
+      if (!txsByTag[tag]) txsByTag[tag] = []
+      // Evite les doublons (même tx peut avoir plusieurs tags)
+      if (!txsByTag[tag].find((t) => t.id === tx.id)) {
+        txsByTag[tag].push(txRow)
+      }
+
+      // Agrégat pour les cards
+      const key = tag.toLowerCase()
+      if (!tagsSummaryMap[key]) {
+        tagsSummaryMap[key] = { tag, category: tx.category.name, total: 0, count: 0, entries: [] }
+      }
+      tagsSummaryMap[key].total += tx.amount
+      tagsSummaryMap[key].count++
+      tagsSummaryMap[key].entries.push({ month: monthKey, amount: tx.amount, isIncome })
     }
   }
 
@@ -136,28 +182,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
   })
 
-  const allTagEntries = Object.values(tagsByMonth).flat()
-  const tagsSummary: Record<string, { tag: string; category: string; total: number; count: number; entries: { month: string; amount: number }[] }> = {}
-
-  for (const entry of allTagEntries) {
-    const key = entry.tag.toLowerCase()
-    if (!tagsSummary[key]) {
-      tagsSummary[key] = { tag: entry.tag, category: entry.category, total: 0, count: 0, entries: [] }
-    }
-    tagsSummary[key].total += entry.amount
-    tagsSummary[key].count++
-    tagsSummary[key].entries.push({ month: entry.month, amount: entry.amount })
-  }
-
   return NextResponse.json({
     period: { from: toYearMonth(startDate), to: toYearMonth(endDate) },
+    periodStart: PERIOD_START,   // ← borne minimale pour le sélecteur
     expensesByMonth,
     revenueByMonth,
     savingsByMonth,
     savingsRateByMonth,
     cumulByProject,
     projections,
-    tagsSummary: Object.values(tagsSummary).sort((a, b) => b.total - a.total),
+    tagsSummary: Object.values(tagsSummaryMap).sort((a, b) => b.total - a.total),
+    txsByTag,   // ← nouveau : transactions individuelles par tag
     projects: projects.map((p) => ({ id: p.id, name: p.name })),
   })
 }
