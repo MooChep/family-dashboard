@@ -12,7 +12,59 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as readline from 'readline'
 import { PrismaClient } from '@prisma/client'
-import { resolveTags, normalizeTag } from '../src/lib/tags'
+// ─── Fonctions de normalisation (inline pour éviter les dépendances ESM) ────────
+
+function normalizeTag(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '')
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+  )
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
+  return dp[m][n]
+}
+
+function threshold(len: number): number {
+  if (len <= 4) return 0
+  if (len <= 6) return 1
+  return 2
+}
+
+function resolveTag(raw: string, existingTags: string[]): string {
+  const normalized = normalizeTag(raw)
+  if (!normalized) return ''
+  let bestMatch: string | null = null, bestDist = Infinity
+  for (const existing of existingTags) {
+    const dist = levenshtein(normalized, existing)
+    const thr  = threshold(Math.max(normalized.length, existing.length))
+    if (dist <= thr && dist < bestDist) { bestDist = dist; bestMatch = existing }
+  }
+  return bestMatch ?? normalized
+}
+
+function resolveTags(rawTags: string[], existingTags: string[]): string[] {
+  const resolved: string[] = []
+  const seen = new Set<string>(existingTags)
+  for (const raw of rawTags) {
+    const tag = resolveTag(raw, Array.from(seen))
+    if (!tag || resolved.includes(tag)) continue
+    resolved.push(tag)
+    seen.add(tag)
+  }
+  return resolved
+}
 
 const prisma = new PrismaClient()
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
@@ -24,6 +76,7 @@ function askDefault(q: string, d: string): Promise<string> {
   return new Promise((r) => rl.question(`${q} [${d}] `, (a) => r(a.trim() || d)))
 }
 function confirm(q: string): Promise<boolean> {
+  if (autoYes) { console.log(`${q} → oui (--yes)`); return Promise.resolve(true) }
   return new Promise((r) => rl.question(`${q} (o/N) `, (a) => r(a.trim().toLowerCase() === 'o')))
 }
 
@@ -31,6 +84,8 @@ function getArg(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag)
   return idx !== -1 ? process.argv[idx + 1] : undefined
 }
+
+const autoYes = process.argv.includes('--yes') || process.argv.includes('-y')
 
 // ─── Mapping catégories CSV → BDD ─────────────────────────────────────────────
 // Clé : nom exact dans le CSV (insensible à la casse)
@@ -46,7 +101,7 @@ const CATEGORY_ALIASES: Record<string, string> = {
 function parseAmount(raw: string): number | null {
   const cleaned = raw.replace(/[€\s\u00a0]/g, '').replace(',', '.')
   const val = parseFloat(cleaned)
-  return isNaN(val) || val <= 0 ? null : val
+  return isNaN(val) || val === 0 ? null : val
 }
 
 function parsePointed(raw: string | undefined, hasColumn: boolean): boolean {
@@ -175,6 +230,10 @@ async function main(): Promise<void> {
   const categories = await prisma.category.findMany()
   const categoryMap = new Map(categories.map((c) => [c.name.toLowerCase().trim(), c]))
 
+  // Projets BDD — pour recalculer currentAmount après import de transactions PROJECT
+  const projets = await prisma.savingsProject.findMany({ where: { isActive: true } })
+  const projetByCategoryId = new Map(projets.filter((p) => p.categoryId).map((p) => [p.categoryId!, p]))
+
   // Tags existants en BDD pour la déduplication
   const allTx = await prisma.transaction.findMany({ select: { tags: true } })
   const existingTagsInDb: string[] = []
@@ -236,10 +295,14 @@ async function main(): Promise<void> {
       if (!existingTagsInDb.includes(t)) existingTagsInDb.push(t)
     }
 
+    // Catégorie PROJECT → montant négatif (dépense sur le projet)
+    const isProject = category.type === 'PROJECT'
+    const finalAmount = isProject && amount > 0 ? -amount : amount
+
     toInsert.push({
       categoryId:   category.id,
       categoryName: category.name,
-      amount,
+      amount:       finalAmount,
       tags:         resolvedTags,
       pointed:      parsePointed(rawPointed, hasPointed),
     })
@@ -312,6 +375,22 @@ async function main(): Promise<void> {
           categoryId: row.categoryId,
         },
       })
+
+      // Si catégorie PROJECT → recalcule le currentAmount du projet lié
+      const projet = projetByCategoryId.get(row.categoryId)
+      if (projet) {
+        const allAllocs = await prisma.savingsAllocation.findMany({ where: { projectId: projet.id } })
+        const allocTotal = allAllocs.reduce((s, a) => s + a.amount, 0)
+        const txTotal = await prisma.transaction.findMany({
+          where: { categoryId: row.categoryId },
+          select: { amount: true },
+        }).then((txs) => txs.reduce((s, t) => s + t.amount, 0))
+        await prisma.savingsProject.update({
+          where: { id: projet.id },
+          data: { currentAmount: allocTotal + txTotal },
+        })
+      }
+
       inserted++
     } catch (err) {
       console.error(`   ❌ Erreur (${row.categoryName} / ${row.amount}) :`, err)
@@ -332,4 +411,4 @@ main().catch((err) => {
   rl.close()
   prisma.$disconnect().catch(() => null)
   process.exit(1)
-}) 
+})

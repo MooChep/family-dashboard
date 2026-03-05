@@ -43,7 +43,8 @@ interface MultiLineProps {
   lines: { key: string; label?: string }[]
   xKey?: string
   height?: number
-  formatter?: (v: number | undefined) => [string, string]
+  // formatter reçoit (value, name) pour afficher nom + montant dans le tooltip
+  formatter?: (v: number | undefined, name: string) => [string, string]
 }
 
 export function MultiLineChart({
@@ -61,7 +62,14 @@ export function MultiLineChart({
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
         <XAxis dataKey={xKey} tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border)' }} />
         <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border)' }} tickFormatter={(v: number) => formatAmount(v)} width={80} />
-        <Tooltip contentStyle={tooltipStyle} formatter={formatter ?? ((v: number | undefined) => [v !== undefined ? formatAmount(v) : '—', ''])} />
+        <Tooltip
+          contentStyle={tooltipStyle}
+          formatter={
+            formatter
+              ? (v: number | undefined, name: string) => formatter(v, name)
+              : (v: number | undefined, name: string) => [v !== undefined ? formatAmount(v) : '—', name]
+          }
+        />
         <Legend wrapperStyle={{ color: 'var(--text2)', fontSize: 12 }} />
         {lines.map((line, i) => (
           <Line
@@ -103,16 +111,8 @@ export function BarChartVertical({
       <ReBarChart data={rechartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
         <XAxis dataKey="name" tick={{ fill: 'var(--muted)', fontSize: 10 }} axisLine={{ stroke: 'var(--border)' }} />
-        <YAxis
-          tick={{ fill: 'var(--muted)', fontSize: 11 }}
-          axisLine={{ stroke: 'var(--border)' }}
-          tickFormatter={yAxisFormatter ?? ((v: number) => `${v}`)}
-          width={48}
-        />
-        <Tooltip
-          contentStyle={tooltipStyle}
-          formatter={tooltipFormatter ?? ((v: number | undefined) => [v !== undefined ? String(v) : '—', ''])}
-        />
+        <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border)' }} tickFormatter={yAxisFormatter ?? ((v: number) => `${v}`)} width={48} />
+        <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter ?? ((v: number | undefined) => [v !== undefined ? String(v) : '—', ''])} />
         <Bar dataKey="value" radius={[4, 4, 0, 0]} label={showValues ? { position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 700, formatter: (v: number) => v > 0 ? `${v}%` : '' } : false}>
           {rechartData.map((entry, i) => (
             <Cell key={i} fill={entry.color ?? 'var(--accent)'} />
@@ -125,41 +125,17 @@ export function BarChartVertical({
 
 // ─── Barres horizontales ──────────────────────────────────────────────────────
 
-export function BarChartHorizontal({
-  data,
-}: {
-  data: { label: string; value: number; color?: string }[]
-}): ReactElement {
+export function BarChartHorizontal({ data }: { data: { label: string; value: number; color?: string }[] }): ReactElement {
   const max = Math.max(...data.map((d) => d.value), 1)
-
   return (
     <div className="flex flex-col gap-2">
       {data.map((d, i) => (
         <div key={i} className="flex items-center gap-3">
-          <div
-            className="text-right text-xs flex-shrink-0"
-            style={{ width: 96, color: 'var(--text2)', fontFamily: 'var(--font-body)' }}
-          >
-            {d.label}
+          <div className="text-right text-xs flex-shrink-0" style={{ width: 96, color: 'var(--text2)', fontFamily: 'var(--font-body)' }}>{d.label}</div>
+          <div className="flex-1 h-6 rounded overflow-hidden" style={{ backgroundColor: 'var(--surface2)' }}>
+            <div className="h-full rounded transition-all duration-500" style={{ width: `${(d.value / max) * 100}%`, backgroundColor: d.color ?? 'var(--accent)' }} />
           </div>
-          <div
-            className="flex-1 h-6 rounded overflow-hidden"
-            style={{ backgroundColor: 'var(--surface2)' }}
-          >
-            <div
-              className="h-full rounded transition-all duration-500"
-              style={{
-                width: `${(d.value / max) * 100}%`,
-                backgroundColor: d.color ?? 'var(--accent)',
-              }}
-            />
-          </div>
-          <div
-            className="text-xs flex-shrink-0"
-            style={{ width: 76, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
-          >
-            {formatAmount(d.value)}
-          </div>
+          <div className="text-xs flex-shrink-0" style={{ width: 76, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{formatAmount(d.value)}</div>
         </div>
       ))}
     </div>
@@ -168,22 +144,9 @@ export function BarChartHorizontal({
 
 // ─── Carte stat ───────────────────────────────────────────────────────────────
 
-export function StatCard({
-  label,
-  value,
-  sub,
-  color,
-}: {
-  label: string
-  value: string
-  sub?: string
-  color?: string
-}): ReactElement {
+export function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }): ReactElement {
   return (
-    <div
-      className="flex flex-col gap-1 p-4 rounded-xl"
-      style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)' }}
-    >
+    <div className="flex flex-col gap-1 p-4 rounded-xl" style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)' }}>
       <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{label}</span>
       <span className="text-2xl font-semibold" style={{ color: color ?? 'var(--text)', fontFamily: 'var(--font-mono)' }}>{value}</span>
       {sub && <span className="text-xs" style={{ color: 'var(--muted2)' }}>{sub}</span>}
@@ -193,32 +156,11 @@ export function StatCard({
 
 // ─── Carte section ────────────────────────────────────────────────────────────
 
-export function SectionCard({
-  title,
-  action,
-  children,
-  fullWidth = false,
-}: {
-  title: string
-  action?: ReactNode
-  children: ReactNode
-  fullWidth?: boolean
-}): ReactElement {
+export function SectionCard({ title, action, children, fullWidth = false }: { title: string; action?: ReactNode; children: ReactNode; fullWidth?: boolean }): ReactElement {
   return (
-    <div
-      className={`rounded-xl overflow-hidden ${fullWidth ? 'col-span-2' : ''}`}
-      style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
-    >
-      <div
-        className="flex items-center justify-between px-5 py-4"
-        style={{ borderBottom: '1px solid var(--border)' }}
-      >
-        <h3
-          className="text-sm font-semibold"
-          style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}
-        >
-          {title}
-        </h3>
+    <div className={`rounded-xl overflow-hidden ${fullWidth ? 'col-span-2' : ''}`} style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{title}</h3>
         {action}
       </div>
       <div className="p-5">{children}</div>

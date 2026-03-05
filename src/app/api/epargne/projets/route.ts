@@ -11,10 +11,8 @@ export async function GET(): Promise<NextResponse> {
   const projets = await prisma.savingsProject.findMany({
     orderBy: { createdAt: 'asc' },
     include: {
-      allocations: {
-        orderBy: { month: 'desc' },
-        take: 1,
-      },
+      allocations: { orderBy: { month: 'desc' }, take: 1 },
+      category: true,
     },
   })
 
@@ -22,23 +20,36 @@ export async function GET(): Promise<NextResponse> {
 }
 
 // POST /api/epargne/projets
+// Crée le projet ET sa catégorie homonyme de type PROJECT
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
-  let body: {
-    name: string
-    targetAmount?: number | null
-  }
+  let body: { name: string; targetAmount?: number | null }
+  try { body = await request.json() }
+  catch { return NextResponse.json({ error: 'Corps de requête invalide' }, { status: 400 }) }
 
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Corps de requête invalide' }, { status: 400 })
-  }
+  if (!body.name) return NextResponse.json({ error: 'Champ requis : name' }, { status: 400 })
 
-  if (!body.name) {
-    return NextResponse.json({ error: 'Champ requis : name' }, { status: 400 })
+  // Crée ou réactive la catégorie homonyme
+  let category = await prisma.category.findUnique({ where: { name: body.name } })
+  if (category) {
+    if (category.type !== 'PROJECT') {
+      return NextResponse.json(
+        { error: `Une catégorie "${body.name}" existe déjà avec un type différent` },
+        { status: 409 },
+      )
+    }
+    if (category.isArchived) {
+      category = await prisma.category.update({
+        where: { id: category.id },
+        data: { isArchived: false },
+      })
+    }
+  } else {
+    category = await prisma.category.create({
+      data: { name: body.name, type: 'PROJECT', isFixed: false },
+    })
   }
 
   const projet = await prisma.savingsProject.create({
@@ -47,7 +58,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       targetAmount: body.targetAmount ?? null,
       currentAmount: 0,
       isActive: true,
+      categoryId: category.id,
     },
+    include: { allocations: true, category: true },
   })
 
   return NextResponse.json(projet, { status: 201 })

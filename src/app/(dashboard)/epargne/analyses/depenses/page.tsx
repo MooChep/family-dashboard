@@ -26,13 +26,18 @@ export default function AnalysesDepensesPage(): ReactElement {
   const [selectedCat, setSelectedCat] = useState<string>('')
   const { data, isLoading, error }  = useAnalyses(period)
 
-  const availableMonths = data
-    ? getAvailableMonths(data.period.from, data.period.to)
-    : getAvailableMonths('2025-01', new Date().toISOString().slice(0, 7))
+  const PERIOD_START = '2024-10'
+  const availableMonths = getAvailableMonths(
+    data?.periodStart ?? PERIOD_START,
+    new Date().toISOString().slice(0, 7),
+  )
 
   const months     = data ? Object.keys(data.expensesByMonth).sort() : []
+  // Noms des projets d'épargne à exclure (leurs catégories PROJECT ne sont pas des dépenses)
+  const projectNames = new Set((data?.projects ?? []).map((p) => p.name))
   const categories = data
     ? [...new Set(months.flatMap((m) => Object.keys(data.expensesByMonth[m] ?? {})))]
+        .filter((cat) => !projectNames.has(cat))
     : []
 
   const activeCat = selectedCat || categories[0] || ''

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, type ReactElement } from 'react'
 import { EpargneLayout } from '@/components/epargne/EpargneLayout'
+import { MonthSummary } from '@/components/epargne/MonthSummary'
 import { TransactionTable } from '@/components/epargne/TransactionTable'
 import { TransactionForm } from '@/components/epargne/TransactionForm'
 import { FixedChargesTable } from '@/components/epargne/FixedChargesTable'
@@ -43,55 +44,55 @@ function extractUniqueTags(txs: TransactionWithCategory[]): string[] {
   const set = new Set<string>()
   for (const tx of txs) {
     let parsed: string[] = []
-    try {
-      parsed = typeof tx.tags === 'string' ? (JSON.parse(tx.tags) as string[]) : []
-    } catch {
-      parsed = []
-    }
+    try { parsed = typeof tx.tags === 'string' ? (JSON.parse(tx.tags) as string[]) : [] }
+    catch { parsed = [] }
     for (const tag of parsed) { if (tag) set.add(tag) }
   }
   return Array.from(set).sort()
 }
 
+// Projets avec categoryId pour la résolution
+type ProjectWithCategory = SavingsProject & { category: { id: string } | null }
+
 export default function MoisPage(): ReactElement {
-  const [currentMonth, setCurrentMonth] = useState(getCurrentMonth())
-  const [transactions, setTransactions] = useState<TransactionWithCategory[]>([])
-  const [charges, setCharges] = useState<FixedChargeRow[]>([])
-  const [variableCharges, setVariableCharges] = useState<VariableChargeRow[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [projects, setProjects] = useState<SavingsProject[]>([])
-  const [allocations, setAllocations] = useState<AllocationRow[]>([])
-  const [reste, setReste] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [currentMonth, setCurrentMonth]           = useState(getCurrentMonth())
+  const [transactions, setTransactions]           = useState<TransactionWithCategory[]>([])
+  const [charges, setCharges]                     = useState<FixedChargeRow[]>([])
+  const [variableCharges, setVariableCharges]     = useState<VariableChargeRow[]>([])
+  const [categories, setCategories]               = useState<Category[]>([])
+  const [projects, setProjects]                   = useState<ProjectWithCategory[]>([])
+  const [allocations, setAllocations]             = useState<AllocationRow[]>([])
+  const [reste, setReste]                         = useState(0)
+  const [totalFortune, setTotalFortune]           = useState(0)
+  const [search, setSearch]                       = useState('')
+  const [isLoading, setIsLoading]                 = useState(true)
+  const [summary, setSummary]                     = useState({ revenus: 0, depenses: 0, reste: 0, allocationPercent: 0 })
+  const [isFormOpen, setIsFormOpen]               = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null)
-  const [existingTags, setExistingTags] = useState<string[]>([])
+  const [existingTags, setExistingTags]           = useState<string[]>([])
 
   const loadAll = useCallback(async (): Promise<void> => {
     setIsLoading(true)
     try {
-      const prevMonth = shiftMonth(currentMonth, -1)
-      const [txRes, chargesRes, varRes, catsRes, projetsRes, allocRes, prevAllocRes, allTxRes] =
+      const [txRes, chargesRes, varRes, catsRes, projetsRes, allocRes, allTxRes] =
         await Promise.all([
           fetch('/api/epargne/transactions?month=' + currentMonth),
           fetch('/api/epargne/charges-fixes?month=' + currentMonth),
           fetch('/api/epargne/charges-variables?month=' + currentMonth),
-          fetch('/api/epargne/categories'),
+          fetch('/api/epargne/categories'),          // catégories actives uniquement (isArchived=false)
           fetch('/api/epargne/projets'),
           fetch('/api/epargne/allocations?month=' + currentMonth),
-          fetch('/api/epargne/allocations?month=' + prevMonth),
           fetch('/api/epargne/transactions'),
         ])
 
-      const [txData, chargesData, varData, catsData, projetsData, allocData, prevAllocData, allTxData] =
+      const [txData, chargesData, varData, catsData, projetsData, allocData, allTxData] =
         await Promise.all([
           txRes.json() as Promise<TransactionWithCategory[]>,
           chargesRes.json() as Promise<FixedChargeRow[]>,
           varRes.json() as Promise<VariableChargeRow[]>,
           catsRes.json() as Promise<Category[]>,
-          projetsRes.json() as Promise<SavingsProject[]>,
+          projetsRes.json() as Promise<ProjectWithCategory[]>,
           allocRes.json() as Promise<{ allocations: AllocationRow[]; reste: number }>,
-          prevAllocRes.json() as Promise<{ allocations: AllocationRow[]; reste: number }>,
           allTxRes.json() as Promise<TransactionWithCategory[]>,
         ])
 
@@ -100,9 +101,16 @@ export default function MoisPage(): ReactElement {
       setVariableCharges(Array.isArray(varData) ? varData : [])
       setCategories(catsData)
       setProjects(projetsData)
+      setTotalFortune(projetsData.filter((p) => p.isActive).reduce((s, p) => s + p.currentAmount, 0))
       setReste(allocData.reste)
       setExistingTags(extractUniqueTags(Array.isArray(allTxData) ? allTxData : []))
-      setAllocations(allocData.allocations.length > 0 ? allocData.allocations : prevAllocData.allocations)
+      setAllocations(allocData.allocations)
+
+      // Calcul du résumé mensuel
+      const revenus           = txData.filter((t) => t.category.type === 'INCOME').reduce((s, t) => s + t.amount, 0)
+      const depenses          = txData.filter((t) => t.category.type === 'EXPENSE').reduce((s, t) => s + Math.abs(t.amount), 0)
+      const allocationPercent = allocData.allocations.reduce((s, a) => s + a.percentage, 0)
+      setSummary({ revenus, depenses, reste: allocData.reste, allocationPercent })
     } finally {
       setIsLoading(false)
     }
@@ -116,15 +124,40 @@ export default function MoisPage(): ReactElement {
     tags: string[]
     pointed: boolean
   }): Promise<void> {
-    const url = editingTransaction
-      ? '/api/epargne/transactions/' + editingTransaction.id
-      : '/api/epargne/transactions'
-    const res = await fetch(url, {
-      method: editingTransaction ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...f, month: currentMonth }),
-    })
-    if (!res.ok) throw new Error('Erreur sauvegarde')
+    // Détecter si la catégorie est de type PROJECT
+    const cat = categories.find((c) => c.id === f.categoryId)
+    const isProjectCat = cat?.type === 'PROJECT'
+
+    if (isProjectCat && !editingTransaction) {
+      // Trouver le projet lié à cette catégorie
+      // Le montant est signé : négatif = dépense, positif = entrée
+      const projet = projects.find((p) => p.categoryId === f.categoryId)
+      if (!projet) throw new Error('Projet introuvable pour cette catégorie')
+
+      const res = await fetch(`/api/epargne/projets/${projet.id}/depense`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: f.amount,   // signé
+          month: currentMonth,
+          tags: f.tags,
+          pointed: f.pointed,
+        }),
+      })
+      if (!res.ok) throw new Error('Erreur sauvegarde opération projet')
+    } else {
+      // Transaction normale (ou édition d'une transaction projet existante)
+      const url = editingTransaction
+        ? '/api/epargne/transactions/' + editingTransaction.id
+        : '/api/epargne/transactions'
+      const res = await fetch(url, {
+        method: editingTransaction ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...f, month: currentMonth }),
+      })
+      if (!res.ok) throw new Error('Erreur sauvegarde')
+    }
+
     await loadAll()
   }
 
@@ -141,8 +174,7 @@ export default function MoisPage(): ReactElement {
 
   async function handleUpdateFixed(categoryId: string, estimated: number): Promise<void> {
     await fetch('/api/epargne/charges-fixes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ month: currentMonth, categoryId, estimated }),
     })
     await loadAll()
@@ -150,8 +182,7 @@ export default function MoisPage(): ReactElement {
 
   async function handleUpdateVariable(categoryId: string, estimated: number): Promise<void> {
     await fetch('/api/epargne/charges-variables', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ month: currentMonth, categoryId, estimated }),
     })
     await loadAll()
@@ -159,8 +190,7 @@ export default function MoisPage(): ReactElement {
 
   async function handleSaveAllocations(allocs: { projectId: string; percentage: number }[]): Promise<void> {
     const res = await fetch('/api/epargne/allocations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ month: currentMonth, allocations: allocs }),
     })
     if (!res.ok) throw new Error('Erreur allocations')
@@ -206,8 +236,32 @@ export default function MoisPage(): ReactElement {
           </div>
         ) : (
           <>
+            {/* Résumé du mois */}
+            <MonthSummary
+              revenus={summary.revenus}
+              depenses={summary.depenses}
+              reste={summary.reste}
+              allocationPercent={summary.allocationPercent}
+            />
+
             {/* Transactions */}
             <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+              {/* Barre de recherche */}
+              <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
+                <input
+                  type="text"
+                  placeholder="Rechercher une transaction (catégorie, tag, montant…)"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{
+                    backgroundColor: 'var(--surface2)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text)',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                />
+              </div>
               <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
                 <h2 className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Transactions</h2>
                 <Button variant="primary" size="sm" onClick={() => { setEditingTransaction(null); setIsFormOpen(true) }}>
@@ -215,7 +269,16 @@ export default function MoisPage(): ReactElement {
                 </Button>
               </div>
               <TransactionTable
-                transactions={transactions}
+                transactions={transactions.filter((t) => {
+                  if (!search.trim()) return true
+                  const q = search.toLowerCase()
+                  const tags = (() => { try { return JSON.parse(t.tags as string) as string[] } catch { return [] } })()
+                  return (
+                    t.category.name.toLowerCase().includes(q) ||
+                    String(t.amount).includes(q) ||
+                    tags.some((tag) => tag.toLowerCase().includes(q))
+                  )
+                })}
                 onEdit={(t) => { setEditingTransaction(t); setIsFormOpen(true) }}
                 onDelete={handleDeleteTransaction}
                 onTogglePointage={handleTogglePointage}
@@ -235,9 +298,7 @@ export default function MoisPage(): ReactElement {
             <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
                 <h2 className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Dépenses variables</h2>
-                <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
-                  Catégories avec transactions ce mois. Cliquer sur un estimé pour le modifier.
-                </p>
+                <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>Catégories avec transactions ce mois. Cliquer sur un estimé pour le modifier.</p>
               </div>
               <VariableChargesTable charges={variableCharges} onUpdateEstimated={handleUpdateVariable} />
             </div>
@@ -251,6 +312,7 @@ export default function MoisPage(): ReactElement {
               <AllocationForm
                 projects={projects}
                 reste={reste}
+                totalFortune={totalFortune}
                 initialAllocations={allocations}
                 onSave={handleSaveAllocations}
               />

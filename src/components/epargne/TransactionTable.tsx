@@ -24,6 +24,14 @@ function parseTags(raw: unknown): string[] {
   return []
 }
 
+// Pour PROJECT, le montant est signé (négatif = dépense, positif = entrée)
+// Pour INCOME/EXPENSE, amount est toujours positif et le type donne le signe
+function isIncome(tx: TransactionWithCategory): boolean {
+  if (tx.category.type === 'INCOME') return true
+  if (tx.category.type === 'PROJECT') return tx.amount > 0
+  return false
+}
+
 export function TransactionTable({
   transactions,
   onEdit,
@@ -65,11 +73,13 @@ export function TransactionTable({
         </TableHead>
         <TableBody>
           {transactions.map((t) => {
-            const tags = parseTags(t.tags)
+            const tags   = parseTags(t.tags)
+            const income = isIncome(t)
+
             return (
               <Tr key={t.id}>
                 <Td>
-                  <Badge variant={t.category.type === 'INCOME' ? 'success' : 'default'}>
+                  <Badge variant={t.category.type === 'INCOME' || (t.category.type === 'PROJECT' && t.amount > 0) ? 'success' : 'default'}>
                     {t.category.name}
                   </Badge>
                 </Td>
@@ -97,13 +107,14 @@ export function TransactionTable({
                 <Td align="right">
                   <span
                     style={{
-                      color: t.category.type === 'INCOME' ? 'var(--success)' : 'var(--text)',
+                      color: income ? 'var(--success)' : 'var(--text)',
                       fontFamily: 'var(--font-mono)',
                       opacity: t.pointed ? 1 : 0.55,
                     }}
                   >
-                    {t.category.type === 'INCOME' ? '+' : '-'}
-                    {formatAmount(t.amount)}
+                    {t.category.type === 'PROJECT'
+                      ? formatAmount(t.amount)
+                      : (income ? '+' : '-') + formatAmount(t.amount)}
                   </span>
                 </Td>
                 <Td align="center">

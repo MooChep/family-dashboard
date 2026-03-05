@@ -21,14 +21,24 @@ export default function AnalysesEpargnePage(): ReactElement {
   const [period, setPeriod] = useState<Period>({ type: 'preset', value: 6 })
   const { data, isLoading, error } = useAnalyses(period)
 
-  const availableMonths = data
-    ? getAvailableMonths(data.period.from, data.period.to)
-    : getAvailableMonths('2025-01', new Date().toISOString().slice(0, 7))
+  const PERIOD_START = '2024-10'
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const availableMonths = getAvailableMonths(
+    data?.periodStart ?? PERIOD_START,
+    currentMonth,
+  )
 
-  // Données pour le graphique soldes cumulés
-  const months = data ? Object.keys(data.cumulByProject[Object.keys(data.cumulByProject)[0]] ?? {}).sort() : []
+  // Filtre les mois selon la période sélectionnée
+  const periodFrom = data?.period.from ?? ''
+  const periodTo   = data?.period.to   ?? ''
 
-  const cumulData = months.map((m) => {
+  // Soldes cumulés par projet — filtrés par période
+  const cumulMonths = data
+    ? Object.keys(data.cumulByProject[Object.keys(data.cumulByProject)[0]] ?? {})
+        .filter((m) => m >= periodFrom && m <= periodTo)
+        .sort()
+    : []
+  const cumulData = cumulMonths.map((m) => {
     const row: Record<string, string | number> = { month: shortLabel(m) }
     if (data) {
       for (const project of data.projects) {
@@ -38,7 +48,21 @@ export default function AnalysesEpargnePage(): ReactElement {
     return row
   })
 
-  // Données taux d'épargne
+  // Fortune totale — filtrée par période
+  const wealthMonths = data
+    ? Object.keys(data.wealthByMonth)
+        .filter((m) => m >= periodFrom && m <= periodTo)
+        .sort()
+    : []
+  const wealthData = wealthMonths.map((m) => ({
+    month: shortLabel(m),
+    'Fortune totale': data?.wealthByMonth[m] ?? 0,
+  }))
+  const latestWealth = wealthMonths.length > 0
+    ? (data?.wealthByMonth[wealthMonths[wealthMonths.length - 1]] ?? 0)
+    : 0
+
+  // Taux d'épargne
   const rateMonths = data ? Object.keys(data.savingsRateByMonth).sort() : []
   const rateData = rateMonths.map((m) => {
     const rate = data?.savingsRateByMonth[m] ?? 0
@@ -63,93 +87,121 @@ export default function AnalysesEpargnePage(): ReactElement {
 
   return (
     <EpargneLayout>
-    <AnalysesLayout subHeader={periodHeader}>
-      {isLoading ? (
-        <div className="grid grid-cols-2 gap-4">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-4">
-          {/* Soldes cumulés */}
-          <SectionCard title="Évolution des soldes cumulés">
-            <MultiLineChart
-              data={cumulData}
-              lines={data?.projects.map((p, i) => ({ key: p.name, label: p.name })) ?? []}
-              height={240}
-            />
-          </SectionCard>
+      <AnalysesLayout subHeader={periodHeader}>
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-4">
+            <SkeletonCard /><SkeletonCard /><SkeletonCard />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
 
-          {/* Taux d'épargne */}
-          <SectionCard title="Taux d'épargne mensuel">
-            <BarChartVertical
-              data={rateData}
-              height={220}
-              showValues={true}
-              yAxisFormatter={(v) => `${v}%`}
-              tooltipFormatter={(v) => [v !== undefined ? `${v}%` : '—', 'Taux']}
-            />
-            <div className="flex gap-4 mt-3">
-              {[
-                { label: '≥ 20%', color: 'var(--success)' },
-                { label: '≥ 10%', color: 'var(--warning)' },
-                { label: '< 10%', color: 'var(--danger)' },
-              ].map((s) => (
-                <div key={s.label} className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                  <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{s.label}</span>
-                </div>
-              ))}
+            {/* Fortune totale — stat + courbe */}
+            <div className="col-span-2">
+              <SectionCard
+                title="Fortune totale — solde cumulé de tous les projets"
+                action={
+                  <span className="text-lg font-semibold" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
+                    {formatAmount(latestWealth)}
+                  </span>
+                }
+              >
+                <MultiLineChart
+                  data={wealthData}
+                  lines={[{ key: 'Fortune totale', label: 'Fortune totale' }]}
+                  height={220}
+                  formatter={(v) => [v !== undefined ? formatAmount(v) : '—', 'Fortune totale']}
+                />
+              </SectionCard>
             </div>
-          </SectionCard>
 
-          {/* Projections */}
-          <div className="col-span-2">
-            <SectionCard title="Projections — moyenne des 3 derniers mois">
-              <div className="grid grid-cols-4 gap-3">
-                {data?.projections.map((p, i) => (
-                  <div
-                    key={p.id}
-                    className="flex flex-col gap-2 p-4 rounded-xl"
-                    style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)' }}
-                  >
-                    <div className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{p.name}</div>
-                    <div className="text-xl font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
-                      {formatAmount(p.currentAmount)}
-                    </div>
-                    {p.targetAmount && (
-                      <>
-                        <div className="text-xs" style={{ color: 'var(--muted2)' }}>sur {formatAmount(p.targetAmount)}</div>
-                        <div className="h-1 rounded-full" style={{ backgroundColor: 'var(--surface)' }}>
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${p.percentComplete}%`, backgroundColor: COLORS[i % COLORS.length] }}
-                          />
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-                            {p.percentComplete.toFixed(0)}%
-                          </span>
-                          {p.monthsToTarget != null && (
-                            <span className="text-xs" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
-                              ~{p.monthsToTarget} mois
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs" style={{ color: 'var(--muted2)' }}>
-                          moy. {formatAmount(p.avg3MonthsSaving)}/mois
-                        </div>
-                      </>
-                    )}
+            {/* Soldes cumulés par projet */}
+            <SectionCard title="Évolution des soldes par projet">
+              <MultiLineChart
+                data={cumulData}
+                lines={data?.projects.map((p) => ({ key: p.name, label: p.name })) ?? []}
+                height={240}
+                formatter={(v, name) => [v !== undefined ? formatAmount(v) : '—', name as string]}
+              />
+            </SectionCard>
+
+            {/* Taux d'épargne */}
+            <SectionCard title="Taux d'épargne mensuel">
+              <BarChartVertical
+                data={rateData}
+                height={220}
+                showValues={true}
+                yAxisFormatter={(v) => `${v}%`}
+                tooltipFormatter={(v) => [v !== undefined ? `${v}%` : '—', 'Taux']}
+              />
+              <div className="flex gap-4 mt-3">
+                {[
+                  { label: '≥ 20%', color: 'var(--success)' },
+                  { label: '≥ 10%', color: 'var(--warning)' },
+                  { label: '< 10%', color: 'var(--danger)' },
+                ].map((s) => (
+                  <div key={s.label} className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
+                    <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{s.label}</span>
                   </div>
                 ))}
               </div>
             </SectionCard>
+
+            {/* Projections */}
+            <div className="col-span-2">
+              <SectionCard title="Projections">
+                <div className="grid grid-cols-4 gap-3">
+                  {data?.projections.map((p, i) => (
+                    <div key={p.id} className="flex flex-col gap-2 p-4 rounded-xl" style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)' }}>
+                      <div className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{p.name}</div>
+                      <div className="text-xl font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+                        {formatAmount(p.currentAmount)}
+                      </div>
+                      {p.targetAmount && (
+                        <>
+                          <div className="text-xs" style={{ color: 'var(--muted2)' }}>sur {formatAmount(p.targetAmount)}</div>
+                          <div className="h-1 rounded-full" style={{ backgroundColor: 'var(--surface)' }}>
+                            <div className="h-full rounded-full transition-all" style={{ width: `${p.percentComplete}%`, backgroundColor: COLORS[i % COLORS.length] }} />
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{p.percentComplete.toFixed(0)}%</span>
+                            {p.monthsToTarget != null && (
+                              <span className="text-xs" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>~{p.monthsToTarget} mois</span>
+                            )}
+                          </div>
+                          {/* Moyenne mensuelle + % moyen sur toute l'histoire */}
+                          <div className="flex flex-col gap-0.5 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>moy./mois</span>
+                              <span className="text-xs font-medium" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{formatAmount(p.avgMonthlySaving)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>% revenus</span>
+                              <span className="text-xs font-medium" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{p.avgPct.toFixed(1)}%</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      {!p.targetAmount && (
+                        <div className="flex flex-col gap-0.5 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>moy./mois</span>
+                            <span className="text-xs font-medium" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{formatAmount(p.avgMonthlySaving)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>% revenus</span>
+                            <span className="text-xs font-medium" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{p.avgPct.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            </div>
           </div>
-        </div>
-      )}
-    </AnalysesLayout>
+        )}
+      </AnalysesLayout>
     </EpargneLayout>
   )
 }

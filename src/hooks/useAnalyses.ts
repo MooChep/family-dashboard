@@ -21,12 +21,15 @@ export interface AnalysesData {
   savingsByMonth: Record<string, Record<string, number>>
   savingsRateByMonth: Record<string, number>
   cumulByProject: Record<string, Record<string, number>>
+  wealthByMonth: Record<string, number>
+  accountWealthByMonth: Record<string, number>
   projections: {
     id: string
     name: string
     targetAmount: number | null
     currentAmount: number
-    avg3MonthsSaving: number
+    avgMonthlySaving: number
+    avgPct: number
     monthsToTarget: number | null
     percentComplete: number
   }[]

@@ -39,13 +39,15 @@ model Theme {
 }
 
 model Category {
-  id           String        @id @default(cuid())
-  name         String        @unique
+  id           String           @id @default(cuid())
+  name         String           @unique
   type         CategoryType
-  isFixed      Boolean       @default(false)
-  createdAt    DateTime      @default(now())
+  isFixed      Boolean          @default(false)
+  isArchived   Boolean          @default(false)
+  createdAt    DateTime         @default(now())
   fixedCharges FixedCharge[]
   transactions Transaction[]
+  projects     SavingsProject[]
 }
 
 model Transaction {
@@ -53,7 +55,7 @@ model Transaction {
   month      DateTime
   amount     Float
   detail     String?
-  tags  String   @default("[]") @db.LongText
+  tags       String   @default("[]") @db.LongText
   pointed    Boolean  @default(false)
   categoryId String
   createdAt  DateTime @default(now())
@@ -82,9 +84,13 @@ model SavingsProject {
   targetAmount  Float?
   currentAmount Float               @default(0)
   isActive      Boolean             @default(true)
+  categoryId    String?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   allocations   SavingsAllocation[]
+  category      Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId])
 }
 
 model SavingsAllocation {
@@ -103,4 +109,41 @@ model SavingsAllocation {
 enum CategoryType {
   INCOME
   EXPENSE
+  PROJECT
+}
+
+
+model BankAccount {
+  id              String               @id @default(cuid())
+  name            String               @unique
+  owner           String               @default("")   // ex: "Ilan", "Camille"
+  isActive        Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  reconciliations ReconciliationEntry[]
+}
+
+model Reconciliation {
+  id             String               @id @default(cuid())
+  month          DateTime             @unique
+  totalReal      Float
+  totalBdd       Float
+  gap            Float
+  note           String?
+  adjustmentId   String?              // id de la transaction exceptionnelle (simple référence, pas de relation)
+  createdAt      DateTime             @default(now())
+  entries        ReconciliationEntry[]
+}
+
+model ReconciliationEntry {
+  id               String         @id @default(cuid())
+  reconciliationId String
+  accountId        String
+  balance          Float
+  reconciliation   Reconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  account          BankAccount    @relation(fields: [accountId], references: [id])
+
+  @@unique([reconciliationId, accountId])
+  @@index([accountId])
+  @@index([reconciliationId])
 }

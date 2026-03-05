@@ -28,14 +28,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } else {
     const period = parseInt(periodParam ?? '6', 10)
     if (![3, 6, 12].includes(period)) {
-      return NextResponse.json({ error: 'Période invalide' }, { status: 400 })
+      // ── Cumul des comptes réels (depuis les réguls) ──────────────────────────
+  const reguls = await prisma.reconciliation.findMany({
+    where: { month: { gte: startDate, lte: endDate } },
+    orderBy: { month: 'asc' },
+  })
+  const accountWealthByMonth: Record<string, number> = {}
+  for (const r of reguls) {
+    accountWealthByMonth[toYearMonth(r.month)] = r.totalReal
+  }
+
+  return NextResponse.json({ error: 'Période invalide' }, { status: 400 })
     }
     endDate   = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1))
     startDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() - period + 1, 1))
   }
 
   if (startDate > endDate) {
-    return NextResponse.json({ error: 'Date début > date fin' }, { status: 400 })
+    // ── Cumul des comptes réels (depuis les réguls) ──────────────────────────
+  const reguls = await prisma.reconciliation.findMany({
+    where: { month: { gte: startDate, lte: endDate } },
+    orderBy: { month: 'asc' },
+  })
+  const accountWealthByMonth: Record<string, number> = {}
+  for (const r of reguls) {
+    accountWealthByMonth[toYearMonth(r.month)] = r.totalReal
+  }
+
+  return NextResponse.json({ error: 'Date début > date fin' }, { status: 400 })
   }
 
   const transactions = await prisma.transaction.findMany({
@@ -82,14 +102,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   for (const tx of transactions) {
     const monthKey = toYearMonth(tx.month)
-    const isIncome = tx.category.type === 'INCOME'
+    // Pour PROJECT : le montant est signé (négatif = dépense, positif = entrée)
+    // Pour INCOME/EXPENSE : amount est toujours positif, le type donne le signe
+    const isProject = tx.category.type === 'PROJECT'
+    const isIncome  = tx.category.type === 'INCOME' || (isProject && tx.amount > 0)
+    const absAmount = Math.abs(tx.amount)
 
-    if (!isIncome) {
-      if (!expensesByMonth[monthKey]) expensesByMonth[monthKey] = {}
-      expensesByMonth[monthKey][tx.category.name] =
-        (expensesByMonth[monthKey][tx.category.name] ?? 0) + tx.amount
-    } else {
-      revenueByMonth[monthKey] = (revenueByMonth[monthKey] ?? 0) + tx.amount
+    // expensesByMonth et revenueByMonth excluent les catégories PROJECT
+    // (les projets sont tracés séparément via cumulByProject / wealthByMonth)
+    if (!isProject) {
+      if (!isIncome) {
+        if (!expensesByMonth[monthKey]) expensesByMonth[monthKey] = {}
+        expensesByMonth[monthKey][tx.category.name] =
+          (expensesByMonth[monthKey][tx.category.name] ?? 0) + absAmount
+      } else {
+        revenueByMonth[monthKey] = (revenueByMonth[monthKey] ?? 0) + absAmount
+      }
     }
 
     let parsedTags: string[] = []
@@ -103,7 +131,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       id:       tx.id,
       month:    monthKey,
       date:     tx.month.toISOString(),
-      amount:   tx.amount,
+      amount:   absAmount,
       isIncome,
       category: tx.category.name,
       tags:     parsedTags,
@@ -151,30 +179,130 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     orderBy: { month: 'asc' },
   })
 
-  const cumulByProject: Record<string, Record<string, number>> = {}
+  // Toutes les transactions PROJECT pour les projets actifs (dépenses/entrées signées)
+  const projectCategoryIds = projects.map((p) => p.categoryId).filter(Boolean) as string[]
+  const projectTransactions = await prisma.transaction.findMany({
+    where: { categoryId: { in: projectCategoryIds } },
+    orderBy: { month: 'asc' },
+  })
+  // Index categoryId → projectId
+  const catToProject = new Map(projects.filter((p) => p.categoryId).map((p) => [p.categoryId!, p.id]))
+
+  // Calcule le cumul brut par projet et par mois (allocations + transactions)
+  // On collecte tous les événements mois par mois
+  type MonthEvent = { month: string; delta: number }
+  const eventsByProject: Record<string, MonthEvent[]> = {}
+
   for (const alloc of allAllocations) {
+    const pid = alloc.projectId
     const monthKey = toYearMonth(alloc.month)
-    if (!cumulByProject[alloc.projectId]) cumulByProject[alloc.projectId] = {}
-    const prevMonths = Object.keys(cumulByProject[alloc.projectId]).sort()
-    const lastCumul = prevMonths.length > 0
-      ? cumulByProject[alloc.projectId][prevMonths[prevMonths.length - 1]]
-      : 0
-    cumulByProject[alloc.projectId][monthKey] = lastCumul + alloc.amount
+    if (!eventsByProject[pid]) eventsByProject[pid] = []
+    eventsByProject[pid].push({ month: monthKey, delta: alloc.amount })
+  }
+  for (const tx of projectTransactions) {
+    const pid = catToProject.get(tx.categoryId)
+    if (!pid) continue
+    const monthKey = toYearMonth(tx.month)
+    if (!eventsByProject[pid]) eventsByProject[pid] = []
+    eventsByProject[pid].push({ month: monthKey, delta: tx.amount })
   }
 
-  const monthsInPeriod = Object.keys(savingsByMonth).sort()
-  const last3 = monthsInPeriod.slice(-3)
+  // Génère tous les mois de startDate à endDate pour couvrir la période complète
+  function generateMonthRange(from: Date, to: Date): string[] {
+    const months: string[] = []
+    let cur = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1))
+    const end = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), 1))
+    while (cur <= end) {
+      months.push(toYearMonth(cur))
+      cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1))
+    }
+    return months
+  }
+
+  // Pour cumulByProject on couvre toute l'histoire (pas seulement la période)
+  // afin que le filtrage côté page soit correct
+  const allEventMonths = Object.values(eventsByProject)
+    .flatMap((evs) => evs.map((e) => e.month))
+  const globalStart = allEventMonths.length > 0
+    ? allEventMonths.sort()[0]
+    : toYearMonth(startDate)
+  const [gsy, gsm] = globalStart.split('-').map(Number)
+  const [ey, em]   = toYearMonth(endDate).split('-').map(Number)
+  const allMonths  = generateMonthRange(
+    new Date(Date.UTC(gsy, gsm - 1, 1)),
+    new Date(Date.UTC(ey, em - 1, 1)),
+  )
+
+  const cumulByProject: Record<string, Record<string, number>> = {}
+  for (const project of projects) {
+    const events = eventsByProject[project.id] ?? []
+    // Somme des deltas par mois
+    const deltaByMonth: Record<string, number> = {}
+    for (const ev of events) {
+      deltaByMonth[ev.month] = (deltaByMonth[ev.month] ?? 0) + ev.delta
+    }
+    // Cumul en propageant la dernière valeur connue
+    let cumul = 0
+    cumulByProject[project.id] = {}
+    for (const m of allMonths) {
+      cumul += deltaByMonth[m] ?? 0
+      cumulByProject[project.id][m] = Math.round(cumul * 100) / 100
+    }
+  }
+
+  // Tous les mois avec des allocations (toute l'histoire, pas seulement la période)
+  const allSavingsMonths = Object.keys(
+    allAllocations.reduce((acc, a) => { acc[toYearMonth(a.month)] = true; return acc }, {} as Record<string, boolean>)
+  ).sort()
+
+  // Revenus sur toute l'histoire (pour calculer le % moyen global)
+  const allRevTransactions = await prisma.transaction.findMany({
+    where: { category: { type: 'INCOME' } },
+    select: { month: true, amount: true },
+  })
+  const allRevByMonth: Record<string, number> = {}
+  for (const tx of allRevTransactions) {
+    const mk = toYearMonth(tx.month)
+    allRevByMonth[mk] = (allRevByMonth[mk] ?? 0) + tx.amount
+  }
+
+  // Toutes les allocations par projet et par mois (toute l'histoire)
+  const allSavingsByMonth: Record<string, Record<string, number>> = {}
+  for (const alloc of allAllocations) {
+    const mk = toYearMonth(alloc.month)
+    if (!allSavingsByMonth[mk]) allSavingsByMonth[mk] = {}
+    const projectName = projects.find((p) => p.id === alloc.projectId)?.name ?? ''
+    if (projectName) {
+      allSavingsByMonth[mk][projectName] = (allSavingsByMonth[mk][projectName] ?? 0) + alloc.amount
+    }
+  }
 
   const projections = projects.map((project) => {
-    const avg3 = last3.reduce((sum, m) => sum + (savingsByMonth[m]?.[project.name] ?? 0), 0) / Math.max(last3.length, 1)
+    // Moyenne du montant épargné sur toute l'histoire
+    const months = allSavingsMonths.filter((m) => allSavingsByMonth[m]?.[project.name] !== undefined)
+    const avgMonthlySaving = months.length > 0
+      ? months.reduce((s, m) => s + (allSavingsByMonth[m]?.[project.name] ?? 0), 0) / months.length
+      : 0
+
+    // % moyen global = montant épargné projet / revenu du mois, moyenné sur toute l'histoire
+    const pctMonths = months.filter((m) => (allRevByMonth[m] ?? 0) > 0)
+    const avgPct = pctMonths.length > 0
+      ? pctMonths.reduce((s, m) => {
+          const saved = allSavingsByMonth[m]?.[project.name] ?? 0
+          const rev   = allRevByMonth[m] ?? 1
+          return s + (saved / rev) * 100
+        }, 0) / pctMonths.length
+      : 0
+
     return {
       id: project.id,
       name: project.name,
       targetAmount: project.targetAmount,
       currentAmount: project.currentAmount,
-      avg3MonthsSaving: Math.round(avg3),
-      monthsToTarget: project.targetAmount && avg3 > 0
-        ? Math.ceil((project.targetAmount - project.currentAmount) / avg3)
+      avgMonthlySaving: Math.round(avgMonthlySaving),
+      avgPct: Math.round(avgPct * 10) / 10,   // 1 décimale
+      monthsToTarget: project.targetAmount && avgMonthlySaving > 0
+        ? Math.ceil((project.targetAmount - project.currentAmount) / avgMonthlySaving)
         : null,
       percentComplete: project.targetAmount
         ? Math.min((project.currentAmount / project.targetAmount) * 100, 100)
@@ -182,17 +310,37 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
   })
 
+  // ── Wealth par mois : somme des cumuls de tous les projets ──────────────────
+  // allMonths couvre déjà toute la plage, cumulByProject est complet → simple somme
+  const wealthByMonth: Record<string, number> = {}
+  for (const m of allMonths) {
+    const total = projects.reduce((s, p) => s + (cumulByProject[p.id]?.[m] ?? 0), 0)
+    wealthByMonth[m] = Math.round(total * 100) / 100
+  }
+
+  // ── Cumul des comptes réels (depuis les réguls) ──────────────────────────
+  const reguls = await prisma.reconciliation.findMany({
+    where: { month: { gte: startDate, lte: endDate } },
+    orderBy: { month: 'asc' },
+  })
+  const accountWealthByMonth: Record<string, number> = {}
+  for (const r of reguls) {
+    accountWealthByMonth[toYearMonth(r.month)] = r.totalReal
+  }
+
   return NextResponse.json({
     period: { from: toYearMonth(startDate), to: toYearMonth(endDate) },
-    periodStart: PERIOD_START,   // ← borne minimale pour le sélecteur
+    periodStart: PERIOD_START,
     expensesByMonth,
     revenueByMonth,
     savingsByMonth,
     savingsRateByMonth,
     cumulByProject,
+    wealthByMonth,
+    accountWealthByMonth,
     projections,
     tagsSummary: Object.values(tagsSummaryMap).sort((a, b) => b.total - a.total),
-    txsByTag,   // ← nouveau : transactions individuelles par tag
+    txsByTag,
     projects: projects.map((p) => ({ id: p.id, name: p.name })),
   })
 }

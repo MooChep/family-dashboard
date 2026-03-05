@@ -1,5 +1,4 @@
 'use client'
-
 import { useState, type ReactElement } from 'react'
 import { AnalysesLayout } from '@/components/epargne/analyses/AnalysesLayout'
 import { PeriodPicker, type Period } from '@/components/epargne/analyses/PeriodPicker'
@@ -19,13 +18,14 @@ export default function AnalysesGlobalPage(): ReactElement {
   const [period, setPeriod] = useState<Period>({ type: 'preset', value: 6 })
   const { data, isLoading, error } = useAnalyses(period)
 
-  const availableMonths = data
-    ? getAvailableMonths(data.period.from, data.period.to)
-    : getAvailableMonths('2025-01', new Date().toISOString().slice(0, 7))
+  const PERIOD_START = '2024-10'
+  const availableMonths = getAvailableMonths(
+    data?.periodStart ?? PERIOD_START,
+    new Date().toISOString().slice(0, 7),
+  )
 
   const months = data ? Object.keys(data.revenueByMonth).sort() : []
   const n = months.length || 1
-
   const avgRev = months.reduce((s, m) => s + (data?.revenueByMonth[m] ?? 0), 0) / n
   const avgDep = months.reduce((s, m) => {
     return s + Object.values(data?.expensesByMonth[m] ?? {}).reduce((a, v) => a + v, 0)
@@ -65,49 +65,42 @@ export default function AnalysesGlobalPage(): ReactElement {
 
   return (
     <EpargneLayout>
-    <AnalysesLayout subHeader={periodHeader}>
-      {isLoading ? (
-        <div className="grid grid-cols-2 gap-4">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-4">
-          {/* Moyennes */}
-          <div className="col-span-2">
-            <SectionCard title="Moyennes mensuelles sur la période">
-              <div className="grid grid-cols-3 gap-4">
-                <StatCard label="Revenus"  value={formatAmount(avgRev)} sub="/ mois en moyenne" color="var(--success)" />
-                <StatCard label="Dépenses" value={formatAmount(avgDep)} sub="/ mois en moyenne" color="var(--danger)" />
-                <StatCard label="Épargne"  value={formatAmount(avgSav)} sub="/ mois en moyenne" color="var(--accent)" />
-              </div>
+      <AnalysesLayout subHeader={periodHeader}>
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-4">
+            <SkeletonCard /><SkeletonCard /><SkeletonCard />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <SectionCard title="Moyennes mensuelles sur la période">
+                <div className="grid grid-cols-3 gap-4">
+                  <StatCard label="Revenus"  value={formatAmount(avgRev)} sub="/ mois en moyenne" color="var(--success)" />
+                  <StatCard label="Dépenses" value={formatAmount(avgDep)} sub="/ mois en moyenne" color="var(--danger)" />
+                  <StatCard label="Épargne"  value={formatAmount(avgSav)} sub="/ mois en moyenne" color="var(--accent)" />
+                </div>
+              </SectionCard>
+            </div>
+            <SectionCard title="Solde net mensuel">
+              <BarChartVertical
+                data={netData}
+                height={220}
+                tooltipFormatter={(v) => [v !== undefined ? formatAmount(v) : '—', 'Solde net']}
+              />
+            </SectionCard>
+            <SectionCard title="Revenus vs Dépenses">
+              <MultiLineChart
+                data={revDepData}
+                lines={[
+                  { key: 'Revenus',  label: 'Revenus' },
+                  { key: 'Dépenses', label: 'Dépenses' },
+                ]}
+                height={220}
+              />
             </SectionCard>
           </div>
-
-          {/* Solde net */}
-          <SectionCard title="Solde net mensuel">
-            <BarChartVertical
-              data={netData}
-              height={220}
-              tooltipFormatter={(v) => [v !== undefined ? formatAmount(v) : '—', 'Solde net']}
-            />
-          </SectionCard>
-
-          {/* Revenus vs Dépenses */}
-          <SectionCard title="Revenus vs Dépenses">
-            <MultiLineChart
-              data={revDepData}
-              lines={[
-                { key: 'Revenus',  label: 'Revenus' },
-                { key: 'Dépenses', label: 'Dépenses' },
-              ]}
-              height={220}
-            />
-          </SectionCard>
-        </div>
-      )}
-    </AnalysesLayout>
+        )}
+      </AnalysesLayout>
     </EpargneLayout>
   )
 }

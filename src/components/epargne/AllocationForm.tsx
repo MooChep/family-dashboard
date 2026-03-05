@@ -16,6 +16,7 @@ interface AllocationRow {
 interface AllocationFormProps {
   projects: SavingsProject[]
   reste: number
+  totalFortune: number
   initialAllocations: { projectId: string; percentage: number; amount: number }[]
   onSave: (allocations: { projectId: string; percentage: number }[]) => Promise<void>
 }
@@ -23,6 +24,7 @@ interface AllocationFormProps {
 export function AllocationForm({
   projects,
   reste,
+  totalFortune,
   initialAllocations,
   onSave,
 }: AllocationFormProps): ReactElement {
@@ -56,14 +58,12 @@ export function AllocationForm({
   }
 
   const totalPercent = rows.reduce((sum, r) => sum + r.percentage, 0)
-  const totalAmount = rows.reduce((sum, r) => sum + r.amount, 0)
+  const totalAmount  = rows.reduce((sum, r) => sum + r.amount, 0)
 
   async function handleSave(): Promise<void> {
     setIsLoading(true)
     try {
-      await onSave(
-        rows.map((r) => ({ projectId: r.projectId, percentage: r.percentage })),
-      )
+      await onSave(rows.map((r) => ({ projectId: r.projectId, percentage: r.percentage })))
     } finally {
       setIsLoading(false)
     }
@@ -71,22 +71,12 @@ export function AllocationForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{
-          backgroundColor: 'var(--surface)',
-          border: '1px solid var(--border)',
-        }}
-      >
+      <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
         <table className="w-full">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
               {['Projet', 'Solde total', 'Ajout ce mois', '%'].map((h) => (
-                <th
-                  key={h}
-                  className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left"
-                  style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}
-                >
+                <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
                   {h}
                 </th>
               ))}
@@ -94,63 +84,24 @@ export function AllocationForm({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr
-                key={row.projectId}
-                style={{ borderBottom: '1px solid var(--border)' }}
-              >
-                {/* Projet */}
-                <td
-                  className="px-4 py-3 text-sm"
-                  style={{ color: 'var(--text2)' }}
-                >
-                  {row.projectName}
-                </td>
-
-                {/* Solde total actuel */}
-                <td
-                  className="px-4 py-3 text-sm"
-                  style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
-                >
+              <tr key={row.projectId} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td className="px-4 py-3 text-sm" style={{ color: 'var(--text2)' }}>{row.projectName}</td>
+                <td className="px-4 py-3 text-sm" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
                   {formatAmount(row.currentAmount)}
                 </td>
-
-                {/* Ajout ce mois — calculé en temps réel */}
-                <td
-                  className="px-4 py-3 text-sm"
-                  style={{
-                    color: row.amount > 0 ? 'var(--success)' : 'var(--muted)',
-                    fontFamily: 'var(--font-mono)',
-                  }}
-                >
+                <td className="px-4 py-3 text-sm" style={{ color: row.amount > 0 ? 'var(--success)' : 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
                   {row.amount > 0 ? '+' : ''}{formatAmount(row.amount)}
                 </td>
-
-                {/* % éditable */}
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
                     <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
+                      type="number" min="0" max="100" step="0.1"
                       value={row.percentage}
-                      onChange={(e) =>
-                        updatePercentage(row.projectId, e.target.value)
-                      }
+                      onChange={(e) => updatePercentage(row.projectId, e.target.value)}
                       className="w-20 px-2 py-1 rounded text-sm outline-none"
-                      style={{
-                        backgroundColor: 'var(--surface2)',
-                        border: '1px solid var(--border)',
-                        color: 'var(--text)',
-                        fontFamily: 'var(--font-mono)',
-                      }}
+                      style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
                     />
-                    <span
-                      className="text-xs"
-                      style={{ color: 'var(--muted)' }}
-                    >
-                      %
-                    </span>
+                    <span className="text-xs" style={{ color: 'var(--muted)' }}>%</span>
                   </div>
                 </td>
               </tr>
@@ -158,26 +109,12 @@ export function AllocationForm({
 
             {/* Ligne total */}
             <tr style={{ backgroundColor: 'var(--surface2)' }}>
-              <td
-                className="px-4 py-3 text-xs font-medium uppercase"
-                style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}
-              >
-                Total
-              </td>
+              <td className="px-4 py-3 text-xs font-medium uppercase" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>Total</td>
               <td />
-              <td
-                className="px-4 py-3 text-sm font-semibold"
-                style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
-              >
+              <td className="px-4 py-3 text-sm font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
                 {formatAmount(totalAmount)}
               </td>
-              <td
-                className="px-4 py-3 text-sm font-semibold"
-                style={{
-                  color: totalPercent > 100 ? 'var(--danger)' : 'var(--text)',
-                  fontFamily: 'var(--font-mono)',
-                }}
-              >
+              <td className="px-4 py-3 text-sm font-semibold" style={{ color: totalPercent > 100 ? 'var(--danger)' : 'var(--text)', fontFamily: 'var(--font-mono)' }}>
                 {formatPercent(totalPercent)}
               </td>
             </tr>
@@ -185,25 +122,32 @@ export function AllocationForm({
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-6 pb-4">
+      {/* Fortune totale */}
+      <div
+        className="mx-0 px-5 py-4 rounded-xl flex items-center justify-between"
+        style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)' }}
+      >
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+            Fortune totale
+          </span>
+          <span className="text-xs" style={{ color: 'var(--muted2)' }}>
+            Somme de tous les projets actifs
+          </span>
+        </div>
+        <span className="text-2xl font-semibold" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
+          {formatAmount(totalFortune)}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between px-1 pb-2">
         <span className="text-sm" style={{ color: 'var(--muted)' }}>
           Reste après épargne :{' '}
-          <span
-            style={{
-              color: reste - totalAmount < 0 ? 'var(--danger)' : 'var(--text)',
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
+          <span style={{ color: reste - totalAmount < 0 ? 'var(--danger)' : 'var(--text)', fontFamily: 'var(--font-mono)' }}>
             {formatAmount(reste - totalAmount)}
           </span>
         </span>
-        <Button
-          variant="primary"
-          size="md"
-          isLoading={isLoading}
-          onClick={handleSave}
-          disabled={totalPercent > 100}
-        >
+        <Button variant="primary" size="md" isLoading={isLoading} onClick={handleSave} disabled={totalPercent > 100}>
           Sauvegarder
         </Button>
       </div>

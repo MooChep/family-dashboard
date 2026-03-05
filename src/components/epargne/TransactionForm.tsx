@@ -27,6 +27,9 @@ interface TransactionFormProps {
   transaction?: TransactionWithCategory | null
   categories: Category[]
   existingTags?: string[]
+  defaultCategoryName?: string
+  defaultAmount?: string
+  defaultTags?: string[]
 }
 
 export function TransactionForm({
@@ -36,6 +39,9 @@ export function TransactionForm({
   transaction,
   categories,
   existingTags = [],
+  defaultCategoryName,
+  defaultAmount,
+  defaultTags,
 }: TransactionFormProps): ReactElement {
   const [categoryId, setCategoryId] = useState('')
   const [catInput, setCatInput]     = useState('')
@@ -46,7 +52,7 @@ export function TransactionForm({
   const [tags, setTags]       = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [showTagSugg, setShowTagSugg] = useState(false)
-  const [pointed, setPointed] = useState(true)
+  const [pointed, setPointed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
 
@@ -64,10 +70,17 @@ export function TransactionForm({
       )
       setPointed(transaction.pointed)
     } else {
-      setCategoryId(''); setCatInput(''); setAmount(''); setTags([]); setPointed(true)
+      const presetCat = defaultCategoryName
+        ? categories.find((c) => c.name === defaultCategoryName)
+        : null
+      setCategoryId(presetCat?.id ?? '')
+      setCatInput(defaultCategoryName ?? '')
+      setAmount(defaultAmount ?? '')
+      setTags(defaultTags ?? [])
+      setPointed(false)
     }
     setTagInput(''); setError(null); setShowCatSugg(false); setShowTagSugg(false)
-  }, [transaction, isOpen])
+  }, [transaction, isOpen, defaultCategoryName, defaultAmount, defaultTags])
 
   // ── Catégories ───────────────────────────────────────────────────────────────
   const catSuggestions = catInput.trim().length > 0
@@ -124,7 +137,8 @@ export function TransactionForm({
   async function doSave(): Promise<boolean> {
     setError(null)
     const parsedAmount = parseFloat(amount.replace(',', '.'))
-    if (isNaN(parsedAmount) || parsedAmount <= 0) { setError('Montant invalide'); return false }
+    if (isNaN(parsedAmount) || parsedAmount === 0) { setError('Montant invalide'); return false }
+    if (!isProjectCategory && parsedAmount < 0) { setError('Le montant doit être positif'); return false }
     if (!categoryId) { setError('Sélectionne une catégorie'); return false }
     const finalTags = tagInput.trim() ? [...tags, tagInput.trim()] : tags
     setIsLoading(true)
@@ -145,16 +159,18 @@ export function TransactionForm({
     e.preventDefault()
     const ok = await doSave()
     if (ok) {
-      setAmount(''); setTags([]); setTagInput(''); setPointed(true); setError(null)
-      setTimeout(() => catInputRef.current?.focus(), 0)
-    
+      setAmount(''); setTags([]); setTagInput(''); setPointed(false); setError(null)
     }
   }
 
+  const selectedCategory = categories.find((c) => c.id === categoryId)
+  const isProjectCategory = selectedCategory?.type === 'PROJECT'
+
   const groupedSuggestions = [
-    { label: 'Revenus',           items: catSuggestions.filter((c) => c.type === 'INCOME') },
-    { label: 'Charges fixes',     items: catSuggestions.filter((c) => c.type === 'EXPENSE' && c.isFixed) },
-    { label: 'Dépenses variables',items: catSuggestions.filter((c) => c.type === 'EXPENSE' && !c.isFixed) },
+    { label: 'Revenus',            items: catSuggestions.filter((c) => c.type === 'INCOME') },
+    { label: 'Charges fixes',      items: catSuggestions.filter((c) => c.type === 'EXPENSE' && c.isFixed) },
+    { label: 'Dépenses variables', items: catSuggestions.filter((c) => c.type === 'EXPENSE' && !c.isFixed) },
+    { label: "Projets d'épargne",  items: catSuggestions.filter((c) => c.type === 'PROJECT') },
   ].filter((g) => g.items.length > 0)
 
   // Index global pour le highlight
@@ -194,7 +210,6 @@ export function TransactionForm({
                 fontFamily: 'var(--font-body)',
                 transition: 'border-color 0.15s',
               }}
-              autoFocus
               autoComplete="off"
             />
 
@@ -274,9 +289,12 @@ export function TransactionForm({
           inputMode="decimal"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          placeholder="0,00"
+          placeholder={isProjectCategory ? '-150 ou +150' : '0,00'}
           required
         />
+          {isProjectCategory && (
+            <p className="text-xs" style={{ color: 'var(--muted)' }}>Négatif (−) pour une dépense · Positif pour une entrée</p>
+          )}
 
         {/* Tags */}
         <div className="flex flex-col gap-1.5">
