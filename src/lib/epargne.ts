@@ -34,15 +34,35 @@ export async function calcReste(month: Date): Promise<number> {
 }
 
 // Recalcule et met à jour le currentAmount d'un projet
-// en faisant la somme de toutes ses allocations historiques
+// = somme de toutes ses allocations historiques
+// + somme de toutes ses transactions PROJECT (dépenses/entrées signées)
 export async function recalcProjectAmount(projectId: string): Promise<void> {
-  const result = await prisma.savingsAllocation.aggregate({
+  // Récupère la catégorie liée au projet pour trouver les transactions
+  const project = await prisma.savingsProject.findUnique({
+    where: { id: projectId },
+    select: { categoryId: true },
+  })
+
+  // Somme des allocations (virements épargne mensuels)
+  const allocResult = await prisma.savingsAllocation.aggregate({
     where: { projectId },
     _sum: { amount: true },
   })
+  const totalAllocations = allocResult._sum.amount ?? 0
+
+  // Somme des transactions sur la catégorie PROJECT (dépenses et entrées signées)
+  // Ces montants sont signés : négatif = dépense, positif = entrée
+  let totalTransactions = 0
+  if (project?.categoryId) {
+    const txResult = await prisma.transaction.aggregate({
+      where: { categoryId: project.categoryId },
+      _sum: { amount: true },
+    })
+    totalTransactions = txResult._sum.amount ?? 0
+  }
 
   await prisma.savingsProject.update({
     where: { id: projectId },
-    data: { currentAmount: result._sum.amount ?? 0 },
+    data: { currentAmount: totalAllocations + totalTransactions },
   })
 }

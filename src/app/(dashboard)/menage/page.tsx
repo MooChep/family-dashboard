@@ -28,4 +28,4 @@ export default function MenagePage(): ReactElement {
       </Card>
     </div>
   )
-}w
+}

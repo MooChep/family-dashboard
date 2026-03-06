@@ -89,10 +89,7 @@ export function ExpensesChart({ expensesByMonth }: ExpensesChartProps): ReactEle
               borderRadius: '8px',
               color: 'var(--text)',
             }}
-formatter={(value: number | undefined) => [
-  value !== undefined ? formatAmount(value) : '—',
-  '',
-]}          />
+formatter={(value, name) => [formatAmount(value as number), name as string]}          />
           <Bar
             dataKey="total"
             fill={dangerColor || 'var(--danger)'}

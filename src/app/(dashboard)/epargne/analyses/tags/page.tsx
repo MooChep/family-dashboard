@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, type ReactElement, type KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, type ReactElement, type KeyboardEvent } from 'react'
 import { AnalysesLayout } from '@/components/epargne/analyses/AnalysesLayout'
 import { PeriodPicker, type Period } from '@/components/epargne/analyses/PeriodPicker'
 import { SectionCard } from '@/components/epargne/analyses/AnalysesCharts'
@@ -9,25 +9,53 @@ import { useAnalyses, getAvailableMonths, type TransactionRow } from '@/hooks/us
 import { formatAmount } from '@/lib/formatters'
 import { EpargneLayout } from '@/components/epargne/EpargneLayout'
 
+function useDropdownPosition(anchorRef: React.RefObject<HTMLElement>, isOpen: boolean) {
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
+
+  const update = useCallback(() => {
+    if (!anchorRef.current) return
+    const rect = anchorRef.current.getBoundingClientRect()
+    setPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+  }, [anchorRef])
+
+  useEffect(() => {
+    if (!isOpen) { setPos(null); return }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [isOpen, update])
+
+  return pos
+}
+
 export default function AnalysesTagsPage(): ReactElement {
   const [period, setPeriod]         = useState<Period>({ type: 'preset', value: 6 })
   const [searchTags, setSearchTags] = useState<string[]>([])
   const [tagInput, setTagInput]     = useState('')
   const [showSugg, setShowSugg]     = useState(false)
   const [catFilter, setCatFilter]   = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef   = useRef<HTMLInputElement>(null)
+  const anchorRef  = useRef<HTMLDivElement>(null)
+
+  const dropdownPos = useDropdownPosition(anchorRef as React.RefObject<HTMLElement>, showSugg)
 
   const { data, isLoading } = useAnalyses(period)
 
-  // Période : de PERIOD_START (hardcodé) jusqu'au mois courant
-  // On n'attend PAS data pour calculer availableMonths — sinon le PeriodPicker
-  // démarre avec une liste vide et n'affiche pas les mois passés.
   const PERIOD_START = '2024-10'
   const currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0')
   const availableMonths = getAvailableMonths(PERIOD_START, currentMonth)
 
-  // Tous les tags connus sur la période
   const allTags = data ? Object.keys(data.txsByTag) : []
+
+  // Construit la liste des catégories depuis txsByTag (et non tagsSummary)
+  // pour inclure toutes les catégories réelles, y compris les projets d'épargne
+  const categories = data
+    ? [...new Set(Object.values(data.txsByTag).flat().map((t) => t.category))].sort()
+    : []
 
   const suggestions = tagInput.trim().length > 0
     ? allTags.filter((t) => t.toLowerCase().includes(tagInput.toLowerCase()) && !searchTags.includes(t))
@@ -54,22 +82,13 @@ export default function AnalysesTagsPage(): ReactElement {
     if (e.key === 'Escape') setShowSugg(false)
   }
 
-  const categories = data
-    ? [...new Set(Object.values(data.txsByTag).flat().map((t) => t.category))]
-    : []
-
-  // Transactions qui ont TOUS les searchTags (AND) et correspondent au filtre catégorie
   const matchingTransactions: TransactionRow[] = (() => {
     if (!data || searchTags.length === 0) return []
-
-    // Intersection : transactions présentes dans tous les tags cherchés
     const tagSets = searchTags.map((st) => {
       const matchingTag = allTags.find((t) => t.toLowerCase().includes(st.toLowerCase()))
       return new Set(matchingTag ? (data.txsByTag[matchingTag] ?? []).map((tx) => tx.id) : [])
     })
-
     const commonIds = tagSets.reduce((acc, set) => new Set([...acc].filter((id) => set.has(id))))
-
     const allTxs = Object.values(data.txsByTag).flat()
     const seen = new Set<string>()
     return allTxs
@@ -83,17 +102,18 @@ export default function AnalysesTagsPage(): ReactElement {
       .sort((a, b) => a.date.localeCompare(b.date))
   })()
 
-  // Somme nette des transactions filtrées
   const netTotal = matchingTransactions.reduce(
     (sum, tx) => sum + (tx.isIncome ? tx.amount : -tx.amount),
     0,
   )
 
-  // Vue cards par tag (quand aucun tag cherché)
+  // Filtre les cards par catégorie en utilisant txsByTag comme source de vérité
   const tagCards = data
     ? data.tagsSummary.filter((t) => {
-        const matchCat = catFilter === '' || t.category === catFilter
-        return matchCat
+        if (catFilter === '') return true
+        // Vérifie si ce tag a au moins une transaction dans la catégorie filtrée
+        const txsForTag = data.txsByTag[t.tag] ?? []
+        return txsForTag.some((tx) => tx.category === catFilter)
       })
     : []
 
@@ -108,7 +128,9 @@ export default function AnalysesTagsPage(): ReactElement {
         {/* Recherche multi-tags */}
         <SectionCard title="Recherche par tag">
           <div className="flex gap-3">
-            <div className="flex-1" style={{ position: 'relative' }}>
+
+            {/* Anchor wrapper — utilisé pour calculer la position du dropdown */}
+            <div className="flex-1" ref={anchorRef}>
               <div
                 className="flex flex-wrap gap-1.5 px-3 py-2 rounded-lg min-h-10 cursor-text"
                 style={{
@@ -136,19 +158,6 @@ export default function AnalysesTagsPage(): ReactElement {
                   style={{ color: 'var(--text)', fontFamily: 'var(--font-body)' }}
                 />
               </div>
-
-              {showSugg && suggestions.length > 0 && (
-                <div className="absolute left-0 right-0 rounded-lg overflow-hidden z-50" style={{ top: 'calc(100% + 4px)', backgroundColor: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', maxHeight: 200, overflowY: 'auto' }}>
-                  {suggestions.slice(0, 8).map((s) => {
-                    const idx = s.toLowerCase().indexOf(tagInput.toLowerCase())
-                    return (
-                      <button key={s} type="button" onMouseDown={() => addSearchTag(s)} className="w-full text-left px-3 py-2 text-sm" style={{ color: 'var(--text)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface2)' }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}>
-                        {s.slice(0, idx)}<span style={{ color: 'var(--accent)', fontWeight: 600 }}>{s.slice(idx, idx + tagInput.length)}</span>{s.slice(idx + tagInput.length)}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
             </div>
 
             <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
@@ -163,6 +172,42 @@ export default function AnalysesTagsPage(): ReactElement {
             </p>
           )}
         </SectionCard>
+
+        {/* Dropdown suggestions — position fixe pour ne pas être clippé */}
+        {showSugg && suggestions.length > 0 && dropdownPos && (
+          <div
+            style={{
+              position: 'fixed',
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              width: dropdownPos.width,
+              backgroundColor: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              borderRadius: '0.5rem',
+              maxHeight: 200,
+              overflowY: 'auto',
+              zIndex: 9999,
+            }}
+          >
+            {suggestions.slice(0, 8).map((s) => {
+              const idx = s.toLowerCase().indexOf(tagInput.toLowerCase())
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onMouseDown={() => addSearchTag(s)}
+                  className="w-full text-left px-3 py-2 text-sm"
+                  style={{ color: 'var(--text)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface2)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                >
+                  {s.slice(0, idx)}<span style={{ color: 'var(--accent)', fontWeight: 600 }}>{s.slice(idx, idx + tagInput.length)}</span>{s.slice(idx + tagInput.length)}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="grid grid-cols-2 gap-4"><SkeletonCard /><SkeletonCard /></div>
@@ -233,24 +278,32 @@ export default function AnalysesTagsPage(): ReactElement {
           /* ── Vue cards : résumé par tag ── */
           <div className="grid grid-cols-2 gap-4">
             {tagCards.map((t, i) => {
-              const netTotal = t.entries.reduce((sum, e) => sum + (e.isIncome ? e.amount : -e.amount), 0)
-              const isNet = netTotal >= 0
+              // Filtre les entries par catégorie si un filtre est actif
+              const filteredEntries = catFilter
+                ? (data?.txsByTag[t.tag] ?? [])
+                    .filter((tx) => tx.category === catFilter)
+                    .map((tx) => ({ month: tx.month, amount: tx.amount, isIncome: tx.isIncome }))
+                : t.entries
+              const cardNet = filteredEntries.reduce((sum, e) => sum + (e.isIncome ? e.amount : -e.amount), 0)
+              const isNet = cardNet >= 0
               return (
                 <div key={i} className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
                   <div className="flex items-start justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
                     <div>
                       <div className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t.tag}</div>
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{t.category}</div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                        {catFilter || t.category}
+                      </div>
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-semibold" style={{ color: isNet ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
-                        {isNet ? '+' : ''}{formatAmount(netTotal)}
+                        {isNet ? '+' : ''}{formatAmount(cardNet)}
                       </div>
-                      <div className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{t.count} op.</div>
+                      <div className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{filteredEntries.length} op.</div>
                     </div>
                   </div>
                   <div className="flex flex-col gap-1 px-5 py-3">
-                    {t.entries.map((e, j) => (
+                    {filteredEntries.map((e, j) => (
                       <div key={j} className="flex justify-between items-center px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--surface2)' }}>
                         <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{e.month}</span>
                         <span className="text-xs" style={{ color: e.isIncome ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)' }}>

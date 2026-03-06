@@ -43,7 +43,6 @@ interface MultiLineProps {
   lines: { key: string; label?: string }[]
   xKey?: string
   height?: number
-  // formatter reçoit (value, name) pour afficher nom + montant dans le tooltip
   formatter?: (v: number | undefined, name: string) => [string, string]
 }
 
@@ -52,7 +51,6 @@ export function MultiLineChart({
   lines,
   xKey = 'month',
   height = 260,
-  formatter,
 }: MultiLineProps): ReactElement {
   const colors = useCSSColors()
 
@@ -64,11 +62,7 @@ export function MultiLineChart({
         <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border)' }} tickFormatter={(v: number) => formatAmount(v)} width={80} />
         <Tooltip
           contentStyle={tooltipStyle}
-          formatter={
-            formatter
-              ? (v: number | undefined, name: string) => formatter(v, name)
-              : (v: number | undefined, name: string) => [v !== undefined ? formatAmount(v) : '—', name]
-          }
+          formatter={(value, name) => [formatAmount(value as number), name as string]}
         />
         <Legend wrapperStyle={{ color: 'var(--text2)', fontSize: 12 }} />
         {lines.map((line, i) => (
@@ -113,7 +107,20 @@ export function BarChartVertical({
         <XAxis dataKey="name" tick={{ fill: 'var(--muted)', fontSize: 10 }} axisLine={{ stroke: 'var(--border)' }} />
         <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border)' }} tickFormatter={yAxisFormatter ?? ((v: number) => `${v}`)} width={48} />
         <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter ?? ((v: number | undefined) => [v !== undefined ? String(v) : '—', ''])} />
-        <Bar dataKey="value" radius={[4, 4, 0, 0]} label={showValues ? { position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 700, formatter: (v: number) => v > 0 ? `${v}%` : '' } : false}>
+        <Bar
+          dataKey="value"
+          radius={[4, 4, 0, 0]}
+          label={showValues ? {
+            position: 'inside',
+            fill: '#fff',
+            fontSize: 10,
+            fontWeight: 700,
+            formatter: (v: unknown) => {
+              const n = v as number
+              return n > 0 ? `${n}%` : ''
+            },
+          } : false}
+        >
           {rechartData.map((entry, i) => (
             <Cell key={i} fill={entry.color ?? 'var(--accent)'} />
           ))}

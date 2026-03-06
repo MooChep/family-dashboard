@@ -37,9 +37,9 @@ NEXTAUTH_SECRET=la_valeur_generee
 > - `&` → `%26`
 > - `@` → `%40`
 > - `!` → `%21`
-> 
+>
 > Exemple : `mysql://user:motde%26passe@localhost:3306/family_dashboard`
-> 
+>
 > Les autres variables (`MARIADB_PASSWORD` etc.) gardent le caractère brut.
 
 ---
@@ -51,7 +51,7 @@ La base de données MariaDB tourne dans Docker.
 
 ### Démarrer uniquement la base de données
 ```bash
-docker compose up db -d
+docker compose -f docker-compose.dev.yml up db -d
 ```
 > `-d` = detached, le container tourne en arrière-plan
 
@@ -63,7 +63,7 @@ docker compose up db -d
 
 ### Donner les droits à l'utilisateur BDD (première fois uniquement)
 ```bash
-docker compose exec db mariadb -u root -p
+docker compose -f docker-compose.dev.yml exec db mariadb -u root -p
 ```
 ```sql
 GRANT ALL PRIVILEGES ON *.* TO 'user'@'%' WITH GRANT OPTION;
@@ -103,23 +103,34 @@ Dans ce mode, tout tourne dans des containers : app Next.js + MariaDB.
 > DATABASE_URL="mysql://user:password@db:3306/family_dashboard"
 > ```
 
+### Architecture Docker
+
+Trois fichiers coexistent selon l'environnement :
+
+| Fichier | Rôle |
+|---|---|
+| `Dockerfile` | Build multi-stage optimisé pour la production |
+| `Dockerfile.dev` | Image légère avec hot reload pour le développement |
+| `docker-compose.yml` | Orchestration production — aucun volume monté sur l'app |
+| `docker-compose.dev.yml` | Orchestration développement — monte le code source local |
+| `entrypoint.sh` | Lancé au démarrage en prod : applique les migrations puis démarre le serveur |
+
+> Les migrations Prisma (`migrate deploy`) sont exécutées **automatiquement** au démarrage
+> du container via `entrypoint.sh` — aucune intervention manuelle requise.
+
 ### Builder et démarrer tous les services
 ```bash
 docker compose up --build -d
 ```
 
-### Appliquer les migrations et seed (première fois uniquement)
+### Seed et premier utilisateur (première fois uniquement)
 ```bash
-docker compose exec app npx prisma migrate deploy
 docker compose exec app npm run prisma:seed
-```
-> `migrate deploy` applique les migrations existantes sans en créer de nouvelles.
-> C'est la commande à utiliser en production, contrairement à `migrate dev`.
-
-### Créer le premier utilisateur
-```bash
 docker compose exec app npm run create-user -- --name "Prénom" --email "email@famille.fr" --password "motdepasse"
 ```
+> `migrate deploy` est lancé automatiquement par `entrypoint.sh` au démarrage.
+> Il applique les migrations existantes sans en créer de nouvelles,
+> contrairement à `migrate dev`.
 
 ### Arrêter les services
 ```bash
@@ -145,7 +156,7 @@ docker compose down -v
 | `npm run prisma:seed` | Peuple la BDD avec les données initiales |
 | `npm run create-user` | Crée un utilisateur manuellement |
 | `npx prisma studio` | Interface web pour explorer la BDD |
-| `docker compose up db -d` | Démarre uniquement la BDD |
+| `docker compose -f docker-compose.dev.yml up db -d` | Démarre uniquement la BDD (dev) |
 | `docker compose logs -f app` | Suit les logs de l'app en temps réel |
 | `docker compose logs -f db` | Suit les logs de la BDD en temps réel |
 
@@ -168,14 +179,14 @@ Password : <valeur de MARIADB_PASSWORD>
 
 ## 6. Points de configuration importants
 
-### next.config.js
-Next.js 14 ne supporte pas `next.config.ts` — utiliser obligatoirement `next.config.js` :
+### next.config.mjs
 ```js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  output: "standalone"
 }
-module.exports = nextConfig
+
+export default nextConfig
 ```
 
 ### postcss.config.js
@@ -205,7 +216,11 @@ import '@/styles/themes.css'
 3. Ajouter le lien dans `src/components/layout/Sidebar.tsx`
 4. Si besoin de nouvelles tables : modifier `prisma/schema.prisma` puis `npm run prisma:migrate`
 
-## 8. Ajouter des transactions 
+---
+
+## 8. Ajouter des transactions
+
+```bash
 # Tout interactif — demande fichier et mois
 npx ts-node scripts/import-transactions.ts
 

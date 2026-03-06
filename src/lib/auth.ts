@@ -53,6 +53,13 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Identifiants invalides')
         }
 
+        // preferences est stocké en BDD comme string JSON — on le parse avant usage
+        const parsePreferences = (raw: unknown): Record<string, unknown> => {
+          if (!raw) return {}
+          try { return typeof raw === 'string' ? (JSON.parse(raw) as Record<string, unknown>) : (raw as Record<string, unknown>) }
+          catch { return {} }
+        }
+
         return {
           id: user.id,
           name: user.name,
@@ -60,7 +67,7 @@ export const authOptions: NextAuthOptions = {
           config: user.config
             ? {
                 theme: user.config.themeId,
-                preferences: user.config.preferences as Record<string, unknown>,
+                preferences: parsePreferences(user.config.preferences),
               }
             : {
                 theme: 'dark',

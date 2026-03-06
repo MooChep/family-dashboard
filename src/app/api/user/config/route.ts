@@ -3,6 +3,15 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+function parsePreferences(raw: unknown): Record<string, unknown> {
+  if (!raw) return {}
+  try {
+    return typeof raw === 'string' ? JSON.parse(raw) : (raw as Record<string, unknown>)
+  } catch {
+    return {}
+  }
+}
+
 // GET /api/user/config
 // Retourne la UserConfig de l'utilisateur connecté
 export async function GET(): Promise<NextResponse> {
@@ -29,7 +38,7 @@ export async function GET(): Promise<NextResponse> {
 
   return NextResponse.json({
     theme: config.themeId,
-    preferences: config.preferences,
+    preferences: parsePreferences(config.preferences),
   })
 }
 
@@ -78,7 +87,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   // Merge des préférences : on fusionne l'existant avec le nouveau
   // sans écraser les clés non mentionnées dans la requête
   const mergedPreferences = {
-    ...(existingConfig?.preferences as Record<string, unknown> ?? {}),
+    ...parsePreferences(existingConfig?.preferences),
     ...(body.preferences ?? {}),
   }
 
@@ -86,18 +95,18 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     where: { userId: session.user.id },
     update: {
       ...(body.theme && { themeId: body.theme }),
-      preferences: mergedPreferences,
+      preferences: JSON.stringify(mergedPreferences),
     },
     create: {
       userId: session.user.id,
       themeId: body.theme ?? 'dark',
-      preferences: mergedPreferences,
+      preferences: JSON.stringify(mergedPreferences),
     },
     include: { theme: true },
   })
 
   return NextResponse.json({
     theme: updatedConfig.themeId,
-    preferences: updatedConfig.preferences,
+    preferences: parsePreferences(updatedConfig.preferences),
   })
 }

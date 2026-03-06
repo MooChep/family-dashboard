@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
+export const dynamic = 'force-dynamic'
 // GET /api/themes
 // Retourne la liste des thèmes disponibles depuis la BDD
 // Route publique — pas besoin d'authentification pour charger les thèmes

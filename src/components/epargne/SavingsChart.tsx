@@ -51,8 +51,7 @@ export function SavingsChart({ projectsByMonth }: SavingsChartProps): ReactEleme
           <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border)' }} tickFormatter={(v: number) => `${v} €`} />
           <Tooltip
             contentStyle={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 12 }}
-            formatter={(value: number, name: string) => [formatAmount(value), name]}
-          />
+          formatter={(value, name) => [formatAmount(value as number), name as string]}          />
           <Legend wrapperStyle={{ color: 'var(--text2)', fontSize: 12 }} />
           {projectNames.map((name, i) => (
             <Line key={name} type="monotone" dataKey={name} name={name} stroke={colors[i % colors.length] || 'var(--accent)'} strokeWidth={2} dot={false} />
