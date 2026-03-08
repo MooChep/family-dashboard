@@ -4,19 +4,12 @@ interface PageWrapperProps {
   children: ReactNode
 }
 
-// PageWrapper encapsule le contenu de chaque page
-// Il gère le padding et compense la sidebar (240px) et le header (64px)
 export function PageWrapper({ children }: PageWrapperProps): React.ReactElement {
   return (
     <main
-      className="min-h-screen"
-      style={{
-        marginLeft: '240px',
-        paddingTop: '64px',
-        backgroundColor: 'var(--bg)',
-      }}
+      className="min-h-screen bg-[var(--bg)] pt-16 ml-0 md:ml-60 pb-20 md:pb-0"
     >
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {children}
       </div>
     </main>

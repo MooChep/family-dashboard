@@ -5,8 +5,6 @@ import { useTheme } from '@/hooks/useTheme'
 import { capitalize, formatDate } from '@/lib/utils'
 import { type ThemeName } from '@/types/theme'
 
-// Construit le breadcrumb depuis le pathname
-// ex: "/epargne" → ["Dashboard", "Épargne"]
 function buildBreadcrumb(pathname: string): string[] {
   const LABELS: Record<string, string> = {
     '':         'Dashboard',
@@ -16,15 +14,11 @@ function buildBreadcrumb(pathname: string): string[] {
     'habitudes':'Habitudes',
     'notes':    'Notes',
   }
-
   const segments = pathname.split('/').filter(Boolean)
-
   if (segments.length === 0) return ['Dashboard']
-
   return ['Dashboard', ...segments.map((s) => LABELS[s] ?? capitalize(s))]
 }
 
-// Titre de la page depuis le dernier segment du pathname
 function getPageTitle(pathname: string): string {
   const TITLES: Record<string, string> = {
     '/':          'Dashboard',
@@ -34,7 +28,6 @@ function getPageTitle(pathname: string): string {
     '/habitudes': 'Habitudes',
     '/notes':     'Notes',
   }
-
   return TITLES[pathname] ?? capitalize(pathname.split('/').filter(Boolean).pop() ?? '')
 }
 
@@ -53,85 +46,39 @@ export function Header(): React.ReactElement {
 
   return (
     <header
-      className="fixed top-0 right-0 z-30 flex items-center justify-between px-6 py-4"
-      style={{
-        left: '240px', // largeur de la sidebar
-        backgroundColor: 'var(--bg)',
-        borderBottom: '1px solid var(--border)',
-        height: '64px',
-      }}
+      className="fixed top-0 right-0 z-30 flex items-center justify-between px-4 md:px-6 py-4 h-16 bg-[var(--bg)] border-b border-[var(--border)] left-0 md:left-60"
     >
       {/* ─── Breadcrumb + Titre ────────────────────────────────────────── */}
-      <div className="flex flex-col justify-center">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col justify-center min-w-0">
+        <div className="hidden sm:flex items-center gap-2">
           {breadcrumb.map((segment, index) => (
             <span key={index} className="flex items-center gap-2">
-              {index > 0 && (
-                <span
-                  className="text-xs"
-                  style={{ color: 'var(--muted)' }}
-                >
-                  /
-                </span>
-              )}
-              <span
-                className="text-xs"
-                style={{
-                  color: index === breadcrumb.length - 1
-                    ? 'var(--text2)'
-                    : 'var(--muted)',
-                  fontFamily: 'var(--font-mono)',
-                }}
-              >
+              {index > 0 && <span className="text-[10px] text-[var(--muted)]">/</span>}
+              <span className="text-[10px] font-[var(--font-mono)]" 
+                style={{ color: index === breadcrumb.length - 1 ? 'var(--text2)' : 'var(--muted)' }}>
                 {segment.toLowerCase()}
               </span>
             </span>
           ))}
         </div>
-        <h1
-          className="text-lg font-semibold leading-tight"
-          style={{
-            color: 'var(--text)',
-            fontFamily: 'var(--font-display)',
-          }}
-        >
+        <h1 className="text-base md:text-lg font-semibold leading-tight truncate text-[var(--text)] font-[var(--font-display)]">
           {pageTitle}
         </h1>
       </div>
 
-      {/* ─── Date + Toggle thème ──────────────────────────────────────── */}
-      <div className="flex items-center gap-4">
-        <span
-          className="text-sm"
-          style={{
-            color: 'var(--muted)',
-            fontFamily: 'var(--font-mono)',
-          }}
-        >
+      {/* ─── Date (Desktop) + Toggle thème ─────────────────────────────── */}
+      <div className="flex items-center gap-3 md:gap-4 flex-shrink-0">
+        <span className="hidden lg:block text-sm text-[var(--muted)] font-[var(--font-mono)]">
           {today}
         </span>
 
-        {/* Toggle dark / light */}
         <button
           onClick={handleThemeToggle}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors"
-          style={{
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
-            color: 'var(--text2)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--accent)'
-            e.currentTarget.style.color = 'var(--accent)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border)'
-            e.currentTarget.style.color = 'var(--text2)'
-          }}
+          className="flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-lg text-sm transition-colors bg-[var(--surface)] border border-[var(--border)] text-[var(--text2)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
           aria-label={`Passer au thème ${theme === 'dark' ? 'clair' : 'sombre'}`}
         >
           <span>{theme === 'dark' ? '○' : '●'}</span>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+          <span className="font-[var(--font-mono)] text-[10px] md:text-[12px]">
             {theme === 'dark' ? 'light' : 'dark'}
           </span>
         </button>
