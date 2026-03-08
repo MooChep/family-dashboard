@@ -14,7 +14,6 @@ services:
       - db_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      start_period: 10s
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,6 +22,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - DATABASE_URL=${DATABASE_URL}
     container_name: family-dashboard-app
     restart: unless-stopped
     depends_on:
@@ -34,13 +35,8 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
     ports:
       - "3000:3000"
-    volumes:
-      # Monte le code source en dev pour le hot reload
-      - .:/app
-      # Exclut node_modules du montage — on utilise ceux du container
-      - /app/node_modules
-      - /app/.next
+    # Note : On ne met plus de volumes ici pour laisser Docker utiliser
+    # les fichiers compilés à l'intérieur de l'image.
 
 volumes:
   db_data:
-    driver: local

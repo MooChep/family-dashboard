@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -34,20 +35,21 @@ model Theme {
   name      String       @unique
   label     String
   isDefault Boolean      @default(false)
+  cssVars   String?      @db.LongText   // JSON des variables CSS custom
+  createdBy String?                     // userId du créateur (null = système)
   createdAt DateTime     @default(now())
   configs   UserConfig[]
 }
-
 model Category {
   id           String           @id @default(cuid())
   name         String           @unique
   type         CategoryType
   isFixed      Boolean          @default(false)
-  isArchived   Boolean          @default(false)
   createdAt    DateTime         @default(now())
+  isArchived   Boolean          @default(false)
   fixedCharges FixedCharge[]
-  transactions Transaction[]
   projects     SavingsProject[]
+  transactions Transaction[]
 }
 
 model Transaction {
@@ -55,11 +57,11 @@ model Transaction {
   month      DateTime
   amount     Float
   detail     String?
-  tags       String   @default("[]") @db.LongText
   pointed    Boolean  @default(false)
   categoryId String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  tags       String   @default("[]") @db.LongText
   category   Category @relation(fields: [categoryId], references: [id])
 
   @@index([categoryId], map: "Transaction_categoryId_fkey")
@@ -84,11 +86,11 @@ model SavingsProject {
   targetAmount  Float?
   currentAmount Float               @default(0)
   isActive      Boolean             @default(true)
-  categoryId    String?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
+  categoryId    String?
   allocations   SavingsAllocation[]
-  category      Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category      Category?           @relation(fields: [categoryId], references: [id])
 
   @@index([categoryId])
 }
@@ -106,33 +108,26 @@ model SavingsAllocation {
   @@index([projectId], map: "SavingsAllocation_projectId_fkey")
 }
 
-enum CategoryType {
-  INCOME
-  EXPENSE
-  PROJECT
-}
-
-
 model BankAccount {
-  id              String               @id @default(cuid())
-  name            String               @unique
-  owner           String               @default("")   // ex: "Ilan", "Camille"
-  isActive        Boolean              @default(true)
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  id              String                @id @default(cuid())
+  name            String                @unique
+  isActive        Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  owner           String                @default("")
   reconciliations ReconciliationEntry[]
 }
 
 model Reconciliation {
-  id             String               @id @default(cuid())
-  month          DateTime             @unique
-  totalReal      Float
-  totalBdd       Float
-  gap            Float
-  note           String?
-  adjustmentId   String?              // id de la transaction exceptionnelle (simple référence, pas de relation)
-  createdAt      DateTime             @default(now())
-  entries        ReconciliationEntry[]
+  id           String                @id @default(cuid())
+  month        DateTime              @unique
+  totalReal    Float
+  totalBdd     Float
+  gap          Float
+  note         String?
+  adjustmentId String?
+  createdAt    DateTime              @default(now())
+  entries      ReconciliationEntry[]
 }
 
 model ReconciliationEntry {
@@ -140,10 +135,16 @@ model ReconciliationEntry {
   reconciliationId String
   accountId        String
   balance          Float
-  reconciliation   Reconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
   account          BankAccount    @relation(fields: [accountId], references: [id])
+  reconciliation   Reconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
 
   @@unique([reconciliationId, accountId])
   @@index([accountId])
   @@index([reconciliationId])
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+  PROJECT
 }

@@ -36,7 +36,7 @@ async function main(): Promise<void> {
       config: {
         create: {
           themeId: 'dark',
-          preferences: {},
+          preferences: JSON.stringify({}),
         },
       },
     },

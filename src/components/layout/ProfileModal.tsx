@@ -1,0 +1,346 @@
+'use client'
+import { useState, useEffect, useRef, type ReactElement } from 'react'
+import { useSession } from 'next-auth/react'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { useTheme } from '@/hooks/useTheme'
+
+interface Theme {
+  id: string
+  name: string
+  label: string
+  isDefault: boolean
+  cssVars: string | null
+  createdBy: string | null
+}
+
+type Tab = 'profil' | 'themes'
+
+interface ProfileModalProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+// Aperçu d'un thème (mini palette)
+function ThemePreview({ cssVars }: { cssVars: Record<string, string> | null }): ReactElement {
+  if (!cssVars) return <div className="w-5 h-5 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
+  return (
+    <div className="flex gap-0.5 items-center">
+      {['--bg', '--surface', '--accent', '--success', '--danger'].map((v) => (
+        <div key={v} className="w-4 h-4 rounded-sm" style={{ backgroundColor: cssVars[v] ?? '#888' }} />
+      ))}
+    </div>
+  )
+}
+
+export function ProfileModal({ isOpen, onClose }: ProfileModalProps): ReactElement {
+  const { data: session, update: updateSession } = useSession()
+  const { theme: currentTheme, setTheme } = useTheme()
+  const [tab, setTab] = useState<Tab>('profil')
+
+  // ── Profil ────────────────────────────────────────────────────────────────
+  const [name, setName]                   = useState('')
+  const [email, setEmail]                 = useState('')
+  const [currentPwd, setCurrentPwd]       = useState('')
+  const [newPwd, setNewPwd]               = useState('')
+  const [confirmPwd, setConfirmPwd]       = useState('')
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError]   = useState<string | null>(null)
+  const [profileSuccess, setProfileSuccess] = useState(false)
+
+  // ── Thèmes ────────────────────────────────────────────────────────────────
+  const [themes, setThemes]               = useState<Theme[]>([])
+  const [themesLoading, setThemesLoading] = useState(false)
+  const [newLabel, setNewLabel]           = useState('')
+  const [newAccent, setNewAccent]         = useState('#6c63ff')
+  const [newBase, setNewBase]             = useState<'dark' | 'light'>('dark')
+  const [createLoading, setCreateLoading] = useState(false)
+  const [createError, setCreateError]     = useState<string | null>(null)
+  const [preview, setPreview]             = useState<Record<string, string> | null>(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(session?.user?.name ?? '')
+      setEmail(session?.user?.email ?? '')
+      setProfileError(null); setProfileSuccess(false)
+      setCurrentPwd(''); setNewPwd(''); setConfirmPwd('')
+    }
+  }, [isOpen, session])
+
+  useEffect(() => {
+    if (isOpen && tab === 'themes') void loadThemes()
+  }, [isOpen, tab])
+
+  // Calcule un aperçu côté client quand accent/base change
+  useEffect(() => {
+    setPreview(computePreview(newAccent, newBase))
+  }, [newAccent, newBase])
+
+  async function loadThemes(): Promise<void> {
+    setThemesLoading(true)
+    const res = await fetch('/api/themes')
+    setThemes(await res.json() as Theme[])
+    setThemesLoading(false)
+  }
+
+  async function handleSaveProfile(): Promise<void> {
+    setProfileError(null); setProfileSuccess(false)
+    if (newPwd && newPwd !== confirmPwd) { setProfileError('Les mots de passe ne correspondent pas'); return }
+    setProfileLoading(true)
+    try {
+      const body: Record<string, string> = {}
+      if (name !== session?.user?.name) body.name = name
+      if (email !== session?.user?.email) body.email = email
+      if (newPwd) { body.currentPassword = currentPwd; body.newPassword = newPwd }
+      if (Object.keys(body).length === 0) { setProfileSuccess(true); setProfileLoading(false); return }
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) { const e = await res.json() as { error: string }; throw new Error(e.error) }
+      await updateSession()
+      setProfileSuccess(true)
+      setCurrentPwd(''); setNewPwd(''); setConfirmPwd('')
+    } catch (e) {
+      setProfileError(e instanceof Error ? e.message : 'Erreur')
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  async function handleCreateTheme(): Promise<void> {
+    setCreateError(null)
+    if (!newLabel.trim()) { setCreateError('Nom requis'); return }
+    setCreateLoading(true)
+    try {
+      const res = await fetch('/api/themes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: newLabel, accent: newAccent, base: newBase }),
+      })
+      if (!res.ok) { const e = await res.json() as { error: string }; throw new Error(e.error) }
+      const theme = await res.json() as Theme
+      await setTheme(theme.name)
+      setNewLabel('')
+      await loadThemes()
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : 'Erreur')
+    } finally {
+      setCreateLoading(false)
+    }
+  }
+
+  const border = '1px solid var(--border)'
+  const tabStyle = (t: Tab) => ({
+    backgroundColor: tab === t ? 'var(--accent)' : 'transparent',
+    color: tab === t ? 'var(--bg)' : 'var(--text2)',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '6px 16px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 500,
+  })
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Mon profil">
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl mb-5" style={{ backgroundColor: 'var(--surface2)' }}>
+        <button style={tabStyle('profil')} onClick={() => setTab('profil')}>Profil</button>
+        <button style={tabStyle('themes')} onClick={() => setTab('themes')}>Thèmes</button>
+      </div>
+
+      {/* ── Tab Profil ── */}
+      {tab === 'profil' && (
+        <div className="flex flex-col gap-4">
+          <Input label="Nom" type="text" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+
+          <div className="h-px" style={{ backgroundColor: 'var(--border)' }} />
+          <p className="text-xs font-medium" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+            CHANGER LE MOT DE PASSE
+          </p>
+          <Input label="Mot de passe actuel" type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} placeholder="••••••••" />
+          <Input label="Nouveau mot de passe" type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} placeholder="min. 8 caractères" />
+          <Input label="Confirmer" type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} placeholder="••••••••" />
+
+          {profileError && <p className="text-sm" style={{ color: 'var(--danger)' }}>{profileError}</p>}
+          {profileSuccess && <p className="text-sm" style={{ color: 'var(--success)' }}>✓ Profil mis à jour</p>}
+
+          <div className="flex justify-end gap-3 pt-1">
+            <Button variant="ghost" size="md" onClick={onClose}>Annuler</Button>
+            <Button variant="primary" size="md" isLoading={profileLoading} onClick={() => void handleSaveProfile()}>
+              Enregistrer
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tab Thèmes ── */}
+      {tab === 'themes' && (
+        <div className="flex flex-col gap-5">
+          {/* Thèmes existants */}
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-medium" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+              THÈMES DISPONIBLES
+            </p>
+            {themesLoading ? (
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>Chargement…</p>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {themes.map((t) => {
+                  const vars = t.cssVars ? JSON.parse(t.cssVars) as Record<string, string> : null
+                  const isActive = currentTheme === t.name
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => void setTheme(t.name)}
+                      className="flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all"
+                      style={{
+                        backgroundColor: isActive ? 'var(--accent-dim)' : 'var(--surface2)',
+                        border: isActive ? '1px solid var(--accent)' : border,
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <ThemePreview cssVars={vars} />
+                        <span className="text-sm font-medium" style={{ color: isActive ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font-body)' }}>
+                          {t.label}
+                        </span>
+                        {t.isDefault && (
+                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--surface)', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                            système
+                          </span>
+                        )}
+                      </div>
+                      {isActive && <span style={{ color: 'var(--accent)', fontSize: 16 }}>✓</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Créer un thème */}
+          <div className="flex flex-col gap-3">
+            <p className="text-xs font-medium" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+              CRÉER UN THÈME
+            </p>
+
+            <Input label="Nom du thème" type="text" value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)} placeholder="Ex: Minuit Vert" />
+
+            {/* Base dark/light */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium" style={{ color: 'var(--text2)' }}>Base</label>
+              <div className="flex gap-2">
+                {(['dark', 'light'] as const).map((b) => (
+                  <button key={b} onClick={() => setNewBase(b)}
+                    className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
+                    style={{
+                      backgroundColor: newBase === b ? 'var(--accent)' : 'var(--surface2)',
+                      color: newBase === b ? 'var(--bg)' : 'var(--text2)',
+                      border: newBase === b ? '1px solid var(--accent)' : border,
+                      fontFamily: 'var(--font-body)',
+                    }}>
+                    {b === 'dark' ? '● Sombre' : '○ Clair'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Couleur accent */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium" style={{ color: 'var(--text2)' }}>Couleur d'accent</label>
+              <div className="flex items-center gap-3">
+                <input type="color" value={newAccent} onChange={(e) => setNewAccent(e.target.value)}
+                  className="w-12 h-10 rounded-lg cursor-pointer border-0 bg-transparent"
+                  style={{ padding: 2 }} />
+                <span className="text-sm font-medium uppercase" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+                  {newAccent}
+                </span>
+                {/* Aperçu palette */}
+                {preview && (
+                  <div className="flex gap-1 ml-2">
+                    {['--bg', '--surface', '--surface2', '--accent', '--text', '--success', '--danger'].map((v) => (
+                      <div key={v} title={v}
+                        className="w-5 h-5 rounded-md border"
+                        style={{ backgroundColor: preview[v], borderColor: 'var(--border)' }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {createError && <p className="text-sm" style={{ color: 'var(--danger)' }}>{createError}</p>}
+
+            <Button variant="primary" size="md" isLoading={createLoading}
+              onClick={() => void handleCreateTheme()}>
+              Créer et appliquer
+            </Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+// ── Calcul aperçu côté client (même logique que le serveur) ──────────────────
+function hexToHsl(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16) / 255
+  const g = parseInt(hex.slice(3, 5), 16) / 255
+  const b = parseInt(hex.slice(5, 7), 16) / 255
+  const max = Math.max(r, g, b), min = Math.min(r, g, b)
+  let h = 0, s = 0
+  const l = (max + min) / 2
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break
+      case g: h = ((b - r) / d + 2) / 6; break
+      case b: h = ((r - g) / d + 4) / 6; break
+    }
+  }
+  return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)]
+}
+function hslToHex(h: number, s: number, l: number): string {
+  const hNorm = h / 360, sNorm = s / 100, lNorm = l / 100
+  const q = lNorm < 0.5 ? lNorm * (1 + sNorm) : lNorm + sNorm - lNorm * sNorm
+  const p = 2 * lNorm - q
+  const hue2rgb = (t: number): number => {
+    if (t < 0) t += 1; if (t > 1) t -= 1
+    if (t < 1/6) return p + (q - p) * 6 * t
+    if (t < 1/2) return q
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+    return p
+  }
+  return '#' + (sNorm === 0
+    ? [lNorm, lNorm, lNorm]
+    : [hNorm + 1/3, hNorm, hNorm - 1/3].map(hue2rgb)
+  ).map((x) => Math.round(x * 255).toString(16).padStart(2, '0')).join('')
+}
+function computePreview(accent: string, base: 'dark' | 'light'): Record<string, string> {
+  if (!accent.match(/^#[0-9a-fA-F]{6}$/)) return {}
+  const [h, s] = hexToHsl(accent)
+  if (base === 'dark') return {
+    '--bg': hslToHex(h, Math.max(s - 40, 5), 5),
+    '--surface': hslToHex(h, Math.max(s - 35, 6), 8),
+    '--surface2': hslToHex(h, Math.max(s - 30, 8), 12),
+    '--accent': accent,
+    '--text': hslToHex(h, 10, 92),
+    '--success': '#43e8b0',
+    '--danger': '#f87171',
+  }
+  return {
+    '--bg': hslToHex(h, Math.max(s - 50, 8), 95),
+    '--surface': '#ffffff',
+    '--surface2': hslToHex(h, Math.max(s - 50, 5), 97),
+    '--accent': accent,
+    '--text': hslToHex(h, 15, 10),
+    '--success': '#3a7d5c',
+    '--danger': '#c9623f',
+  }
+}
