@@ -29,6 +29,7 @@ export default function CategoriesPage(): ReactElement {
 
   useEffect(() => { void loadAll() }, [])
 
+  // --- Handlers existants ---
   async function handleAdd(formData: { name: string; type: CategoryType; isFixed: boolean }): Promise<void> {
     const res = await fetch('/api/epargne/categories', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -71,15 +72,24 @@ export default function CategoriesPage(): ReactElement {
     await loadAll()
   }
 
-  async function handleReaffecterProjet(
-    sourceId: string,
-    targetProjectId: string,
-  ): Promise<void> {
+  async function handleReaffecterProjet(sourceId: string, targetProjectId: string): Promise<void> {
     const res = await fetch(`/api/epargne/projets/${sourceId}/reaffecter`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targetProjectId, month: getCurrentMonth() }),
     })
     if (!res.ok) { const err = await res.json() as { error: string }; throw new Error(err.error) }
+    await loadAll()
+  }
+
+  // --- NOUVEAU HANDLER POUR FIXER L'ERREUR ---
+  async function handleAnnulerReaffectation(sourceId: string): Promise<void> {
+    const res = await fetch(`/api/epargne/projets/${sourceId}/reaffecter`, {
+      method: 'DELETE',
+    })
+    if (!res.ok) {
+      const err = await res.json() as { error: string }
+      throw new Error(err.error)
+    }
     await loadAll()
   }
 
@@ -97,6 +107,7 @@ export default function CategoriesPage(): ReactElement {
           onAddProjet={handleAddProjet}
           onEditProjet={handleEditProjet}
           onReaffecterProjet={handleReaffecterProjet}
+          onAnnulerReaffectation={handleAnnulerReaffectation} // <--- La prop manquante est ici
         />
       )}
     </EpargneLayout>

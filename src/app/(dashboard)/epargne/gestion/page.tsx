@@ -85,6 +85,14 @@ export default function GestionPage(): ReactElement {
     await loadAll()
   }
 
+  async function handleAnnulerReaffectation(sourceId: string): Promise<void> {
+    const res = await fetch(`/api/epargne/projets/${sourceId}/reaffecter`, {
+      method: 'DELETE',
+    })
+    if (!res.ok) { const err = await res.json() as { error: string }; throw new Error(err.error) }
+    await loadAll()
+  }
+
   // ── Handlers comptes ─────────────────────────────────────────────────────
   async function handleAddCompte(name: string, owner: string): Promise<void> {
     const res = await fetch('/api/epargne/comptes', {
@@ -143,6 +151,7 @@ export default function GestionPage(): ReactElement {
             onAddProjet={handleAddProjet}
             onEditProjet={handleEditProjet}
             onReaffecterProjet={handleReaffecterProjet}
+            onAnnulerReaffectation={handleAnnulerReaffectation}
           />
           <AccountManager
             comptes={comptes}

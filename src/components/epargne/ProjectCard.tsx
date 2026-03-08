@@ -8,6 +8,8 @@ import { type SavingsProject } from '@prisma/client'
 interface ProjectCardProps {
   project: SavingsProject & { allocations: { amount: number }[] }
   onReaffecter?: (projectId: string) => void
+  onAnnulerReaffectation?: (projectId: string) => void
+  transferredToName?: string  // nom du projet cible (pour affichage)
 }
 
 function getProgressColor(percent: number): string {
@@ -16,7 +18,7 @@ function getProgressColor(percent: number): string {
   return 'var(--danger)'
 }
 
-export function ProjectCard({ project, onReaffecter }: ProjectCardProps): ReactElement {
+export function ProjectCard({ project, onReaffecter, onAnnulerReaffectation, transferredToName }: ProjectCardProps): ReactElement {
   const hasTarget = project.targetAmount !== null && project.targetAmount > 0
   const percent   = hasTarget ? Math.min((project.currentAmount / project.targetAmount!) * 100, 100) : 0
   const allocationThisMonth = project.allocations[0]?.amount ?? 0
@@ -26,19 +28,41 @@ export function ProjectCard({ project, onReaffecter }: ProjectCardProps): ReactE
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
-            {project.name}
-          </h3>
-          {/* Bouton réaffecter toujours visible si handler fourni et projet actif */}
-          {onReaffecter && project.isActive && (
-            <button
-              onClick={() => onReaffecter(project.id)}
-              className="text-xs underline whitespace-nowrap shrink-0"
-              style={{ color: 'var(--accent)' }}
-            >
-              Réaffecter →
-            </button>
-          )}
+          <div className="flex flex-col gap-1 min-w-0">
+            <h3 className="text-sm font-semibold" style={{ color: project.isActive ? 'var(--text)' : 'var(--muted)', fontFamily: 'var(--font-display)' }}>
+              {project.name}
+            </h3>
+            {!project.isActive && transferredToName && (
+              <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                → {transferredToName}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            {onReaffecter && project.isActive && (
+              <button
+                onClick={() => onReaffecter(project.id)}
+                className="text-xs underline whitespace-nowrap"
+                style={{ color: 'var(--accent)' }}
+              >
+                Réaffecter →
+              </button>
+            )}
+            {onAnnulerReaffectation && !project.isActive && (project as SavingsProject & { transferredToId?: string | null }).transferredToId && (
+              <button
+                onClick={() => onAnnulerReaffectation(project.id)}
+                className="text-xs underline whitespace-nowrap"
+                style={{ color: 'var(--warning)' }}
+              >
+                ↩ Annuler
+              </button>
+            )}
+            {!project.isActive && (
+              <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--surface2)', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                inactif
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Montant */}

@@ -81,16 +81,19 @@ model FixedCharge {
 }
 
 model SavingsProject {
-  id            String              @id @default(cuid())
-  name          String
-  targetAmount  Float?
-  currentAmount Float               @default(0)
-  isActive      Boolean             @default(true)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  categoryId    String?
-  allocations   SavingsAllocation[]
-  category      Category?           @relation(fields: [categoryId], references: [id])
+  id                String              @id @default(cuid())
+  name              String
+  targetAmount      Float?
+  currentAmount     Float               @default(0)
+  isActive          Boolean             @default(true)
+  categoryId        String?
+  transferredToId   String?             // id du projet cible lors d'une réaffectation
+  transferredMonth  DateTime?           // mois de la réaffectation (pour retrouver l'allocation)
+  transferredAmount Float?              // montant transféré (pour annulation exacte)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  allocations       SavingsAllocation[]
+  category          Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([categoryId])
 }

@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { type Category, type SavingsProject, CategoryType } from '@prisma/client'
 
+// --- Types et Interfaces ---
 interface TagRow { tag: string; count: number }
-
-type ProjetRow = SavingsProject & { allocations: { amount: number }[] }
+type ProjetRow = SavingsProject & { allocations: { amount: number }[], transferredToId?: string | null }
 
 interface CategoryManagerProps {
   categories: Category[]
@@ -20,13 +20,85 @@ interface CategoryManagerProps {
   onAddProjet: (name: string, targetAmount: number | null) => Promise<void>
   onEditProjet: (id: string, name: string, targetAmount: number | null) => Promise<void>
   onReaffecterProjet: (sourceId: string, targetProjectId: string) => Promise<void>
+  onAnnulerReaffectation: (sourceId: string) => Promise<void>
 }
 
+// --- Sous-composant (DÉPLACÉ ICI HORS DE CategoryManager) ---
+function CategoryGroup({ 
+  title, 
+  items, 
+  archived = false, 
+  readOnly = false,
+  onEdit,
+  onToggleArchive,
+  onDelete,
+  deletingId 
+}: { 
+  title: string; 
+  items: Category[]; 
+  archived?: boolean; 
+  readOnly?: boolean;
+  onEdit: (cat: Category) => void;
+  onToggleArchive: (cat: Category) => void;
+  onDelete: (cat: Category) => void;
+  deletingId: string | null;
+}): ReactElement {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+        {title}
+      </h3>
+      <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+        {items.length === 0 ? (
+          <p className="px-4 py-3 text-sm" style={{ color: 'var(--muted)' }}>Aucune catégorie</p>
+        ) : (
+          items.map((cat, i) => (
+            <div key={cat.id} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none', opacity: cat.isArchived ? 0.6 : 1 }}>
+              <div className="flex items-center gap-2">
+                <span className="text-sm" style={{ color: 'var(--text2)' }}>{cat.name}</span>
+                {cat.isFixed && <Badge variant="default">fixe</Badge>}
+                {cat.isArchived && <Badge variant="warning">archivée</Badge>}
+              </div>
+              <div className="flex items-center gap-2">
+                {!readOnly && !cat.isArchived && (
+                  <Button variant="ghost" size="sm" onClick={() => onEdit(cat)}>Modifier</Button>
+                )}
+                {!readOnly && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    isLoading={deletingId === cat.id}
+                    onClick={() => onToggleArchive(cat)}
+                  >
+                    {cat.isArchived ? 'Restaurer' : 'Archiver'}
+                  </Button>
+                )}
+                {!readOnly && !cat.isArchived && (
+                  <Button variant="danger" size="sm" isLoading={deletingId === cat.id} onClick={() => onDelete(cat)}>
+                    Supprimer
+                  </Button>
+                )}
+                {readOnly && (
+                  <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                    géré via Projets
+                  </span>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+// --- Composant Principal ---
 export function CategoryManager({
   categories, projets,
   onAdd, onEdit, onDelete,
-  onAddProjet, onEditProjet, onReaffecterProjet,
+  onAddProjet, onEditProjet, onReaffecterProjet, onAnnulerReaffectation,
 }: CategoryManagerProps): ReactElement {
+  // ... (Garder tous les states et handlers identiques à ton code original)
   const [isModalOpen, setIsModalOpen]       = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [name, setName]       = useState('')
@@ -47,18 +119,21 @@ export function CategoryManager({
   const [tagSearch, setTagSearch]    = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
 
-  // ── États projets ───────────────────────────────────────────────────────────
+  // Projets
   const [isProjetModalOpen, setIsProjetModalOpen]   = useState(false)
   const [editingProjet, setEditingProjet]           = useState<ProjetRow | null>(null)
   const [projetName, setProjetName]                 = useState('')
   const [projetTarget, setProjetTarget]             = useState('')
   const [projetSaving, setProjetSaving]             = useState(false)
   const [projetError, setProjetError]               = useState<string | null>(null)
-  // Réaffectation
   const [reaffectSource, setReaffectSource]         = useState<ProjetRow | null>(null)
   const [reaffectTarget, setReaffectTarget]         = useState('')
   const [reaffectSaving, setReaffectSaving]         = useState(false)
   const [reaffectError, setReaffectError]           = useState<string | null>(null)
+
+  // ... (Garder loadTags, useEffect, openAdd, openEdit, handleSubmit, handleDelete, handleToggleArchive, 
+  // startRename, saveRename, handleDeleteTag, handleRenameKey, openAddProjet, openEditProjet, 
+  // handleSubmitProjet, handleAnnulerReaffectation, handleReaffecter)
 
   async function loadTags(): Promise<void> {
     setTagsLoading(true)
@@ -70,7 +145,6 @@ export function CategoryManager({
   }
   useEffect(() => { void loadTags() }, [])
 
-  // ── Handlers catégories ─────────────────────────────────────────────────────
   function openAdd(): void {
     setEditingCategory(null); setName(''); setType(CategoryType.EXPENSE); setIsFixed(false); setFormError(null); setIsModalOpen(true)
   }
@@ -103,7 +177,6 @@ export function CategoryManager({
     finally { setDeletingId(null) }
   }
 
-  // ── Handlers tags ───────────────────────────────────────────────────────────
   function startRename(tag: string): void {
     setRenamingTag(tag); setRenameValue(tag)
     setTimeout(() => renameInputRef.current?.focus(), 50)
@@ -139,7 +212,6 @@ export function CategoryManager({
     if (e.key === 'Escape') setRenamingTag(null)
   }
 
-  // ── Handlers projets ────────────────────────────────────────────────────────
   function openAddProjet(): void {
     setEditingProjet(null); setProjetName(''); setProjetTarget(''); setProjetError(null); setIsProjetModalOpen(true)
   }
@@ -157,6 +229,11 @@ export function CategoryManager({
     } catch (e) { setProjetError(e instanceof Error ? e.message : 'Erreur') }
     finally { setProjetSaving(false) }
   }
+  async function handleAnnulerReaffectation(sourceId: string): Promise<void> {
+    if (!window.confirm('Annuler cette réaffectation ? Le montant sera restitué au projet source.')) return
+    try { await onAnnulerReaffectation(sourceId) } catch (e) { alert(e instanceof Error ? e.message : 'Erreur') }
+  }
+
   async function handleReaffecter(): Promise<void> {
     if (!reaffectSource || !reaffectTarget) { setReaffectError('Sélectionne un projet cible'); return }
     setReaffectSaving(true); setReaffectError(null)
@@ -167,62 +244,13 @@ export function CategoryManager({
     finally { setReaffectSaving(false) }
   }
 
-  // ── Groupes ─────────────────────────────────────────────────────────────────
+  // --- Groupes ---
   const activeCats      = categories.filter((c) => !c.isArchived && c.type !== 'PROJECT')
   const archivedCats    = categories.filter((c) => c.isArchived)
-  const projectCats     = categories.filter((c) => c.type === 'PROJECT' && !c.isArchived)
   const incomeCategories   = activeCats.filter((c) => c.type === 'INCOME')
   const fixedCategories    = activeCats.filter((c) => c.type === 'EXPENSE' && c.isFixed)
   const variableCategories = activeCats.filter((c) => c.type === 'EXPENSE' && !c.isFixed)
   const filteredTags = tags.filter((t) => tagSearch === '' || t.tag.toLowerCase().includes(tagSearch.toLowerCase()))
-
-  function CategoryGroup({ title, items, archived = false, readOnly = false }: { title: string; items: Category[]; archived?: boolean; readOnly?: boolean }): ReactElement {
-    return (
-      <div className="flex flex-col gap-2">
-        <h3 className="text-xs font-medium uppercase tracking-wider" style={{ color: archived ? 'var(--muted)' : 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-          {title}
-        </h3>
-        <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-          {items.length === 0 ? (
-            <p className="px-4 py-3 text-sm" style={{ color: 'var(--muted)' }}>Aucune catégorie</p>
-          ) : items.map((cat, i) => (
-            <div key={cat.id} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none', opacity: cat.isArchived ? 0.6 : 1 }}>
-              <div className="flex items-center gap-2">
-                <span className="text-sm" style={{ color: 'var(--text2)' }}>{cat.name}</span>
-                {cat.isFixed && <Badge variant="default">fixe</Badge>}
-                {cat.isArchived && <Badge variant="warning">archivée</Badge>}
-              </div>
-              <div className="flex items-center gap-2">
-                {!readOnly && !cat.isArchived && (
-                  <Button variant="ghost" size="sm" onClick={() => openEdit(cat)}>Modifier</Button>
-                )}
-                {!readOnly && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    isLoading={deletingId === cat.id}
-                    onClick={() => handleToggleArchive(cat)}
-                  >
-                    {cat.isArchived ? 'Restaurer' : 'Archiver'}
-                  </Button>
-                )}
-                {!readOnly && !cat.isArchived && (
-                  <Button variant="danger" size="sm" isLoading={deletingId === cat.id} onClick={() => handleDelete(cat)}>
-                    Supprimer
-                  </Button>
-                )}
-                {readOnly && (
-                  <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-                    géré via Projets
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -237,8 +265,11 @@ export function CategoryManager({
         <Button variant="primary" size="md" onClick={openAdd}>+ Nouvelle catégorie</Button>
       </div>
 
+      <CategoryGroup title="Revenus" items={incomeCategories} deletingId={deletingId} onEdit={openEdit} onToggleArchive={handleToggleArchive} onDelete={handleDelete} />
+      <CategoryGroup title="Charges fixes" items={fixedCategories} deletingId={deletingId} onEdit={openEdit} onToggleArchive={handleToggleArchive} onDelete={handleDelete} />
+      <CategoryGroup title="Dépenses variables" items={variableCategories} deletingId={deletingId} onEdit={openEdit} onToggleArchive={handleToggleArchive} onDelete={handleDelete} />
 
-      {/* ── Section Projets d'épargne ──────────────────────────────────── */}
+      {/* --- Section Projets d'épargne --- */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
@@ -247,39 +278,47 @@ export function CategoryManager({
           <Button variant="ghost" size="sm" onClick={openAddProjet}>+ Nouveau projet</Button>
         </div>
         <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-          {projets.filter((p) => p.isActive).length === 0 ? (
-            <p className="px-4 py-3 text-sm" style={{ color: 'var(--muted)' }}>Aucun projet actif</p>
-          ) : projets.filter((p) => p.isActive).map((p, i, arr) => (
-            <div key={p.id} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
+          {projets.length === 0 ? (
+            <p className="px-4 py-3 text-sm" style={{ color: 'var(--muted)' }}>Aucun projet</p>
+          ) : projets.map((p, i, arr) => {
+            const transferTarget = !p.isActive ? projets.find((t) => t.id === p.transferredToId) : null
+            return (
+            <div key={p.id} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none', opacity: p.isActive ? 1 : 0.65 }}>
               <div className="flex flex-col gap-0.5">
-                <span className="text-sm" style={{ color: 'var(--text2)' }}>{p.name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm" style={{ color: 'var(--text2)' }}>{p.name}</span>
+                  {!p.isActive && <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--surface2)', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>inactif</span>}
+                </div>
                 <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
                   {p.currentAmount.toFixed(2)} €{p.targetAmount ? ` / ${p.targetAmount.toFixed(2)} €` : ''}
+                  {transferTarget && ` → ${transferTarget.name}`}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => openEditProjet(p)}>Modifier</Button>
-                <Button
+                {p.isActive && <Button variant="ghost" size="sm" onClick={() => openEditProjet(p)}>Modifier</Button>}
+                {p.isActive && <Button
                   variant="ghost" size="sm"
                   onClick={() => { setReaffectSource(p); setReaffectTarget(''); setReaffectError(null) }}
                   style={{ color: 'var(--accent)' }}
                 >
                   Réaffecter →
-                </Button>
+                </Button>}
+                {!p.isActive && p.transferredToId && (
+                  <Button variant="ghost" size="sm" onClick={() => void handleAnnulerReaffectation(p.id)} style={{ color: 'var(--warning)' }}>
+                    ↩ Annuler
+                  </Button>
+                )}
               </div>
             </div>
-          ))}
+          )})}
         </div>
       </div>
-          <CategoryGroup title="Revenus" items={incomeCategories} />
-          <CategoryGroup title="Charges fixes" items={fixedCategories} />
-          <CategoryGroup title="Dépenses variables" items={variableCategories} />
 
       {showArchived && archivedCats.length > 0 && (
-        <CategoryGroup title="Archivées" items={archivedCats} archived />
+        <CategoryGroup title="Archivées" items={archivedCats} archived deletingId={deletingId} onEdit={openEdit} onToggleArchive={handleToggleArchive} onDelete={handleDelete} />
       )}
 
-      {/* ── Tags ─────────────────────────────────────────────────────────── */}
+      {/* --- Tags --- */}
       <div className="flex flex-col gap-2">
         <h3 className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>Tags</h3>
         <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -318,7 +357,7 @@ export function CategoryManager({
         </div>
       </div>
 
-      {/* ── Modal nouveau/édition projet ────────────────────────────────── */}
+      {/* --- Modals --- */}
       <Modal isOpen={isProjetModalOpen} onClose={() => setIsProjetModalOpen(false)} title={editingProjet ? 'Modifier le projet' : "Nouveau projet d'épargne"}>
         <div className="flex flex-col gap-4">
           <Input label="Nom" value={projetName} onChange={(e) => setProjetName(e.target.value)} placeholder="Ex: Mariage" autoFocus />
@@ -332,7 +371,6 @@ export function CategoryManager({
         </div>
       </Modal>
 
-      {/* ── Modal réaffectation ───────────────────────────────────────────── */}
       <Modal isOpen={reaffectSource !== null} onClose={() => setReaffectSource(null)} title={`Réaffecter — ${reaffectSource?.name ?? ''}`}>
         <div className="flex flex-col gap-4">
           {reaffectSource && (
@@ -364,7 +402,6 @@ export function CategoryManager({
         </div>
       </Modal>
 
-      {/* ── Modal catégorie ────────────────────────────────────────────────── */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie'}>
         <div className="flex flex-col gap-4">
           <Input label="Nom" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Courses" />
