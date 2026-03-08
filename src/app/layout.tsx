@@ -1,59 +1,39 @@
-import type { Metadata } from 'next'
-import { Syne, DM_Mono, Playfair_Display, DM_Sans } from 'next/font/google'
-import { SessionProvider } from '@/components/providers/SessionProvider'
-import '../styles/globals.css'
-import '@/styles/themes.css'
-const syne = Syne({
-  subsets: ['latin'],
-  variable: '--font-syne',
-  display: 'swap',
-})
+import { type ReactNode, type ReactElement } from 'react'
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
+import { authOptions } from '@/lib/auth'
+import { ThemeProvider } from '@/components/layout/ThemeProvider'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { Header } from '@/components/layout/Header'
+import { PageWrapper } from '@/components/layout/PageWrapper'
+import { BottomNav } from '@/components/layout/BottomNav'
+import { type ThemeName } from '@/types/theme'
 
-const dmMono = DM_Mono({
-  subsets: ['latin'],
-  weight: ['300', '400', '500'],
-  variable: '--font-dm-mono',
-  display: 'swap',
-})
-
-const playfairDisplay = Playfair_Display({
-  subsets: ['latin'],
-  variable: '--font-playfair',
-  display: 'swap',
-})
-
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  variable: '--font-dm-sans',
-  display: 'swap',
-})
-
-export const metadata: Metadata = {
-  title: {
-    default: 'Family Dashboard',
-    template: '%s — Family Dashboard',
-  },
-  description: 'Tableau de bord familial',
-}
-
-export default function RootLayout({
+export default async function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
-}): React.ReactElement {
+  children: ReactNode
+}): Promise<ReactElement> {
+  const session = await getServerSession(authOptions)
+
+  if (!session) {
+    redirect('/auth/login')
+  }
+
+  const initialTheme = (session.user.config?.theme ?? 'dark') as ThemeName
+
   return (
-    <html
-      lang="fr"
-      data-theme="dark"
-      suppressHydrationWarning
-      className={`${syne.variable} ${dmMono.variable} ${playfairDisplay.variable} ${dmSans.variable}`}
-    >
-      <head />
-      <body>
-        <SessionProvider>
-          {children}
-        </SessionProvider>
-      </body>
-    </html>
+    <ThemeProvider initialTheme={initialTheme}>
+      <div className="flex min-h-screen bg-[var(--bg)]">
+        <Sidebar />
+        <div className="flex flex-col flex-1 min-w-0">
+          <Header />
+          <PageWrapper>
+            {children}
+          </PageWrapper>
+          <BottomNav />
+        </div>
+      </div>
+    </ThemeProvider>
   )
 }
