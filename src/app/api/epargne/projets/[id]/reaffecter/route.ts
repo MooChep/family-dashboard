@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { recalcProjectAmount } from '@/lib/epargne'
 
 interface RouteParams { params: { id: string } }
 
@@ -28,40 +27,84 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     return NextResponse.json({ error: 'Source et cible doivent être différents' }, { status: 400 })
   }
 
-  const montantATransferer = source.currentAmount
+  // ── Calcul du montant réel disponible ──────────────────────────────────────
+  // On recalcule depuis la BDD (pas depuis currentAmount qui peut être stale)
+  // = somme allocations + somme transactions PROJECT sur la catégorie source
+  const allocResult = await prisma.savingsAllocation.aggregate({
+    where: { projectId: source.id },
+    _sum: { amount: true },
+  })
+  let totalTransactions = 0
+  if (source.categoryId) {
+    const txResult = await prisma.transaction.aggregate({
+      where: { categoryId: source.categoryId },
+      _sum: { amount: true },
+    })
+    totalTransactions = txResult._sum.amount ?? 0
+  }
+  const montantDisponible = (allocResult._sum.amount ?? 0) + totalTransactions
+
+  if (montantDisponible <= 0) {
+    return NextResponse.json({ error: 'Aucun montant disponible à réaffecter' }, { status: 400 })
+  }
+
   const month = new Date(body.month)
 
-  const [existingSource, existingTarget] = await Promise.all([
-    prisma.savingsAllocation.findUnique({ where: { month_projectId: { month, projectId: source.id } } }),
-    prisma.savingsAllocation.findUnique({ where: { month_projectId: { month, projectId: target.id } } }),
-  ])
+  // ── Opérations atomiques ───────────────────────────────────────────────────
+  // Stratégie : on ne crée PAS d'allocations fictives négatives/positives.
+  // On manipule directement currentAmount des deux projets pour la cohérence
+  // immédiate, et on crée UNE allocation de transfert sur la cible pour garder
+  // la trace dans l'historique.
 
-  await prisma.$transaction([
-    // Allocation négative sur la source (vide le projet)
-    prisma.savingsAllocation.upsert({
-      where: { month_projectId: { month, projectId: source.id } },
-      create: { month, percentage: 0, amount: -montantATransferer, projectId: source.id },
-      update: { amount: (existingSource?.amount ?? 0) - montantATransferer },
-    }),
-    // Allocation positive sur la cible
-    prisma.savingsAllocation.upsert({
-      where: { month_projectId: { month, projectId: target.id } },
-      create: { month, percentage: 0, amount: montantATransferer, projectId: target.id },
-      update: { amount: (existingTarget?.amount ?? 0) + montantATransferer },
-    }),
-  ])
-
-  // Recalcule les soldes
-  await recalcProjectAmount(source.id)
-  await recalcProjectAmount(target.id)
-
-  // Marque le projet source comme inactif
-  await prisma.savingsProject.update({
-    where: { id: source.id },
-    data: { isActive: false },
+  const existingTarget = await prisma.savingsAllocation.findUnique({
+    where: { month_projectId: { month, projectId: target.id } },
   })
 
-  // Archive la catégorie liée au projet source
+  await prisma.$transaction([
+    // 1. Vide TOUTES les allocations de la source (elles sont transférées)
+    //    On crée une allocation de solde négatif = annulation du cumul
+    prisma.savingsAllocation.upsert({
+      where: { month_projectId: { month, projectId: source.id } },
+      create: {
+        month,
+        percentage: 0,
+        amount: -montantDisponible,
+        projectId: source.id,
+      },
+      update: {
+        // On annule le cumul existant : on ajoute -montantDisponible au mois choisi
+        // ce qui rend la somme totale = 0
+        amount: { increment: -montantDisponible },
+      },
+    }),
+
+    // 2. Ajoute le montant sur la cible pour ce mois
+    prisma.savingsAllocation.upsert({
+      where: { month_projectId: { month, projectId: target.id } },
+      create: {
+        month,
+        percentage: 0,
+        amount: montantDisponible,
+        projectId: target.id,
+      },
+      update: {
+        amount: { increment: montantDisponible },
+      },
+    }),
+
+    // 3. Met à jour directement currentAmount des deux projets
+    //    source → 0 (vidé), target → son solde actuel + le transfert
+    prisma.savingsProject.update({
+      where: { id: source.id },
+      data: { currentAmount: 0, isActive: false },
+    }),
+    prisma.savingsProject.update({
+      where: { id: target.id },
+      data: { currentAmount: { increment: montantDisponible } },
+    }),
+  ])
+
+  // 4. Archive la catégorie liée au projet source
   if (source.categoryId) {
     await prisma.category.update({
       where: { id: source.categoryId },
