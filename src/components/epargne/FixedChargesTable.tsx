@@ -99,13 +99,14 @@ export function FixedChargesTable({
                 <td className={cn(
                   "px-4 py-3 text-sm font-[var(--font-mono)]",
                   isOver ? "text-[var(--danger)]" : "text-[var(--text2)]"
-                )}>
+                )} style={{ color: isOver ? 'var(--danger)' : 'var(--text2)' }}>
                   {formatAmount(charge.reel)}
                 </td>
                 <td className={cn(
                   "hidden md:table-cell px-4 py-3 text-sm font-[var(--font-mono)]",
                   isOver ? "text-[var(--danger)]" : "text-[var(--success)]"
-                )}>
+                )}
+                style={{ color: isOver ? 'var(--danger)' : 'var(--success)' }}>
                   {isOver ? '+' : ''}{formatAmount(ecart)}
                 </td>
               </tr>

@@ -83,10 +83,10 @@ export function VariableChargesTable({
                     </button>
                   )}
                 </td>
-                <td className={cn("px-4 py-3 text-sm font-[var(--font-mono)]", charge.estimated > 0 && isOver ? "text-[var(--danger)]" : "text-[var(--text2)]")}>
+                <td className={cn("px-4 py-3 text-sm font-[var(--font-mono)]")} style={{ color: charge.estimated > 0 && isOver ? 'var(--danger)' : 'var(--text2)' }}>
                   {formatAmount(charge.reel)}
                 </td>
-                <td className={cn("hidden md:table-cell px-4 py-3 text-sm font-[var(--font-mono)]", charge.estimated > 0 ? (isOver ? "text-[var(--danger)]" : "text-[var(--success)]") : "text-[var(--muted)]")}>
+                <td className={cn("hidden md:table-cell px-4 py-3 text-sm font-[var(--font-mono)]")} style={{ color: charge.estimated > 0 ? (isOver ? 'var(--danger)' : 'var(--success)') : 'var(--muted)' }}>
                   {charge.estimated > 0 ? (isOver ? '+' : '') + formatAmount(ecart) : '--'}
                 </td>
                 <td className="px-4 py-3">
@@ -95,10 +95,13 @@ export function VariableChargesTable({
                       {charge.avg3months > 0 ? formatAmount(charge.avg3months) : '--'}
                     </span>
                     {charge.avg3months > 0 && (
-                      <span className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded font-[var(--font-mono)]",
-                        isOverAvg ? "bg-[var(--danger)]/10 text-[var(--danger)]" : "bg-[var(--success)]/10 text-[var(--success)]"
-                      )}>
+                      <span 
+                        className="text-[10px] px-1.5 py-0.5 rounded font-[var(--font-mono)]"
+                        style={{ 
+                          backgroundColor: isOverAvg ? 'color-mix(in srgb, var(--danger) 15%, transparent)' : 'color-mix(in srgb, var(--success) 15%, transparent)',
+                          color: isOverAvg ? 'var(--danger)' : 'var(--success)' 
+                        }}
+                      >
                         {isOverAvg ? '↑' : '↓'}
                       </span>
                     )}

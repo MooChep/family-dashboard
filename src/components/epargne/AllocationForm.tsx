@@ -84,28 +84,29 @@ export function AllocationForm({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.projectId} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td className="px-4 py-3 text-sm" style={{ color: 'var(--text2)' }}>{row.projectName}</td>
-                <td className="px-4 py-3 text-sm" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
-                  {formatAmount(row.currentAmount)}
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: row.amount > 0 ? 'var(--success)' : 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-                  {row.amount > 0 ? '+' : ''}{formatAmount(row.amount)}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number" min="0" max="100" step="0.1"
-                      value={row.percentage}
-                      onChange={(e) => updatePercentage(row.projectId, e.target.value)}
-                      className="w-20 px-2 py-1 rounded text-sm outline-none"
-                      style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
-                    />
-                    <span className="text-xs" style={{ color: 'var(--muted)' }}>%</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
+  <tr key={row.projectId} className="border-b border-[var(--border)] last:border-0">
+    <td className="px-4 py-3 text-sm text-[var(--text2)] font-medium">{row.projectName}</td>
+    <td className="hidden md:table-cell px-4 py-3 text-sm text-[var(--text)] font-[var(--font-mono)]">
+      {formatAmount(row.currentAmount)}
+    </td>
+    <td 
+      className="px-4 py-3 text-sm font-[var(--font-mono)]"
+      style={{ color: row.amount > 0 ? 'var(--success)' : 'var(--muted)' }}
+    >
+      {row.amount > 0 ? '+' : ''}{formatAmount(row.amount)}
+    </td>
+    <td className="px-4 py-3">
+      <div className="flex items-center gap-1">
+        <input
+          type="number" min="0" max="100" step="0.1"
+          value={row.percentage}
+          onChange={(e) => updatePercentage(row.projectId, e.target.value)}
+          className="w-14 md:w-20 px-2 py-1 rounded text-sm outline-none bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] font-[var(--font-mono)] focus:border-[var(--accent)]"
+        />
+      </div>
+    </td>
+  </tr>
+))}
 
             {/* Ligne total */}
             <tr style={{ backgroundColor: 'var(--surface2)' }}>
