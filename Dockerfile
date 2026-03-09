@@ -14,7 +14,7 @@ COPY . .
 
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
-
+RUN apk add --no-cache openssl1.1-compat
 RUN npx prisma generate
 RUN npm run build
 
