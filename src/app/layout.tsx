@@ -8,15 +8,20 @@ import { Header } from '@/components/layout/Header'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { type ThemeName } from '@/types/theme'
+import { usePathname } from 'next/navigation' // Si c'est un Client Component
+// OU via les headers si c'est un Server Component (ton cas)
+import { headers } from 'next/headers'
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: ReactNode
-}): Promise<ReactElement> {
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const session = await getServerSession(authOptions)
+  
+  // Récupérer l'URL actuelle pour éviter la boucle
+  const headersList = headers();
+  const domain = headersList.get('host') || "";
+  const fullUrl = headersList.get('referer') || "";
 
-  if (!session) {
+  // Si pas de session ET qu'on n'est pas déjà sur la page auth
+  if (!session && !fullUrl.includes('/auth')) {
     redirect('/auth/login')
   }
 
