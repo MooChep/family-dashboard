@@ -37,22 +37,22 @@ export function VariableChargesTable({
 
   if (charges.length === 0) {
     return (
-      <p className="px-5 py-4 text-sm text-[var(--muted)]">
+      <p className="px-5 py-4 text-sm text-(--muted)]">
         Aucune catégorie variable ce mois
       </p>
     )
   }
 
   return (
-    <div className="rounded-xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
+    <div className="rounded-xl overflow-hidden bg-(--surface)] border border-(--border)]">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-[var(--border)]">
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]">Catégorie</th>
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]">Estimé</th>
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]">Réel</th>
-            <th className="hidden md:table-cell px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]">Écart</th>
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]">Moy. 3 mois</th>
+          <tr className="border-b border-(--border)]">
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">Catégorie</th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">Estimé</th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">Réel</th>
+            <th className="hidden md:table-cell px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">Écart</th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">Moy. 3 mois</th>
           </tr>
         </thead>
         <tbody>
@@ -63,14 +63,14 @@ export function VariableChargesTable({
             const isOverAvg = vsAvg > 0
 
             return (
-              <tr key={charge.categoryId} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface2)] transition-colors">
-                <td className="px-4 py-3 text-sm text-[var(--text2)] font-medium">
+              <tr key={charge.categoryId} className="border-b border-(--border)] last:border-0 hover:bg-(--surface2)] transition-colors">
+                <td className="px-4 py-3 text-sm text-(--text2)] font-medium">
                   {charge.categoryName}
                 </td>
                 <td className="px-4 py-3">
                   {editingId === charge.categoryId ? (
                     <input
-                      className="w-20 md:w-24 px-2 py-1 rounded text-sm outline-none bg-[var(--surface2)] border border-[var(--accent)] text-[var(--text)] font-[var(--font-mono)]"
+                      className="w-20 md:w-24 px-2 py-1 rounded text-sm outline-none bg-(--surface2)] border border-(--accent)] text-(--text)] font-(--font-mono)]"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       onBlur={() => saveEdit(charge.categoryId)}
@@ -78,25 +78,25 @@ export function VariableChargesTable({
                       autoFocus
                     />
                   ) : (
-                    <button className="text-sm text-left font-[var(--font-mono)] text-[var(--text2)] hover:text-[var(--accent)]" onClick={() => startEdit(charge.categoryId, charge.estimated)}>
+                    <button className="text-sm text-left font-(--font-mono)] text-(--text2)] hover:text-(--accent)]" onClick={() => startEdit(charge.categoryId, charge.estimated)}>
                       {charge.estimated > 0 ? formatAmount(charge.estimated) : '--'}
                     </button>
                   )}
                 </td>
-                <td className={cn("px-4 py-3 text-sm font-[var(--font-mono)]")} style={{ color: charge.estimated > 0 && isOver ? 'var(--danger)' : 'var(--text2)' }}>
+                <td className={cn("px-4 py-3 text-sm font-(--font-mono)]")} style={{ color: charge.estimated > 0 && isOver ? 'var(--danger)' : 'var(--text2)' }}>
                   {formatAmount(charge.reel)}
                 </td>
-                <td className={cn("hidden md:table-cell px-4 py-3 text-sm font-[var(--font-mono)]")} style={{ color: charge.estimated > 0 ? (isOver ? 'var(--danger)' : 'var(--success)') : 'var(--muted)' }}>
+                <td className={cn("hidden md:table-cell px-4 py-3 text-sm font-(--font-mono)]")} style={{ color: charge.estimated > 0 ? (isOver ? 'var(--danger)' : 'var(--success)') : 'var(--muted)' }}>
                   {charge.estimated > 0 ? (isOver ? '+' : '') + formatAmount(ecart) : '--'}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-[var(--font-mono)] text-[var(--text2)]">
+                    <span className="text-sm font-(--font-mono)] text-(--text2)]">
                       {charge.avg3months > 0 ? formatAmount(charge.avg3months) : '--'}
                     </span>
                     {charge.avg3months > 0 && (
                       <span 
-                        className="text-[10px] px-1.5 py-0.5 rounded font-[var(--font-mono)]"
+                        className="text-[10px] px-1.5 py-0.5 rounded font-(--font-mono)]"
                         style={{ 
                           backgroundColor: isOverAvg ? 'color-mix(in srgb, var(--danger) 15%, transparent)' : 'color-mix(in srgb, var(--success) 15%, transparent)',
                           color: isOverAvg ? 'var(--danger)' : 'var(--success)' 

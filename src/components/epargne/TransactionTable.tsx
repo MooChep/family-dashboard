@@ -47,14 +47,14 @@ export function TransactionTable({
 
   if (transactions.length === 0) {
     return (
-      <div className="rounded-xl p-8 text-center bg-[var(--surface)] border border-[var(--border)]">
-        <p className="text-sm text-[var(--muted)]">Aucune transaction ce mois</p>
+      <div className="rounded-xl p-8 text-center bg-(--surface)] border border-(--border)]">
+        <p className="text-sm text-(--muted)]">Aucune transaction ce mois</p>
       </div>
     )
   }
 
   return (
-    <div className="rounded-xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
+    <div className="rounded-xl overflow-hidden bg-(--surface)] border border-(--border)]">
       <Table>
         <TableHead>
           <tr>
@@ -88,7 +88,7 @@ export function TransactionTable({
                       {tags.map((tag) => (
                         <span 
                           key={tag} 
-                          className="px-1.5 py-0.5 rounded text-[10px] font-[var(--font-mono)]"
+                          className="px-1.5 py-0.5 rounded text-[10px] font-(--font-mono)]"
                           style={{ backgroundColor: 'var(--accent-dim)', color: 'var(--accent)' }}
                         >
                           {tag}
@@ -96,13 +96,13 @@ export function TransactionTable({
                       ))}
                     </div>
                   ) : (
-                    <span className="text-[var(--muted)] text-xs">—</span>
+                    <span className="text-(--muted)] text-xs">—</span>
                   )}
                 </Td>
 
                 <Td align="right">
                   <span 
-                    className="font-[var(--font-mono)] text-sm whitespace-nowrap"
+                    className="font-(--font-mono)] text-sm whitespace-nowrap"
                     style={{ 
                       color: income ? 'var(--success)' : 'var(--text)',
                       opacity: t.pointed ? 1 : 0.6
@@ -121,8 +121,8 @@ export function TransactionTable({
                     className={cn(
                       "w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors border",
                       t.pointed 
-                        ? "bg-[var(--accent)] border-[var(--accent)] text-[var(--bg)]" 
-                        : "bg-[var(--surface2)] border-[var(--border)] text-transparent"
+                        ? "bg-(--accent)] border-(--accent)] text-(--bg)]" 
+                        : "bg-(--surface2)] border-(--border)] text-transparent"
                     )}
                     aria-label={t.pointed ? "Dépointer" : "Pointer"}
                   >

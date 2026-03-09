@@ -145,15 +145,15 @@ export default function RegulPage(): ReactElement {
         {/* Navigation */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => setSelectedMonth(m => prevMonth(m))} className="w-12 h-12 rounded-xl flex items-center justify-center bg-[var(--surface)] border border-[var(--border)] text-xl">‹</button>
+            <button onClick={() => setSelectedMonth(m => prevMonth(m))} className="w-12 h-12 rounded-xl flex items-center justify-center bg-(--surface)] border border-(--border)] text-xl">‹</button>
             <div>
               <h2 className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>{formatMonth(selectedMonth)}</h2>
-              <p className="text-xs text-[var(--muted)]">Régularisation mensuelle</p>
+              <p className="text-xs text-(--muted)]">Régularisation mensuelle</p>
             </div>
             <button 
               onClick={() => setSelectedMonth(m => nextMonth(m))} 
               disabled={selectedMonth >= currentMonth}
-              className="w-12 h-12 rounded-xl flex items-center justify-center bg-[var(--surface)] border border-[var(--border)] text-xl disabled:opacity-30"
+              className="w-12 h-12 rounded-xl flex items-center justify-center bg-(--surface)] border border-(--border)] text-xl disabled:opacity-30"
             >›</button>
           </div>
         </div>
@@ -165,10 +165,10 @@ export default function RegulPage(): ReactElement {
             <SectionCard title="Soldes réels">
               <div className="flex flex-col gap-3">
                 {comptes.map((compte) => (
-                  <div key={compte.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--surface2)] border border-[var(--border)]">
+                  <div key={compte.id} className="flex items-center justify-between p-3 rounded-xl bg-(--surface2)] border border-(--border)]">
                     <div className="flex flex-col">
                       <span className="text-sm font-bold">{compte.name}</span>
-                      <span className="text-[10px] text-[var(--muted)] uppercase tracking-wider">{compte.owner}</span>
+                      <span className="text-[10px] text-(--muted)] uppercase tracking-wider">{compte.owner}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <input
@@ -177,7 +177,7 @@ export default function RegulPage(): ReactElement {
                         placeholder="0.00"
                         value={balances[compte.id] ?? ''}
                         onChange={(e) => setBalances(prev => ({ ...prev, [compte.id]: e.target.value }))}
-                        className="w-28 md:w-32 px-3 py-2 rounded-lg text-right font-mono text-sm bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] outline-none"
+                        className="w-28 md:w-32 px-3 py-2 rounded-lg text-right font-mono text-sm bg-(--surface)] border border-(--border)] focus:border-(--accent)] outline-none"
                       />
                     </div>
                   </div>
@@ -186,16 +186,16 @@ export default function RegulPage(): ReactElement {
             </SectionCard>
 
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-center">
-                <p className="text-[10px] uppercase text-[var(--muted)] mb-1">Total Réel</p>
+              <div className="p-4 rounded-xl border border-(--border)] bg-(--surface)] text-center">
+                <p className="text-[10px] uppercase text-(--muted)] mb-1">Total Réel</p>
                 <p className="text-sm font-mono font-bold">{formatAmount(totalReal)}</p>
               </div>
-              <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-center">
-                <p className="text-[10px] uppercase text-[var(--muted)] mb-1">Théorique</p>
-                <p className="text-sm font-mono font-bold text-[var(--accent)]">{formatAmount(totalBdd)}</p>
+              <div className="p-4 rounded-xl border border-(--border)] bg-(--surface)] text-center">
+                <p className="text-[10px] uppercase text-(--muted)] mb-1">Théorique</p>
+                <p className="text-sm font-mono font-bold text-(--accent)]">{formatAmount(totalBdd)}</p>
               </div>
-              <div className={`p-4 rounded-xl border border-[var(--border)] text-center ${Math.abs(gap) < 0.01 ? 'bg-[var(--success-dim)]' : 'bg-[var(--danger-dim)]'}`}>
-                <p className="text-[10px] uppercase text-[var(--muted)] mb-1">Écart</p>
+              <div className={`p-4 rounded-xl border border-(--border)] text-center ${Math.abs(gap) < 0.01 ? 'bg-(--success-dim)]' : 'bg-(--danger-dim)]'}`}>
+                <p className="text-[10px] uppercase text-(--muted)] mb-1">Écart</p>
                 <p className="text-sm font-mono font-bold">{formatAmount(gap)}</p>
               </div>
             </div>
@@ -208,7 +208,7 @@ export default function RegulPage(): ReactElement {
               placeholder="Notes (virement, arrondi...)"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-sm h-20 resize-none outline-none"
+              className="w-full p-4 rounded-xl bg-(--surface)] border border-(--border)] text-sm h-20 resize-none outline-none"
             />
           </div>
 

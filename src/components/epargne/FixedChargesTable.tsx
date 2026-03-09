@@ -39,27 +39,27 @@ export function FixedChargesTable({
 
   if (charges.length === 0) {
     return (
-      <p className="text-sm text-[var(--muted)]">
+      <p className="text-sm text-(--muted)]">
         Aucune charge fixe configurée
       </p>
     )
   }
 
   return (
-    <div className="rounded-xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
+    <div className="rounded-xl overflow-hidden bg-(--surface)] border border-(--border)]">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-[var(--border)]">
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]">
+          <tr className="border-b border-(--border)]">
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">
               Catégorie
             </th>
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]">
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">
               Estimé
             </th>
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]">
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">
               Réel
             </th>
-            <th className="hidden md:table-cell px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]">
+            <th className="hidden md:table-cell px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">
               Écart
             </th>
           </tr>
@@ -70,14 +70,14 @@ export function FixedChargesTable({
             const isOver = ecart > 0
 
             return (
-              <tr key={charge.categoryId} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface2)] transition-colors">
-                <td className="px-4 py-3 text-sm text-[var(--text2)] font-medium">
+              <tr key={charge.categoryId} className="border-b border-(--border)] last:border-0 hover:bg-(--surface2)] transition-colors">
+                <td className="px-4 py-3 text-sm text-(--text2)] font-medium">
                   {charge.categoryName}
                 </td>
                 <td className="px-4 py-3">
                   {editingId === charge.categoryId ? (
                     <input
-                      className="w-20 md:w-24 px-2 py-1 rounded text-sm outline-none bg-[var(--surface2)] border border-[var(--accent)] text-[var(--text)] font-[var(--font-mono)]"
+                      className="w-20 md:w-24 px-2 py-1 rounded text-sm outline-none bg-(--surface2)] border border-(--accent)] text-(--text)] font-(--font-mono)]"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       onBlur={() => saveEdit(charge.categoryId)}
@@ -89,7 +89,7 @@ export function FixedChargesTable({
                     />
                   ) : (
                     <button
-                      className="text-sm text-left text-[var(--text2)] font-[var(--font-mono)] hover:text-[var(--accent)]"
+                      className="text-sm text-left text-(--text2)] font-(--font-mono)] hover:text-(--accent)]"
                       onClick={() => startEdit(charge.categoryId, charge.estimated)}
                     >
                       {formatAmount(charge.estimated)}
@@ -97,14 +97,14 @@ export function FixedChargesTable({
                   )}
                 </td>
                 <td className={cn(
-                  "px-4 py-3 text-sm font-[var(--font-mono)]",
-                  isOver ? "text-[var(--danger)]" : "text-[var(--text2)]"
+                  "px-4 py-3 text-sm font-(--font-mono)]",
+                  isOver ? "text-(--danger)]" : "text-(--text2)]"
                 )} style={{ color: isOver ? 'var(--danger)' : 'var(--text2)' }}>
                   {formatAmount(charge.reel)}
                 </td>
                 <td className={cn(
-                  "hidden md:table-cell px-4 py-3 text-sm font-[var(--font-mono)]",
-                  isOver ? "text-[var(--danger)]" : "text-[var(--success)]"
+                  "hidden md:table-cell px-4 py-3 text-sm font-(--font-mono)]",
+                  isOver ? "text-(--danger)]" : "text-(--success)]"
                 )}
                 style={{ color: isOver ? 'var(--danger)' : 'var(--success)' }}>
                   {isOver ? '+' : ''}{formatAmount(ecart)}

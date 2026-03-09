@@ -48,11 +48,11 @@ export function AccountManager({ comptes, onAdd, onEdit, onClose, onReopen, onDe
     <div className="flex flex-col gap-4">
       {/* ── Comptes actifs ── */}
       <div className="flex flex-col gap-2 w-full">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] font-mono">Comptes bancaires</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-(--muted)] font-mono">Comptes bancaires</h3>
         
-        <div className="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--surface)]">
+        <div className="rounded-xl overflow-hidden border border-(--border)] bg-(--surface)]">
           {active.length === 0 && !showAdd && (
-            <div className="px-4 py-6 text-sm text-[var(--muted)] text-center italic">
+            <div className="px-4 py-6 text-sm text-(--muted)] text-center italic">
               Aucun compte actif
             </div>
           )}
@@ -70,14 +70,14 @@ export function AccountManager({ comptes, onAdd, onEdit, onClose, onReopen, onDe
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="flex-1 px-3 py-1.5 rounded-lg text-sm bg-[var(--surface2)] border border-[var(--border)] outline-none"
+                    className="flex-1 px-3 py-1.5 rounded-lg text-sm bg-(--surface2)] border border-(--border)] outline-none"
                   />
                   <input
                     type="text"
                     placeholder="Propriétaire"
                     value={editOwner}
                     onChange={(e) => setEditOwner(e.target.value)}
-                    className="w-28 px-3 py-1.5 rounded-lg text-sm bg-[var(--surface2)] border border-[var(--border)] outline-none"
+                    className="w-28 px-3 py-1.5 rounded-lg text-sm bg-(--surface2)] border border-(--border)] outline-none"
                   />
                   <Button variant="primary" size="sm" isLoading={loading} onClick={() => void handleEdit(compte.id)}>OK</Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditId(null)}>Annuler</Button>
@@ -85,9 +85,9 @@ export function AccountManager({ comptes, onAdd, onEdit, onClose, onReopen, onDe
               ) : (
                 <>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-[var(--text2)]">{compte.name}</span>
+                    <span className="text-sm font-medium text-(--text2)]">{compte.name}</span>
                     {compte.owner && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-[var(--surface2)] text-[var(--muted)]">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-(--surface2)] text-(--muted)]">
                         {compte.owner}
                       </span>
                     )}
@@ -95,7 +95,7 @@ export function AccountManager({ comptes, onAdd, onEdit, onClose, onReopen, onDe
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => { setEditId(compte.id); setEditName(compte.name); setEditOwner(compte.owner || '') }}
-                      className="text-xs px-2 py-1 rounded border border-[var(--border)] bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                      className="text-xs px-2 py-1 rounded border border-(--border)] bg-(--surface2)] text-(--muted)] hover:text-(--text)] transition-colors"
                     >
                       Modifier
                     </button>
@@ -118,19 +118,19 @@ export function AccountManager({ comptes, onAdd, onEdit, onClose, onReopen, onDe
 
           {/* Formulaire ajout intégré en bas de la liste */}
           {showAdd && (
-            <div className="px-4 py-3 flex items-center gap-3 bg-[var(--surface2)]/50">
+            <div className="px-4 py-3 flex items-center gap-3 bg-(--surface2)]/50">
               <input
                 autoFocus
                 placeholder="Nom (ex: Livret A)"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="flex-1 px-3 py-1.5 rounded-lg text-sm bg-[var(--bg)] border border-[var(--border)] outline-none"
+                className="flex-1 px-3 py-1.5 rounded-lg text-sm bg-(--bg)] border border-(--border)] outline-none"
               />
               <input
                 placeholder="Propriétaire"
                 value={newOwner}
                 onChange={(e) => setNewOwner(e.target.value)}
-                className="w-32 px-3 py-1.5 rounded-lg text-sm bg-[var(--bg)] border border-[var(--border)] outline-none"
+                className="w-32 px-3 py-1.5 rounded-lg text-sm bg-(--bg)] border border-(--border)] outline-none"
               />
               <Button variant="primary" size="sm" isLoading={loading} onClick={() => void handleAdd()}>Ajouter</Button>
               <Button variant="ghost" size="sm" onClick={() => setShowAdd(false)}>Annuler</Button>
@@ -143,7 +143,7 @@ export function AccountManager({ comptes, onAdd, onEdit, onClose, onReopen, onDe
             + Nouveau compte
           </Button>
         )}
-        {error && <p className="text-xs text-[var(--danger)] px-1">{error}</p>}
+        {error && <p className="text-xs text-(--danger)] px-1">{error}</p>}
       </div>
 
       {/* ── Comptes fermés ── */}
@@ -151,15 +151,15 @@ export function AccountManager({ comptes, onAdd, onEdit, onClose, onReopen, onDe
         <div className="mt-2">
           <button
             onClick={() => setShowClosed((v) => !v)}
-            className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] font-mono mb-2"
+            className="text-[10px] font-bold uppercase tracking-widest text-(--muted)] font-mono mb-2"
           >
             {showClosed ? '▾' : '▸'} {closed.length} compte{closed.length > 1 ? 's' : ''} fermé{closed.length > 1 ? 's' : ''}
           </button>
           {showClosed && (
-            <div className="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--surface)] opacity-70">
+            <div className="rounded-xl overflow-hidden border border-(--border)] bg-(--surface)] opacity-70">
               {closed.map((compte, i) => (
                 <div key={compte.id} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: i < closed.length - 1 ? border : 'none' }}>
-                  <span className="text-sm line-through text-[var(--muted)]">{compte.name}</span>
+                  <span className="text-sm line-through text-(--muted)]">{compte.name}</span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => void onReopen(compte.id)}

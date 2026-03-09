@@ -27,9 +27,9 @@ export default async function DashboardLayout({
     <ThemeProvider initialTheme={initialTheme}>
       {/* flex : active le mode Flexbox pour aligner Sidebar et Contenu
           min-h-screen : occupe toute la hauteur de l'écran
-          bg-[var(--bg)] : utilise ta variable CSS de fond
+          bg-(--bg)] : utilise ta variable CSS de fond
       */}
-      <div className="flex min-h-screen bg-[var(--bg)]">
+      <div className="flex min-h-screen bg-(--bg)]">
         {/* Masquée sur mobile, visible dès 'md' (768px) */}
         <Sidebar />
         

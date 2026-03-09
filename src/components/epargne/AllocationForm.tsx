@@ -72,15 +72,15 @@ export function AllocationForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
+      <div className="rounded-xl overflow-hidden bg-(--surface)] border border-(--border)]">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-[var(--border)]">
+            <tr className="border-b border-(--border)]">
               {['Projet', 'Solde total', 'Ajout', '%'].map((h) => (
                 <th 
                   key={h} 
                   className={cn(
-                    "px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]",
+                    "px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]",
                     h === 'Solde total' && "hidden md:table-cell" // Masquage responsive de l'entête
                   )}
                 >
@@ -91,16 +91,16 @@ export function AllocationForm({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.projectId} className="border-b border-[var(--border)] last:border-0">
-                <td className="px-4 py-3 text-sm text-[var(--text2)] font-medium">
+              <tr key={row.projectId} className="border-b border-(--border)] last:border-0">
+                <td className="px-4 py-3 text-sm text-(--text2)] font-medium">
                   {row.projectName}
                 </td>
                 {/* Colonne masquée sur mobile */}
-                <td className="hidden md:table-cell px-4 py-3 text-sm text-[var(--text)] font-[var(--font-mono)]">
+                <td className="hidden md:table-cell px-4 py-3 text-sm text-(--text)] font-(--font-mono)]">
                   {formatAmount(row.currentAmount)}
                 </td>
                 <td 
-                  className="px-4 py-3 text-sm font-[var(--font-mono)]"
+                  className="px-4 py-3 text-sm font-(--font-mono)]"
                   style={{ color: row.amount > 0 ? 'var(--success)' : 'var(--muted)' }}
                 >
                   {row.amount > 0 ? '+' : ''}{formatAmount(row.amount)}
@@ -111,23 +111,23 @@ export function AllocationForm({
                       type="number" min="0" max="100" step="0.1"
                       value={row.percentage}
                       onChange={(e) => updatePercentage(row.projectId, e.target.value)}
-                      className="w-14 md:w-20 px-2 py-1 rounded text-sm outline-none bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] font-[var(--font-mono)] focus:border-[var(--accent)]"
+                      className="w-14 md:w-20 px-2 py-1 rounded text-sm outline-none bg-(--surface2)] border border-(--border)] text-(--text)] font-(--font-mono)] focus:border-(--accent)]"
                     />
-                    <span className="hidden xs:inline text-xs text-[var(--muted)]">%</span>
+                    <span className="hidden xs:inline text-xs text-(--muted)]">%</span>
                   </div>
                 </td>
               </tr>
             ))}
 
-            <tr className="bg-[var(--surface2)]">
-              <td className="px-4 py-3 text-xs font-medium uppercase text-[var(--muted)] font-[var(--font-mono)]">Total</td>
+            <tr className="bg-(--surface2)]">
+              <td className="px-4 py-3 text-xs font-medium uppercase text-(--muted)] font-(--font-mono)]">Total</td>
               <td className="hidden md:table-cell" />
-              <td className="px-4 py-3 text-sm font-semibold text-[var(--text)] font-[var(--font-mono)]">
+              <td className="px-4 py-3 text-sm font-semibold text-(--text)] font-(--font-mono)]">
                 {formatAmount(totalAmount)}
               </td>
               <td className={cn(
-                "px-4 py-3 text-sm font-semibold font-[var(--font-mono)]",
-                totalPercent > 100 ? 'text-[var(--danger)]' : 'text-[var(--text)]'
+                "px-4 py-3 text-sm font-semibold font-(--font-mono)]",
+                totalPercent > 100 ? 'text-(--danger)]' : 'text-(--text)]'
               )}>
                 {formatPercent(totalPercent)}
               </td>
@@ -136,26 +136,26 @@ export function AllocationForm({
         </table>
       </div>
 
-      <div className="mx-0 px-5 py-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[var(--surface2)] border border-[var(--border)]">
+      <div className="mx-0 px-5 py-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-(--surface2)] border border-(--border)]">
         <div className="flex flex-col gap-0.5">
-          <span className="text-xs font-medium uppercase tracking-wider text-[var(--muted)] font-[var(--font-mono)]">
+          <span className="text-xs font-medium uppercase tracking-wider text-(--muted)] font-(--font-mono)]">
             Fortune totale
           </span>
-          <span className="text-xs text-[var(--muted2)]">
+          <span className="text-xs text-(--muted2)]">
             Somme de tous les projets actifs
           </span>
         </div>
-        <span className="text-2xl font-semibold text-[var(--accent)] font-[var(--font-mono)]">
+        <span className="text-2xl font-semibold text-(--accent)] font-(--font-mono)]">
           {formatAmount(totalFortune)}
         </span>
       </div>
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 px-1 pb-2">
-        <span className="text-sm text-[var(--muted)]">
+        <span className="text-sm text-(--muted)]">
           Reste après épargne :{' '}
           <span className={cn(
-            "font-[var(--font-mono)]",
-            reste - totalAmount < 0 ? 'text-[var(--danger)]' : 'text-[var(--text)]'
+            "font-(--font-mono)]",
+            reste - totalAmount < 0 ? 'text-(--danger)]' : 'text-(--text)]'
           )}>
             {formatAmount(reste - totalAmount)}
           </span>

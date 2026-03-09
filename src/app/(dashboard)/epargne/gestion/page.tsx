@@ -76,8 +76,8 @@ const scrollTo = (id: string) => {
   className={cn(
     "flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black border uppercase transition-all",
     activeId === s.id 
-      ? "bg-[var(--accent)] text-white border-[var(--accent)]" // FORCE TEXTE BLANC
-      : "bg-[var(--surface)] text-[var(--text2)] border-[var(--border)]"
+      ? "bg-(--accent)] text-white border-(--accent)]" // FORCE TEXTE BLANC
+      : "bg-(--surface)] text-(--text2)] border-(--border)]"
   )}
 >
   <s.icon size={12} /> {s.label}
@@ -90,11 +90,11 @@ const scrollTo = (id: string) => {
         {isLoading ? <div className="p-8"><SkeletonCard /></div> : (
           <>
             <section id="sec-rev" className="scroll-mt-40"><CategoryManager {...commonProps} mode="revenus" /></section>
-            <section id="sec-fix" className="scroll-mt-40 border-t pt-5 border-[var(--border)]"><CategoryManager {...commonProps} mode="fixes" /></section>
-            <section id="sec-var" className="scroll-mt-40 border-t pt-5 border-[var(--border)]"><CategoryManager {...commonProps} mode="variables" /></section>
-            <section id="sec-prj" className="scroll-mt-40 border-t pt-5 border-[var(--border)]"><CategoryManager {...commonProps} mode="projets" /></section>
-            <section id="sec-tag" className="scroll-mt-40 border-t pt-5 border-[var(--border)]"><CategoryManager {...commonProps} mode="tags" /></section>
-            <section id="sec-cpt" className="scroll-mt-40 border-t pt-5 border-[var(--border)] pb-20">
+            <section id="sec-fix" className="scroll-mt-40 border-t pt-5 border-(--border)]"><CategoryManager {...commonProps} mode="fixes" /></section>
+            <section id="sec-var" className="scroll-mt-40 border-t pt-5 border-(--border)]"><CategoryManager {...commonProps} mode="variables" /></section>
+            <section id="sec-prj" className="scroll-mt-40 border-t pt-5 border-(--border)]"><CategoryManager {...commonProps} mode="projets" /></section>
+            <section id="sec-tag" className="scroll-mt-40 border-t pt-5 border-(--border)]"><CategoryManager {...commonProps} mode="tags" /></section>
+            <section id="sec-cpt" className="scroll-mt-40 border-t pt-5 border-(--border)] pb-20">
             <AccountManager comptes={comptes} onAdd={async (n, o) => {}} onEdit={async (id, n, o) => {}} onClose={async (id) => {}} onReopen={async (id) => {}} onDelete={async (id) => {}} />
             </section>
           </>

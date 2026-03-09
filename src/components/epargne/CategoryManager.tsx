@@ -25,21 +25,21 @@ interface CategoryManagerProps {
 function CategoryGroup({ title, items, onEdit, onToggleArchive, deletingId }: any) {
   return (
     <div className="flex flex-col gap-2 w-full">
-      <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] font-mono">{title}</h3>
-      <div className="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--surface)]">
+      <h3 className="text-[10px] font-bold uppercase tracking-widest text-(--muted)] font-mono">{title}</h3>
+      <div className="rounded-xl overflow-hidden border border-(--border)] bg-(--surface)]">
         {items.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-[var(--muted)] italic">Aucune catégorie</p>
+          <p className="px-4 py-3 text-sm text-(--muted)] italic">Aucune catégorie</p>
         ) : (
           items.map((cat: any, i: number) => (
             <div key={cat.id} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none' }}>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-[var(--text2)]">{cat.name}</span>
+                <span className="text-sm font-medium text-(--text2)]">{cat.name}</span>
                 {cat.isFixed && <Badge variant="default">fixe</Badge>}
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => onEdit(cat)}
-                  className="text-xs px-2 py-1 rounded border border-[var(--border)] bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                  className="text-xs px-2 py-1 rounded border border-(--border)] bg-(--surface2)] text-(--muted)] hover:text-(--text)] transition-colors"
                 >
                   Modifier
                 </button>
@@ -161,18 +161,18 @@ export function CategoryManager({
       {(mode === 'all' || mode === 'projets') && (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] font-mono">Projets d'épargne</h3>
-            <div className="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--surface)]">
-              {projets.length === 0 ? <p className="px-4 py-3 text-sm text-[var(--muted)] italic">Aucun projet</p> : projets.map((p, i) => (
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-(--muted)] font-mono">Projets d'épargne</h3>
+            <div className="rounded-xl overflow-hidden border border-(--border)] bg-(--surface)]">
+              {projets.length === 0 ? <p className="px-4 py-3 text-sm text-(--muted)] italic">Aucun projet</p> : projets.map((p, i) => (
                 <div key={p.id} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: i < projets.length - 1 ? '1px solid var(--border)' : 'none' }}>
                   <div className="flex flex-col">
-                      <span className="text-sm font-medium text-[var(--text2)]">{p.name}</span>
-                      <span className="text-[10px] text-[var(--muted)] font-mono">{p.currentAmount.toFixed(2)} €</span>
+                      <span className="text-sm font-medium text-(--text2)]">{p.name}</span>
+                      <span className="text-[10px] text-(--muted)] font-mono">{p.currentAmount.toFixed(2)} €</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => { setEditingProjet(p); setProjetName(p.name); setProjetTarget(p.targetAmount ? String(p.targetAmount) : ''); setIsProjetModalOpen(true); }}
-                      className="text-xs px-2 py-1 rounded border border-[var(--border)] bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                      className="text-xs px-2 py-1 rounded border border-(--border)] bg-(--surface2)] text-(--muted)] hover:text-(--text)] transition-colors"
                     >
                       Modifier
                     </button>
@@ -187,26 +187,26 @@ export function CategoryManager({
 
       {(mode === 'all' || mode === 'tags') && (
         <div className="flex flex-col gap-2">
-          <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] font-mono">Tags</h3>
-          <div className="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--surface)]">
-            <div className="px-4 py-3 border-b border-[var(--border)] bg-[var(--surface2)]/50">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-(--muted)] font-mono">Tags</h3>
+          <div className="rounded-xl overflow-hidden border border-(--border)] bg-(--surface)]">
+            <div className="px-4 py-3 border-b border-(--border)] bg-(--surface2)]/50">
               <input value={tagSearch} onChange={e => setTagSearch(e.target.value)} placeholder="Filtrer les tags..." className="w-full bg-transparent text-sm outline-none" />
             </div>
-            {tagsLoading ? <p className="p-4 text-sm text-[var(--muted)]">Chargement...</p> : 
+            {tagsLoading ? <p className="p-4 text-sm text-(--muted)]">Chargement...</p> : 
              tags.filter(t => t.tag.toLowerCase().includes(tagSearch.toLowerCase())).map((row, i, arr) => (
               <div key={row.tag} className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div className="flex items-center flex-wrap gap-3">
                   {renamingTag === row.tag ? (
-                    <input ref={renameInputRef} value={renameValue} onChange={e => setRenameValue(e.target.value)} onBlur={() => saveRename(row.tag)} onKeyDown={e => e.key === 'Enter' && saveRename(row.tag)} className="px-2 py-0.5 rounded text-sm bg-[var(--surface2)] border border-[var(--accent)] outline-none" />
+                    <input ref={renameInputRef} value={renameValue} onChange={e => setRenameValue(e.target.value)} onBlur={() => saveRename(row.tag)} onKeyDown={e => e.key === 'Enter' && saveRename(row.tag)} className="px-2 py-0.5 rounded text-sm bg-(--surface2)] border border-(--accent)] outline-none" />
                   ) : (
                     <Badge className="font-mono">{row.tag}</Badge>
                   )}
-                  <span className="text-[10px] text-[var(--muted)] font-mono">{row.count} transactions</span>
+                  <span className="text-[10px] text-(--muted)] font-mono">{row.count} transactions</span>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => startRename(row.tag)}
-                    className="text-xs px-2 py-1 rounded border border-[var(--border)] bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                    className="text-xs px-2 py-1 rounded border border-(--border)] bg-(--surface2)] text-(--muted)] hover:text-(--text)] transition-colors"
                   >
                     Modifier
                   </button>
