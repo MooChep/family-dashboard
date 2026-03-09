@@ -35,6 +35,7 @@ RUN npm install -g prisma@5.10.0 && \
     chown -R nextjs:nodejs /usr/local/lib/node_modules && \
     chown -R nextjs:nodejs /usr/local/bin
 
+RUN mkdir -p /app/public
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
