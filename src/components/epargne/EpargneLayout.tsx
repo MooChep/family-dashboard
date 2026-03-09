@@ -34,15 +34,15 @@ export function EpargneLayout({ children, stickySubHeader, periodPicker }: { chi
   }, [])
 
   return (
-    <div className="min-h-screen bg-(--bg)] flex flex-col">
+    <div className="min-h-screen bg-(--bg) flex flex-col">
       
       {/* --- BARRE 1 : Desktop Uniquement --- */}
       <div 
         ref={tabsRef}
-        className="hidden md:block sticky top-0 z-50 w-full border-b border-(--border)] bg-(--bg)]"
+        className="hidden md:block sticky top-0 z-50 w-full border-b border-(--border) bg-(--bg)]"
       >
         <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex gap-1 p-1 rounded-xl bg-(--surface)] border border-(--border)]">
+          <div className="flex gap-1 p-1 rounded-xl bg-(--surface) border border-(--border)]">
 {TABS.map((tab) => {
   const isActive = tab.href === '/epargne' ? pathname === tab.href : pathname.startsWith(tab.href)
   return (
@@ -52,8 +52,8 @@ export function EpargneLayout({ children, stickySubHeader, periodPicker }: { chi
       className={cn(
         'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap',
         isActive 
-          ? 'bg-(--accent)] text-(--surface)] shadow-sm' 
-          : 'text-(--text2)] hover:bg-(--surface2)] hover:text-(--text)]'
+          ? 'bg-(--accent) text-(--surface) shadow-sm' 
+          : 'text-(--text2) hover:bg-(--surface2) hover:text-(--text)]'
       )}
     >
       {/* L'icône héritera de la couleur du texte grâce à sa classe par défaut ou currentColor */}
@@ -73,7 +73,7 @@ export function EpargneLayout({ children, stickySubHeader, periodPicker }: { chi
       {/* --- BARRE 2 : SubHeader (Top 0 Mobile / Sous Barre 1 Desktop) --- */}
       {(stickySubHeader || periodPicker) && (
         <aside
-          className="sticky z-40 w-full border-b border-(--border)] bg-(--bg)]"
+          className="sticky z-40 w-full border-b border-(--border) bg-(--bg)]"
           style={{ top: `${tabsHeight}px` }}
         >
           <div className="max-w-7xl mx-auto px-4 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2">
@@ -97,7 +97,7 @@ export function EpargneLayout({ children, stickySubHeader, periodPicker }: { chi
       </main>
 
       {/* --- BOTTOM NAV : Mobile Uniquement --- */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-(--surface)] border-t border-(--border)] px-2 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-(--surface) border-t border-(--border) px-2 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
         <div className="flex justify-around items-center h-16">
           {TABS.map((tab) => {
             const isActive = tab.href === '/epargne' ? pathname === tab.href : pathname.startsWith(tab.href)

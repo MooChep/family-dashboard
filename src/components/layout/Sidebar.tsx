@@ -38,14 +38,14 @@ export function Sidebar(): React.ReactElement {
 
   return (
     <aside
-      className="fixed left-0 top-0 h-screen w-60 hidden md:flex flex-col z-40 bg-(--surface)] border-r border-(--border)]"
+      className="fixed left-0 top-0 h-screen w-60 hidden md:flex flex-col z-40 bg-(--surface) border-r border-(--border)]"
     >
       {/* ─── Logo ─────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-(--border)]">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-(--accent)] text-(--bg)] font-(--font-mono)]">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-(--accent) text-(--bg) font-(--font-mono)]">
           F
         </div>
-        <span className="text-base font-semibold tracking-wide text-(--text)] font-(--font-display)]">
+        <span className="text-base font-semibold tracking-wide text-(--text) font-(--font-display)]">
           Family Dashboard
         </span>
       </div>
@@ -62,7 +62,7 @@ export function Sidebar(): React.ReactElement {
                   <span className="text-base w-5 text-center text-(--muted)]">{item.icon}</span>
                   <span className="text-sm text-(--muted)]">{item.label}</span>
                 </div>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-(--surface2)] text-(--muted2)] font-(--font-mono)] text-[10px]">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-(--surface2) text-(--muted2) font-(--font-mono) text-[10px]">
                   bientôt
                 </span>
               </div>
@@ -72,7 +72,7 @@ export function Sidebar(): React.ReactElement {
             <Link key={item.href} href={item.href}
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
-                active ? 'bg-(--accent-dim)] text-(--accent)]' : 'text-(--text2)] hover:bg-(--surface2)]'
+                active ? 'bg-(--accent-dim) text-(--accent)]' : 'text-(--text2) hover:bg-(--surface2)]'
               )}>
               <span className="text-base w-5 text-center">{item.icon}</span>
               <span className="text-sm font-medium">{item.label}</span>
@@ -88,7 +88,7 @@ export function Sidebar(): React.ReactElement {
           onClick={() => setProfileOpen(true)}
           className="flex items-center gap-3 px-2 py-2 rounded-xl w-full text-left transition-colors hover:bg-(--surface2)]"
         >
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-(--accent-dim)] text-(--accent)] font-(--font-mono)]">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-(--accent-dim) text-(--accent) font-(--font-mono)]">
             {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : '?'}
           </div>
           <div className="flex flex-col min-w-0 flex-1">
@@ -103,7 +103,7 @@ export function Sidebar(): React.ReactElement {
         </button>
 
         <button onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left text-(--danger)] hover:bg-(--accent-dim)]">
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left text-(--danger) hover:bg-(--accent-dim)]">
           <span className="text-base w-5 text-center">→</span>
           Déconnexion
         </button>

@@ -44,15 +44,15 @@ export function VariableChargesTable({
   }
 
   return (
-    <div className="rounded-xl overflow-hidden bg-(--surface)] border border-(--border)]">
+    <div className="rounded-xl overflow-hidden bg-(--surface) border border-(--border)]">
       <table className="w-full">
         <thead>
           <tr className="border-b border-(--border)]">
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">Catégorie</th>
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">Estimé</th>
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">Réel</th>
-            <th className="hidden md:table-cell px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">Écart</th>
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">Moy. 3 mois</th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">Catégorie</th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">Estimé</th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">Réel</th>
+            <th className="hidden md:table-cell px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">Écart</th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">Moy. 3 mois</th>
           </tr>
         </thead>
         <tbody>
@@ -63,14 +63,14 @@ export function VariableChargesTable({
             const isOverAvg = vsAvg > 0
 
             return (
-              <tr key={charge.categoryId} className="border-b border-(--border)] last:border-0 hover:bg-(--surface2)] transition-colors">
-                <td className="px-4 py-3 text-sm text-(--text2)] font-medium">
+              <tr key={charge.categoryId} className="border-b border-(--border) last:border-0 hover:bg-(--surface2) transition-colors">
+                <td className="px-4 py-3 text-sm text-(--text2) font-medium">
                   {charge.categoryName}
                 </td>
                 <td className="px-4 py-3">
                   {editingId === charge.categoryId ? (
                     <input
-                      className="w-20 md:w-24 px-2 py-1 rounded text-sm outline-none bg-(--surface2)] border border-(--accent)] text-(--text)] font-(--font-mono)]"
+                      className="w-20 md:w-24 px-2 py-1 rounded text-sm outline-none bg-(--surface2) border border-(--accent) text-(--text) font-(--font-mono)]"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       onBlur={() => saveEdit(charge.categoryId)}
@@ -78,7 +78,7 @@ export function VariableChargesTable({
                       autoFocus
                     />
                   ) : (
-                    <button className="text-sm text-left font-(--font-mono)] text-(--text2)] hover:text-(--accent)]" onClick={() => startEdit(charge.categoryId, charge.estimated)}>
+                    <button className="text-sm text-left font-(--font-mono) text-(--text2) hover:text-(--accent)]" onClick={() => startEdit(charge.categoryId, charge.estimated)}>
                       {charge.estimated > 0 ? formatAmount(charge.estimated) : '--'}
                     </button>
                   )}
@@ -91,7 +91,7 @@ export function VariableChargesTable({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-(--font-mono)] text-(--text2)]">
+                    <span className="text-sm font-(--font-mono) text-(--text2)]">
                       {charge.avg3months > 0 ? formatAmount(charge.avg3months) : '--'}
                     </span>
                     {charge.avg3months > 0 && (

@@ -101,7 +101,7 @@ export default function AnalysesEpargnePage(): ReactElement {
               <SectionCard
                 title="Fortune totale"
                 action={
-                  <span className="text-base md:text-lg font-semibold text-(--accent)] font-(--font-mono)]">
+                  <span className="text-base md:text-lg font-semibold text-(--accent) font-(--font-mono)]">
                     {formatAmount(latestWealth)}
                   </span>
                 }
@@ -144,7 +144,7 @@ export default function AnalysesEpargnePage(): ReactElement {
                 ].map((s) => (
                   <div key={s.label} className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                    <span className="text-[10px] text-(--muted)] font-(--font-mono)]">{s.label}</span>
+                    <span className="text-[10px] text-(--muted) font-(--font-mono)]">{s.label}</span>
                   </div>
                 ))}
               </div>
@@ -155,9 +155,9 @@ export default function AnalysesEpargnePage(): ReactElement {
               <SectionCard title="Projections">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {data?.projections.map((p, i) => (
-                    <div key={p.id} className="flex flex-col gap-2 p-4 rounded-xl bg-(--surface2)] border border-(--border)]">
+                    <div key={p.id} className="flex flex-col gap-2 p-4 rounded-xl bg-(--surface2) border border-(--border)]">
                       <div className="text-xs text-(--muted)]">{p.name}</div>
-                      <div className="text-lg font-semibold text-(--text)] font-(--font-mono)]">
+                      <div className="text-lg font-semibold text-(--text) font-(--font-mono)]">
                         {formatAmount(p.currentAmount)}
                       </div>
                       {p.targetAmount && (
@@ -167,21 +167,21 @@ export default function AnalysesEpargnePage(): ReactElement {
                             <div className="h-full rounded-full transition-all" style={{ width: `${p.percentComplete}%`, backgroundColor: COLORS[i % COLORS.length] }} />
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-[10px] text-(--muted)] font-(--font-mono)]">{p.percentComplete.toFixed(0)}%</span>
+                            <span className="text-[10px] text-(--muted) font-(--font-mono)]">{p.percentComplete.toFixed(0)}%</span>
                             {p.monthsToTarget != null && (
-                              <span className="text-[10px] text-(--accent)] font-(--font-mono)]">~{p.monthsToTarget} mois</span>
+                              <span className="text-[10px] text-(--accent) font-(--font-mono)]">~{p.monthsToTarget} mois</span>
                             )}
                           </div>
                         </>
                       )}
                       <div className="flex flex-col gap-0.5 pt-1 border-t border-(--border)]">
                         <div className="flex justify-between items-center text-[10px]">
-                          <span className="text-(--muted)] font-(--font-mono)]">moy./mois</span>
-                          <span className="font-medium text-(--text)] font-(--font-mono)]">{formatAmount(p.avgMonthlySaving)}</span>
+                          <span className="text-(--muted) font-(--font-mono)]">moy./mois</span>
+                          <span className="font-medium text-(--text) font-(--font-mono)]">{formatAmount(p.avgMonthlySaving)}</span>
                         </div>
                         <div className="flex justify-between items-center text-[10px]">
-                          <span className="text-(--muted)] font-(--font-mono)]">% revenus</span>
-                          <span className="font-medium text-(--accent)] font-(--font-mono)]">{p.avgPct.toFixed(1)}%</span>
+                          <span className="text-(--muted) font-(--font-mono)]">% revenus</span>
+                          <span className="font-medium text-(--accent) font-(--font-mono)]">{p.avgPct.toFixed(1)}%</span>
                         </div>
                       </div>
                     </div>

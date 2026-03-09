@@ -52,9 +52,9 @@ export function MonthSummary({ revenus, depenses, reste, allocationPercent }: Mo
     <Card>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <SummaryItem label="Revenus" amount={revenus} color="var(--success)" />
-        <div className="h-px w-full bg-(--border)] md:hidden" /> {/* Séparateur mobile */}
+        <div className="h-px w-full bg-(--border) md:hidden" /> {/* Séparateur mobile */}
         <SummaryItem label="Dépenses" amount={depenses} color="var(--danger)" />
-        <div className="h-px w-full bg-(--border)] md:hidden" />
+        <div className="h-px w-full bg-(--border) md:hidden" />
         <SummaryItem
           label="Reste disponible"
           amount={reste}

@@ -46,20 +46,20 @@ export function FixedChargesTable({
   }
 
   return (
-    <div className="rounded-xl overflow-hidden bg-(--surface)] border border-(--border)]">
+    <div className="rounded-xl overflow-hidden bg-(--surface) border border-(--border)]">
       <table className="w-full">
         <thead>
           <tr className="border-b border-(--border)]">
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">
               Catégorie
             </th>
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">
               Estimé
             </th>
-            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">
               Réel
             </th>
-            <th className="hidden md:table-cell px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]">
+            <th className="hidden md:table-cell px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">
               Écart
             </th>
           </tr>
@@ -70,14 +70,14 @@ export function FixedChargesTable({
             const isOver = ecart > 0
 
             return (
-              <tr key={charge.categoryId} className="border-b border-(--border)] last:border-0 hover:bg-(--surface2)] transition-colors">
-                <td className="px-4 py-3 text-sm text-(--text2)] font-medium">
+              <tr key={charge.categoryId} className="border-b border-(--border) last:border-0 hover:bg-(--surface2) transition-colors">
+                <td className="px-4 py-3 text-sm text-(--text2) font-medium">
                   {charge.categoryName}
                 </td>
                 <td className="px-4 py-3">
                   {editingId === charge.categoryId ? (
                     <input
-                      className="w-20 md:w-24 px-2 py-1 rounded text-sm outline-none bg-(--surface2)] border border-(--accent)] text-(--text)] font-(--font-mono)]"
+                      className="w-20 md:w-24 px-2 py-1 rounded text-sm outline-none bg-(--surface2) border border-(--accent) text-(--text) font-(--font-mono)]"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       onBlur={() => saveEdit(charge.categoryId)}
@@ -89,7 +89,7 @@ export function FixedChargesTable({
                     />
                   ) : (
                     <button
-                      className="text-sm text-left text-(--text2)] font-(--font-mono)] hover:text-(--accent)]"
+                      className="text-sm text-left text-(--text2) font-(--font-mono) hover:text-(--accent)]"
                       onClick={() => startEdit(charge.categoryId, charge.estimated)}
                     >
                       {formatAmount(charge.estimated)}

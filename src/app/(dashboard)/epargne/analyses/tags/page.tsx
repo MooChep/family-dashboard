@@ -240,7 +240,7 @@ export default function AnalysesTagsPage(): ReactElement {
                   </thead>
                   <tbody>
                     {matchingTransactions.map((tx) => (
-                      <tr key={tx.id} style={{ borderBottom: '1px solid var(--border)' }} className="hover:bg-(--surface2)] transition-colors">
+                      <tr key={tx.id} style={{ borderBottom: '1px solid var(--border)' }} className="hover:bg-(--surface2) transition-colors">
                         {/* 2. Réduction de la taille de police pour mobile */}
                         <td className="px-4 py-3 text-[11px] md:text-sm" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{tx.date}</td>
                         <td className="hidden md:table-cell px-4 py-3 text-sm" style={{ color: 'var(--text2)' }}>{tx.category}</td>

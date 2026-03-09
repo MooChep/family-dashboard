@@ -100,7 +100,7 @@ export default function AnalysesDepensesPage(): ReactElement {
                       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
                       <span className="truncate text(--text2)]">{d.label}</span>
                     </div>
-                    <span className="font-semibold text(--text)] font(--font-mono)]">
+                    <span className="font-semibold text(--text) font(--font-mono)]">
                       {formatAmount(d.value)}
                     </span>
                   </div>
@@ -117,7 +117,7 @@ export default function AnalysesDepensesPage(): ReactElement {
                     <select
                       value={activeCat}
                       onChange={(e) => setSelectedCat(e.target.value)}
-                      className="text-xs px-2 py-1 rounded-lg outline-none bg(--surface2)] border border(--border)] text(--text)] font(--font-mono)] w-full md:w-auto mt-2 md:mt-0"
+                      className="text-xs px-2 py-1 rounded-lg outline-none bg(--surface2) border border(--border) text(--text) font(--font-mono) w-full md:w-auto mt-2 md:mt-0"
                     >
                       {categories.map((cat) => (
                         <option key={cat} value={cat}>{cat}</option>
@@ -131,7 +131,7 @@ export default function AnalysesDepensesPage(): ReactElement {
                   height={220}
                   tooltipFormatter={(v) => [v !== undefined ? formatAmount(v) : '—', activeCat]}
                 />
-                <p className="text-[10px] mt-2 text(--muted)] font(--font-mono)]">
+                <p className="text-[10px] mt-2 text(--muted) font(--font-mono)]">
                   <span className="text(--danger)]">●</span> &gt;20% au-dessus de la moy. ({formatAmount(avg)}/m)
                 </p>
               </SectionCard>

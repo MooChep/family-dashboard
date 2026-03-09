@@ -140,7 +140,7 @@ export function TransactionForm({
     if (isNaN(parsedAmount) || parsedAmount === 0) { setError('Montant invalide'); return false }
     if (!isProjectCategory && parsedAmount < 0) { setError('Le montant doit être positif'); return false }
     if (!categoryId) { setError('Sélectionne une catégorie'); return false }
-    const finalTags = tagInput.trim() ? [...tags, tagInput.trim()] : tags
+    const finalTags = tagInput.trim() ? [...tags, tagInput.trim() : tags
     setIsLoading(true)
     try {
       await onSave({ categoryId, amount: parsedAmount, tags: finalTags, pointed })

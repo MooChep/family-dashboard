@@ -72,7 +72,7 @@ export function AllocationForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl overflow-hidden bg-(--surface)] border border-(--border)]">
+      <div className="rounded-xl overflow-hidden bg-(--surface) border border-(--border)]">
         <table className="w-full">
           <thead>
             <tr className="border-b border-(--border)]">
@@ -80,7 +80,7 @@ export function AllocationForm({
                 <th 
                   key={h} 
                   className={cn(
-                    "px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted)] font-(--font-mono)]",
+                    "px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]",
                     h === 'Solde total' && "hidden md:table-cell" // Masquage responsive de l'entête
                   )}
                 >
@@ -91,12 +91,12 @@ export function AllocationForm({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.projectId} className="border-b border-(--border)] last:border-0">
-                <td className="px-4 py-3 text-sm text-(--text2)] font-medium">
+              <tr key={row.projectId} className="border-b border-(--border) last:border-0">
+                <td className="px-4 py-3 text-sm text-(--text2) font-medium">
                   {row.projectName}
                 </td>
                 {/* Colonne masquée sur mobile */}
-                <td className="hidden md:table-cell px-4 py-3 text-sm text-(--text)] font-(--font-mono)]">
+                <td className="hidden md:table-cell px-4 py-3 text-sm text-(--text) font-(--font-mono)]">
                   {formatAmount(row.currentAmount)}
                 </td>
                 <td 
@@ -111,7 +111,7 @@ export function AllocationForm({
                       type="number" min="0" max="100" step="0.1"
                       value={row.percentage}
                       onChange={(e) => updatePercentage(row.projectId, e.target.value)}
-                      className="w-14 md:w-20 px-2 py-1 rounded text-sm outline-none bg-(--surface2)] border border-(--border)] text-(--text)] font-(--font-mono)] focus:border-(--accent)]"
+                      className="w-14 md:w-20 px-2 py-1 rounded text-sm outline-none bg-(--surface2) border border-(--border) text-(--text) font-(--font-mono) focus:border-(--accent)]"
                     />
                     <span className="hidden xs:inline text-xs text-(--muted)]">%</span>
                   </div>
@@ -120,9 +120,9 @@ export function AllocationForm({
             ))}
 
             <tr className="bg-(--surface2)]">
-              <td className="px-4 py-3 text-xs font-medium uppercase text-(--muted)] font-(--font-mono)]">Total</td>
+              <td className="px-4 py-3 text-xs font-medium uppercase text-(--muted) font-(--font-mono)]">Total</td>
               <td className="hidden md:table-cell" />
-              <td className="px-4 py-3 text-sm font-semibold text-(--text)] font-(--font-mono)]">
+              <td className="px-4 py-3 text-sm font-semibold text-(--text) font-(--font-mono)]">
                 {formatAmount(totalAmount)}
               </td>
               <td className={cn(
@@ -136,16 +136,16 @@ export function AllocationForm({
         </table>
       </div>
 
-      <div className="mx-0 px-5 py-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-(--surface2)] border border-(--border)]">
+      <div className="mx-0 px-5 py-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-(--surface2) border border-(--border)]">
         <div className="flex flex-col gap-0.5">
-          <span className="text-xs font-medium uppercase tracking-wider text-(--muted)] font-(--font-mono)]">
+          <span className="text-xs font-medium uppercase tracking-wider text-(--muted) font-(--font-mono)]">
             Fortune totale
           </span>
           <span className="text-xs text-(--muted2)]">
             Somme de tous les projets actifs
           </span>
         </div>
-        <span className="text-2xl font-semibold text-(--accent)] font-(--font-mono)]">
+        <span className="text-2xl font-semibold text-(--accent) font-(--font-mono)]">
           {formatAmount(totalFortune)}
         </span>
       </div>

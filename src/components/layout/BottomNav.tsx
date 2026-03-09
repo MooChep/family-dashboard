@@ -20,7 +20,7 @@ export function BottomNav(): React.ReactElement {
   if (!pathname.startsWith('/epargne')) return <></>
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around z-[100] md:hidden bg-(--surface)] border-(--border)] px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+    <nav className="fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around z-[100] md:hidden bg-(--surface) border-(--border) px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
       {/* Safe Area pour iPhone (encoche du bas) */}
       <div className="absolute inset-0 bg-inherit -z-10" />
       
@@ -45,7 +45,7 @@ export function BottomNav(): React.ReactElement {
             </span>
             
             {active && (
-              <div className="absolute top-0 w-10 h-0.5 rounded-b-full bg-(--accent)] shadow-[0_0_8px_var(--accent)]" />
+              <div className="absolute top-0 w-10 h-0.5 rounded-b-full bg-(--accent) shadow-[0_0_8px_var(--accent)]" />
             )}
           </Link>
         )
