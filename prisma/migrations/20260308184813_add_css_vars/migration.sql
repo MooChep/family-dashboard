@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `Theme` ADD COLUMN `createdBy` VARCHAR(191) NULL,
+    ADD COLUMN `cssVars` LONGTEXT NULL;

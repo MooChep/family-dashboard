@@ -5,9 +5,6 @@ node_modules/
 .next/
 out/
 
-# Prisma
-prisma/migrations/
-
 # Variables d'environnement — ne jamais committer le .env réel
 .env
 .env.local
