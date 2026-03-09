@@ -20,7 +20,7 @@ export default async function DashboardLayout({
     redirect('/auth/login')
   }
 
-  const initialTheme = (session.user.config?.theme ?? 'dark') as ThemeName
+  const initialTheme = (session?.user?.config?.theme ?? 'dark') as ThemeName
 
   return (
     <ThemeProvider initialTheme={initialTheme}>
