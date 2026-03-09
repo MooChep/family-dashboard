@@ -3,51 +3,49 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { LayoutDashboard, Calendar, BarChart3, Scale, Settings } from 'lucide-react'
 
-const MOBILE_ITEMS = [
-  { label: 'Dash',     href: '/',        icon: '⊞' },
-  { label: 'Épargne',  href: '/epargne', icon: '◈' },
-  { label: 'Ménage',   href: '/menage',  icon: '⌂', soon: true },
-  { label: 'Projets',  href: '/projets', icon: '◉', soon: true },
+const EPARGNE_ITEMS = [
+  { label: 'Dash',    href: '/epargne',          icon: LayoutDashboard },
+  { label: 'Mois',    href: '/epargne/mois',     icon: Calendar },
+  { label: 'Analyse', href: '/epargne/analyses', icon: BarChart3 },
+  { label: 'Régul',   href: '/epargne/regul',    icon: Scale },
+  { label: 'Gestion', href: '/epargne/gestion',  icon: Settings },
 ]
 
 export function BottomNav(): React.ReactElement {
   const pathname = usePathname()
 
-  function isActive(href: string): boolean {
-    if (href === '/') return pathname === '/'
-    return pathname.startsWith(href)
-  }
+  // On vérifie qu'on est bien dans la section épargne
+  if (!pathname.startsWith('/epargne')) return <></>
 
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around z-50 md:hidden bg-[var(--surface)] border-[var(--border)] pb-[env(safe-area-inset-bottom)]"
-    >
-      {MOBILE_ITEMS.map((item) => {
-        const active = isActive(item.href)
-        
-        if (item.soon) {
-          return (
-            <div key={item.href} className="flex flex-col items-center opacity-30">
-              <span className="text-xl text-[var(--muted)]">{item.icon}</span>
-              <span className="text-[10px] text-[var(--muted)]">{item.label}</span>
-            </div>
-          )
-        }
+    <nav className="fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around z-[100] md:hidden bg-(--surface) border-(--border) px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+      {/* Safe Area pour iPhone (encoche du bas) */}
+      <div className="absolute inset-0 bg-inherit -z-10" />
+      
+      {EPARGNE_ITEMS.map((item) => {
+        const Icon = item.icon
+        const active = item.href === '/epargne' 
+          ? pathname === item.href 
+          : pathname.startsWith(item.href)
 
         return (
           <Link 
             key={item.href} 
             href={item.href}
             className={cn(
-              "flex flex-col items-center gap-1 transition-colors",
-              active ? "text-[var(--accent)]" : "text-[var(--text2)]"
+              "relative flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all pb-[env(safe-area-inset-bottom)]",
+              active ? "text-(--accent)]" : "text-(--text2)]"
             )}
           >
-            <span className="text-xl">{item.icon}</span>
-            <span className="text-[10px] font-medium uppercase tracking-wider">{item.label}</span>
+            <Icon size={20} strokeWidth={active ? 2.5 : 2} />
+            <span className="text-[9px] font-bold uppercase tracking-tighter">
+              {item.label}
+            </span>
+            
             {active && (
-              <div className="absolute bottom-1 w-1 h-1 rounded-full bg-[var(--accent)]" />
+              <div className="absolute top-0 w-10 h-0.5 rounded-b-full bg-(--accent) shadow-[0_0_8px_var(--accent)]" />
             )}
           </Link>
         )

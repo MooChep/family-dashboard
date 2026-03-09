@@ -4,6 +4,14 @@
 /* Ensuite tes styles globaux, par exemple : */
 @import "./themes.css";
 
+@layer base {
+  *, ::before, ::after {
+    border-width: 0;
+    border-style: solid;
+    border-color: transparent; /* Force la transparence par défaut */
+  }
+}
+
 html {
   /* Thème dark appliqué par défaut avant que ThemeProvider se monte
      évite un flash de fond blanc au premier chargement */

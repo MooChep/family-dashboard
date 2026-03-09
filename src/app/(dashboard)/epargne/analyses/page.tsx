@@ -89,18 +89,19 @@ export default function AnalysesEpargnePage(): ReactElement {
     <EpargneLayout>
       <AnalysesLayout subHeader={periodHeader}>
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <SkeletonCard /><SkeletonCard /><SkeletonCard />
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          /* Passage en 1 colonne sur mobile, 2 sur desktop */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            {/* Fortune totale — stat + courbe */}
-            <div className="col-span-2">
+            {/* Fortune totale */}
+            <div className="md:col-span-2">
               <SectionCard
-                title="Fortune totale — solde cumulé de tous les projets"
+                title="Fortune totale"
                 action={
-                  <span className="text-lg font-semibold" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
+                  <span className="text-base md:text-lg font-semibold text-(--accent) font-(--font-mono)]">
                     {formatAmount(latestWealth)}
                   </span>
                 }
@@ -115,14 +116,16 @@ export default function AnalysesEpargnePage(): ReactElement {
             </div>
 
             {/* Soldes cumulés par projet */}
-            <SectionCard title="Évolution des soldes par projet">
-              <MultiLineChart
-                data={cumulData}
-                lines={data?.projects.map((p) => ({ key: p.name, label: p.name })) ?? []}
-                height={240}
-                formatter={(v, name) => [v !== undefined ? formatAmount(v) : '—', name as string]}
-              />
-            </SectionCard>
+            <div className="col-span-1 md:col-span-1">
+              <SectionCard title="Évolution des soldes">
+                <MultiLineChart
+                  data={cumulData}
+                  lines={data?.projects.map((p) => ({ key: p.name, label: p.name })) ?? []}
+                  height={240}
+                  formatter={(v, name) => [v !== undefined ? formatAmount(v) : '—', name as string]}
+                />
+              </SectionCard>
+            </div>
 
             {/* Taux d'épargne */}
             <SectionCard title="Taux d'épargne mensuel">
@@ -133,7 +136,7 @@ export default function AnalysesEpargnePage(): ReactElement {
                 yAxisFormatter={(v) => `${v}%`}
                 tooltipFormatter={(v) => [v !== undefined ? `${v}%` : '—', 'Taux']}
               />
-              <div className="flex gap-4 mt-3">
+              <div className="flex flex-wrap gap-3 mt-3">
                 {[
                   { label: '≥ 20%', color: 'var(--success)' },
                   { label: '≥ 10%', color: 'var(--warning)' },
@@ -141,59 +144,46 @@ export default function AnalysesEpargnePage(): ReactElement {
                 ].map((s) => (
                   <div key={s.label} className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                    <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{s.label}</span>
+                    <span className="text-[10px] text-(--muted) font-(--font-mono)]">{s.label}</span>
                   </div>
                 ))}
               </div>
             </SectionCard>
 
-            {/* Projections */}
-            <div className="col-span-2">
+            {/* Projections - Grid adaptatif pour les mini-cards */}
+            <div className="col-span-1 md:col-span-2">
               <SectionCard title="Projections">
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {data?.projections.map((p, i) => (
-                    <div key={p.id} className="flex flex-col gap-2 p-4 rounded-xl" style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)' }}>
-                      <div className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{p.name}</div>
-                      <div className="text-xl font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+                    <div key={p.id} className="flex flex-col gap-2 p-4 rounded-xl bg-(--surface2) border border-(--border)]">
+                      <div className="text-xs text-(--muted)]">{p.name}</div>
+                      <div className="text-lg font-semibold text-(--text) font-(--font-mono)]">
                         {formatAmount(p.currentAmount)}
                       </div>
                       {p.targetAmount && (
                         <>
-                          <div className="text-xs" style={{ color: 'var(--muted2)' }}>sur {formatAmount(p.targetAmount)}</div>
-                          <div className="h-1 rounded-full" style={{ backgroundColor: 'var(--surface)' }}>
+                          <div className="text-[10px] text-(--muted2)]">sur {formatAmount(p.targetAmount)}</div>
+                          <div className="h-1 rounded-full bg-(--surface)]">
                             <div className="h-full rounded-full transition-all" style={{ width: `${p.percentComplete}%`, backgroundColor: COLORS[i % COLORS.length] }} />
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{p.percentComplete.toFixed(0)}%</span>
+                            <span className="text-[10px] text-(--muted) font-(--font-mono)]">{p.percentComplete.toFixed(0)}%</span>
                             {p.monthsToTarget != null && (
-                              <span className="text-xs" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>~{p.monthsToTarget} mois</span>
+                              <span className="text-[10px] text-(--accent) font-(--font-mono)]">~{p.monthsToTarget} mois</span>
                             )}
-                          </div>
-                          {/* Moyenne mensuelle + % moyen sur toute l'histoire */}
-                          <div className="flex flex-col gap-0.5 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>moy./mois</span>
-                              <span className="text-xs font-medium" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{formatAmount(p.avgMonthlySaving)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>% revenus</span>
-                              <span className="text-xs font-medium" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{p.avgPct.toFixed(1)}%</span>
-                            </div>
                           </div>
                         </>
                       )}
-                      {!p.targetAmount && (
-                        <div className="flex flex-col gap-0.5 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>moy./mois</span>
-                            <span className="text-xs font-medium" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{formatAmount(p.avgMonthlySaving)}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>% revenus</span>
-                            <span className="text-xs font-medium" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{p.avgPct.toFixed(1)}%</span>
-                          </div>
+                      <div className="flex flex-col gap-0.5 pt-1 border-t border-(--border)]">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-(--muted) font-(--font-mono)]">moy./mois</span>
+                          <span className="font-medium text-(--text) font-(--font-mono)]">{formatAmount(p.avgMonthlySaving)}</span>
                         </div>
-                      )}
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-(--muted) font-(--font-mono)]">% revenus</span>
+                          <span className="font-medium text-(--accent) font-(--font-mono)]">{p.avgPct.toFixed(1)}%</span>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

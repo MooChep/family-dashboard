@@ -42,147 +42,144 @@ export function AccountManager({ comptes, onAdd, onEdit, onClose, onReopen, onDe
     finally { setLoading(false) }
   }
 
-  const row = 'flex items-center justify-between px-4 py-3'
   const border = '1px solid var(--border)'
 
   return (
     <div className="flex flex-col gap-4">
       {/* ── Comptes actifs ── */}
-      <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border }}>
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: border }}>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
-            Comptes bancaires
-          </h3>
-          <Button variant="ghost" size="sm" onClick={() => { setShowAdd(true); setError(null) }}>
-            + Nouveau compte
-          </Button>
+      <div className="flex flex-col gap-2 w-full">
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-(--muted) font-mono">Comptes bancaires</h3>
+        
+        <div className="rounded-xl overflow-hidden border border-(--border) bg-(--surface)]">
+          {active.length === 0 && !showAdd && (
+            <div className="px-4 py-6 text-sm text-(--muted) text-center italic">
+              Aucun compte actif
+            </div>
+          )}
+
+          {active.map((compte, i) => (
+            <div 
+              key={compte.id} 
+              className="flex items-center justify-between px-4 py-3" 
+              style={{ borderBottom: i < active.length - 1 || showAdd ? border : 'none' }}
+            >
+              {editId === compte.id ? (
+                <div className="flex items-center gap-3 flex-1">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="flex-1 px-3 py-1.5 rounded-lg text-sm bg-(--surface2) border border-(--border) outline-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Propriétaire"
+                    value={editOwner}
+                    onChange={(e) => setEditOwner(e.target.value)}
+                    className="w-28 px-3 py-1.5 rounded-lg text-sm bg-(--surface2) border border-(--border) outline-none"
+                  />
+                  <Button variant="primary" size="sm" isLoading={loading} onClick={() => void handleEdit(compte.id)}>OK</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setEditId(null)}>Annuler</Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-(--text2)]">{compte.name}</span>
+                    {compte.owner && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-(--surface2) text-(--muted)]">
+                        {compte.owner}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setEditId(compte.id); setEditName(compte.name); setEditOwner(compte.owner || '') }}
+                      className="text-xs px-2 py-1 rounded border border-(--border) bg-(--surface2) text-(--muted) hover:text-(--text) transition-colors"
+                    >
+                      Modifier
+                    </button>
+                    <button
+                      onClick={() => void onClose(compte.id)}
+                      className="text-xs px-2 py-1 rounded border transition-colors shadow-sm"
+                      style={{ 
+                        color: 'var(--warning)', 
+                        backgroundColor: 'color-mix(in srgb, var(--warning) 10%, transparent)', 
+                        borderColor: 'color-mix(in srgb, var(--warning) 30%, transparent)' 
+                      }}
+                    >
+                      Fermer
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+
+          {/* Formulaire ajout intégré en bas de la liste */}
+          {showAdd && (
+            <div className="px-4 py-3 flex items-center gap-3 bg-(--surface2)]/50">
+              <input
+                autoFocus
+                placeholder="Nom (ex: Livret A)"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="flex-1 px-3 py-1.5 rounded-lg text-sm bg-(--bg) border border-(--border) outline-none"
+              />
+              <input
+                placeholder="Propriétaire"
+                value={newOwner}
+                onChange={(e) => setNewOwner(e.target.value)}
+                className="w-32 px-3 py-1.5 rounded-lg text-sm bg-(--bg) border border-(--border) outline-none"
+              />
+              <Button variant="primary" size="sm" isLoading={loading} onClick={() => void handleAdd()}>Ajouter</Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowAdd(false)}>Annuler</Button>
+            </div>
+          )}
         </div>
 
-        {/* Formulaire ajout */}
-        {showAdd && (
-          <div className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: border, backgroundColor: 'var(--surface2)' }}>
-            <input
-              autoFocus
-              type="text"
-              placeholder="Nom du compte (ex: Livret A)"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void handleAdd(); if (e.key === 'Escape') setShowAdd(false) }}
-              className="flex-1 px-3 py-1.5 rounded-lg text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg)', border, color: 'var(--text)', fontFamily: 'var(--font-body)' }}
-            />
-            <input
-              type="text"
-              placeholder="Propriétaire (ex: Ilan)"
-              value={newOwner}
-              onChange={(e) => setNewOwner(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void handleAdd(); if (e.key === 'Escape') setShowAdd(false) }}
-              className="w-32 px-3 py-1.5 rounded-lg text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg)', border, color: 'var(--text)', fontFamily: 'var(--font-body)' }}
-            />
-            <Button variant="primary" size="sm" isLoading={loading} onClick={() => void handleAdd()}>Ajouter</Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowAdd(false)}>Annuler</Button>
-          </div>
+        {!showAdd && (
+          <Button variant="discrete" size="sm" className="w-fit" onClick={() => { setShowAdd(true); setError(null) }}>
+            + Nouveau compte
+          </Button>
         )}
-
-        {error && (
-          <div className="px-4 py-2 text-xs" style={{ color: 'var(--danger)', borderBottom: border }}>{error}</div>
-        )}
-
-        {active.length === 0 && !showAdd && (
-          <div className="px-4 py-6 text-sm text-center" style={{ color: 'var(--muted)' }}>
-            Aucun compte — ajoute ton premier compte ci-dessus
-          </div>
-        )}
-
-        {active.map((compte, i) => (
-          <div key={compte.id} className={row} style={{ borderBottom: i < active.length - 1 ? border : 'none' }}>
-            {editId === compte.id ? (
-              <div className="flex items-center gap-3 flex-1">
-                <input
-                  autoFocus
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') void handleEdit(compte.id); if (e.key === 'Escape') setEditId(null) }}
-                  className="flex-1 px-3 py-1.5 rounded-lg text-sm outline-none"
-                  style={{ backgroundColor: 'var(--surface2)', border, color: 'var(--text)', fontFamily: 'var(--font-body)' }}
-                />
-                <input
-                  type="text"
-                  placeholder="Propriétaire"
-                  value={editOwner}
-                  onChange={(e) => setEditOwner(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') void handleEdit(compte.id); if (e.key === 'Escape') setEditId(null) }}
-                  className="w-28 px-3 py-1.5 rounded-lg text-sm outline-none"
-                  style={{ backgroundColor: 'var(--surface2)', border, color: 'var(--text)', fontFamily: 'var(--font-body)' }}
-                />
-                <Button variant="primary" size="sm" isLoading={loading} onClick={() => void handleEdit(compte.id)}>OK</Button>
-                <Button variant="ghost" size="sm" onClick={() => setEditId(null)}>Annuler</Button>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm" style={{ color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
-                    {compte.name}
-                  </span>
-                  {compte.owner && (
-                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--surface2)', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-                      {compte.owner}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => { setEditId(compte.id); setEditName(compte.name) }}
-                    className="text-xs px-2 py-1 rounded"
-                    style={{ color: 'var(--muted)', backgroundColor: 'var(--surface2)', border }}
-                  >
-                    Modifier
-                  </button>
-                  <button
-                    onClick={() => void onClose(compte.id)}
-                    className="text-xs px-2 py-1 rounded"
-                    style={{ color: 'var(--warning)', backgroundColor: 'color-mix(in srgb, var(--warning) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)' }}
-                  >
-                    Fermer
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+        {error && <p className="text-xs text-(--danger) px-1">{error}</p>}
       </div>
 
       {/* ── Comptes fermés ── */}
       {closed.length > 0 && (
-        <div>
+        <div className="mt-2">
           <button
             onClick={() => setShowClosed((v) => !v)}
-            className="text-xs mb-2"
-            style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)', background: 'none', border: 'none', cursor: 'pointer' }}
+            className="text-[10px] font-bold uppercase tracking-widest text-(--muted) font-mono mb-2"
           >
             {showClosed ? '▾' : '▸'} {closed.length} compte{closed.length > 1 ? 's' : ''} fermé{closed.length > 1 ? 's' : ''}
           </button>
           {showClosed && (
-            <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border, opacity: 0.7 }}>
+            <div className="rounded-xl overflow-hidden border border-(--border) bg-(--surface) opacity-70">
               {closed.map((compte, i) => (
-                <div key={compte.id} className={row} style={{ borderBottom: i < closed.length - 1 ? border : 'none' }}>
-                  <span className="text-sm line-through" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
-                    {compte.name}
-                  </span>
+                <div key={compte.id} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: i < closed.length - 1 ? border : 'none' }}>
+                  <span className="text-sm line-through text-(--muted)]">{compte.name}</span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => void onReopen(compte.id)}
-                      className="text-xs px-2 py-1 rounded"
-                      style={{ color: 'var(--success)', backgroundColor: 'color-mix(in srgb, var(--success) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)' }}
+                      className="text-xs px-2 py-1 rounded border transition-colors"
+                      style={{ 
+                        color: 'var(--success)', 
+                        backgroundColor: 'color-mix(in srgb, var(--success) 10%, transparent)', 
+                        borderColor: 'color-mix(in srgb, var(--success) 30%, transparent)' 
+                      }}
                     >
                       Rouvrir
                     </button>
                     <button
                       onClick={() => void onDelete(compte.id)}
-                      className="text-xs px-2 py-1 rounded"
-                      style={{ color: 'var(--danger)', backgroundColor: 'color-mix(in srgb, var(--danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)' }}
+                      className="text-xs px-2 py-1 rounded border transition-colors"
+                      style={{ 
+                        color: 'var(--danger)', 
+                        backgroundColor: 'color-mix(in srgb, var(--danger) 10%, transparent)', 
+                        borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)' 
+                      }}
                     >
                       Supprimer
                     </button>

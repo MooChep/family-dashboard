@@ -34,7 +34,7 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
     ports:
-      - "3000:3000"
+      - "3010:3000"
     # Note : On ne met plus de volumes ici pour laisser Docker utiliser
     # les fichiers compilés à l'intérieur de l'image.
 

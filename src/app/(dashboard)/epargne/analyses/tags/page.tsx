@@ -51,8 +51,6 @@ export default function AnalysesTagsPage(): ReactElement {
 
   const allTags = data ? Object.keys(data.txsByTag) : []
 
-  // Construit la liste des catégories depuis txsByTag (et non tagsSummary)
-  // pour inclure toutes les catégories réelles, y compris les projets d'épargne
   const categories = data
     ? [...new Set(Object.values(data.txsByTag).flat().map((t) => t.category))].sort()
     : []
@@ -99,7 +97,7 @@ export default function AnalysesTagsPage(): ReactElement {
         seen.add(tx.id)
         return true
       })
-      .sort((a, b) => a.date.localeCompare(b.date))
+      .sort((a, b) => b.date.localeCompare(a.date)) // Tri par date décroissante pour le tableau
   })()
 
   const netTotal = matchingTransactions.reduce(
@@ -107,11 +105,9 @@ export default function AnalysesTagsPage(): ReactElement {
     0,
   )
 
-  // Filtre les cards par catégorie en utilisant txsByTag comme source de vérité
   const tagCards = data
     ? data.tagsSummary.filter((t) => {
         if (catFilter === '') return true
-        // Vérifie si ce tag a au moins une transaction dans la catégorie filtrée
         const txsForTag = data.txsByTag[t.tag] ?? []
         return txsForTag.some((tx) => tx.category === catFilter)
       })
@@ -125,11 +121,9 @@ export default function AnalysesTagsPage(): ReactElement {
     <EpargneLayout>
       <AnalysesLayout subHeader={periodHeader}>
 
-        {/* Recherche multi-tags */}
+        {/* 3. Empilement des Filtres (Stacking) */}
         <SectionCard title="Recherche par tag">
-          <div className="flex gap-3">
-
-            {/* Anchor wrapper — utilisé pour calculer la position du dropdown */}
+          <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1" ref={anchorRef}>
               <div
                 className="flex flex-wrap gap-1.5 px-3 py-2 rounded-lg min-h-10 cursor-text"
@@ -153,27 +147,25 @@ export default function AnalysesTagsPage(): ReactElement {
                   onKeyDown={handleKeyDown}
                   onFocus={() => setShowSugg(true)}
                   onBlur={() => setTimeout(() => setShowSugg(false), 150)}
-                  placeholder={searchTags.length === 0 ? 'courses, nantes... (Entrée pour combiner)' : ''}
+                  placeholder={searchTags.length === 0 ? 'Rechercher...' : ''}
                   className="flex-1 outline-none text-sm bg-transparent min-w-32"
                   style={{ color: 'var(--text)', fontFamily: 'var(--font-body)' }}
                 />
               </div>
             </div>
 
-            <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+            <select 
+              value={catFilter} 
+              onChange={(e) => setCatFilter(e.target.value)} 
+              className="px-3 py-2 rounded-lg text-sm outline-none w-full md:w-auto" 
+              style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
+            >
               <option value="">Toutes catégories</option>
               {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
             </select>
           </div>
-
-          {searchTags.length > 1 && (
-            <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
-              Transactions avec <strong style={{ color: 'var(--accent)' }}>tous</strong> les tags : {searchTags.join(' + ')}
-            </p>
-          )}
         </SectionCard>
 
-        {/* Dropdown suggestions — position fixe pour ne pas être clippé */}
         {showSugg && suggestions.length > 0 && dropdownPos && (
           <div
             style={{
@@ -210,15 +202,15 @@ export default function AnalysesTagsPage(): ReactElement {
         )}
 
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4"><SkeletonCard /><SkeletonCard /></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><SkeletonCard /><SkeletonCard /></div>
         ) : searchTags.length > 0 ? (
 
-          /* ── Vue tableau : transactions individuelles ── */
+          /* ── 1. La Dualité d'Affichage : Mode Tableau Actif ── */
           <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <div>
                 <h3 className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
-                  {searchTags.join(' + ')}
+                  Résultats : {searchTags.join(' + ')}
                 </h3>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
                   {matchingTransactions.length} transaction{matchingTransactions.length > 1 ? 's' : ''}
@@ -228,93 +220,108 @@ export default function AnalysesTagsPage(): ReactElement {
                 <div className="text-lg font-semibold" style={{ color: netTotal >= 0 ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
                   {netTotal >= 0 ? '+' : ''}{formatAmount(netTotal)}
                 </div>
-                <div className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>total net</div>
+                <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>Total Net</div>
               </div>
             </div>
 
             {matchingTransactions.length === 0 ? (
-              <p className="px-5 py-4 text-sm" style={{ color: 'var(--muted)' }}>Aucune transaction avec tous ces tags sur cette période</p>
+              <p className="px-5 py-8 text-center text-sm" style={{ color: 'var(--muted)' }}>Aucun résultat pour cette combinaison.</p>
             ) : (
-              <table className="w-full">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Mois', 'Catégorie', 'Tags', 'Montant'].map((h) => (
-                      <th key={h} className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {matchingTransactions.map((tx) => (
-                    <tr key={tx.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td className="px-4 py-2.5 text-sm" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>{tx.month}</td>
-                      <td className="px-4 py-2.5 text-sm" style={{ color: 'var(--text2)' }}>{tx.category}</td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex flex-wrap gap-1">
-                          {tx.tags.map((tag) => (
-                            <span key={tag} className="px-1.5 py-0.5 rounded text-xs" style={{ backgroundColor: searchTags.some((st) => tag.toLowerCase().includes(st.toLowerCase())) ? 'var(--accent-dim)' : 'var(--surface2)', color: searchTags.some((st) => tag.toLowerCase().includes(st.toLowerCase())) ? 'var(--accent)' : 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 text-sm text-right" style={{ color: tx.isIncome ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
-                        {tx.isIncome ? '+' : '-'}{formatAmount(tx.amount)}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>Date</th>
+                      {/* 2. Le Masquage Sélectif : hidden md:table-cell */}
+                      <th className="hidden md:table-cell px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>Catégorie</th>
+                      <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>Tags</th>
+                      <th className="px-4 py-2 text-right text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>Montant</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {matchingTransactions.map((tx) => (
+                      <tr key={tx.id} style={{ borderBottom: '1px solid var(--border)' }} className="hover:bg-(--surface2) transition-colors">
+                        {/* 2. Réduction de la taille de police pour mobile */}
+                        <td className="px-4 py-3 text-[11px] md:text-sm" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{tx.date}</td>
+                        <td className="hidden md:table-cell px-4 py-3 text-sm" style={{ color: 'var(--text2)' }}>{tx.category}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {tx.tags.map((tag) => (
+                              <span key={tag} className="px-1 py-0.5 rounded text-[10px]" style={{ 
+                                backgroundColor: searchTags.some((st) => tag.toLowerCase().includes(st.toLowerCase())) ? 'var(--accent-dim)' : 'var(--surface2)', 
+                                color: searchTags.some((st) => tag.toLowerCase().includes(st.toLowerCase())) ? 'var(--accent)' : 'var(--muted)', 
+                                fontFamily: 'var(--font-mono)' 
+                              }}>
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-medium" style={{ color: tx.isIncome ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
+                          {tx.isIncome ? '+' : '-'}{formatAmount(tx.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
-        ) : tagCards.length === 0 ? (
-          <div className="rounded-xl p-10 text-center" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              {catFilter ? 'Aucun résultat' : 'Aucun tag enregistré sur cette période'}
-            </p>
-          </div>
         ) : (
 
-          /* ── Vue cards : résumé par tag ── */
-          <div className="grid grid-cols-2 gap-4">
-            {tagCards.map((t, i) => {
-              // Filtre les entries par catégorie si un filtre est actif
-              const filteredEntries = catFilter
-                ? (data?.txsByTag[t.tag] ?? [])
-                    .filter((tx) => tx.category === catFilter)
-                    .map((tx) => ({ month: tx.month, amount: tx.amount, isIncome: tx.isIncome }))
-                : t.entries
-              const cardNet = filteredEntries.reduce((sum, e) => sum + (e.isIncome ? e.amount : -e.amount), 0)
-              const isNet = cardNet >= 0
-              return (
-                <div key={i} className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <div className="flex items-start justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <div>
-                      <div className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t.tag}</div>
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                        {catFilter || t.category}
+          /* ── 1. La Dualité d'Affichage : Mode Cards (Pas de recherche) ── */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {tagCards.length === 0 ? (
+              <div className="col-span-full rounded-xl p-10 text-center" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>{catFilter ? 'Aucun résultat pour cette catégorie' : 'Aucun tag sur cette période'}</p>
+              </div>
+            ) : (
+              tagCards.map((t, i) => {
+                {/* 4. La source de vérité des données : recalcul dynamique par catégorie */}
+                const filteredEntries = catFilter
+                  ? (data?.txsByTag[t.tag] ?? [])
+                      .filter((tx) => tx.category === catFilter)
+                      .map((tx) => ({ month: tx.month, amount: tx.amount, isIncome: tx.isIncome }))
+                  : t.entries
+                
+                const cardNet = filteredEntries.reduce((sum, e) => sum + (e.isIncome ? e.amount : -e.amount), 0)
+                const isNet = cardNet >= 0
+
+                return (
+                  <div key={i} className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    <div className="flex items-start justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+                      <div>
+                        <div className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{t.tag}</div>
+                        <div className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'var(--muted)' }}>
+                          {catFilter || 'Multi-catégories'}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-semibold" style={{ color: isNet ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
+                          {isNet ? '+' : ''}{formatAmount(cardNet)}
+                        </div>
+                        <div className="text-[10px]" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{filteredEntries.length} op.</div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-semibold" style={{ color: isNet ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
-                        {isNet ? '+' : ''}{formatAmount(cardNet)}
-                      </div>
-                      <div className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{filteredEntries.length} op.</div>
+                    {/* 1. Masquage de la liste sur mobile pour éviter les pages trop longues */}
+                    <div className="hidden md:flex flex-col gap-1 px-5 py-3 bg-[rgba(0,0,0,0.02)]">
+                      {filteredEntries.slice(0, 5).map((e, j) => (
+                        <div key={j} className="flex justify-between items-center px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--surface2)' }}>
+                          <span className="text-[10px]" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{e.month}</span>
+                          <span className="text-[10px] font-medium" style={{ color: e.isIncome ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
+                            {e.isIncome ? '+' : '-'}{formatAmount(e.amount)}
+                          </span>
+                        </div>
+                      ))}
+                      {filteredEntries.length > 5 && (
+                        <div className="text-center text-[9px] mt-1" style={{ color: 'var(--muted)' }}>+ {filteredEntries.length - 5} autres mois</div>
+                      )}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-1 px-5 py-3">
-                    {filteredEntries.map((e, j) => (
-                      <div key={j} className="flex justify-between items-center px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--surface2)' }}>
-                        <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{e.month}</span>
-                        <span className="text-xs" style={{ color: e.isIncome ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
-                          {e.isIncome ? '+' : '-'}{formatAmount(e.amount)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })
+            )}
           </div>
         )}
       </AnalysesLayout>

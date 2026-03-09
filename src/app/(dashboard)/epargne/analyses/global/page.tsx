@@ -67,35 +67,31 @@ export default function AnalysesGlobalPage(): ReactElement {
     <EpargneLayout>
       <AnalysesLayout subHeader={periodHeader}>
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4">
-            <SkeletonCard /><SkeletonCard /><SkeletonCard />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SkeletonCard /><SkeletonCard />
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <SectionCard title="Moyennes mensuelles sur la période">
-                <div className="grid grid-cols-3 gap-4">
-                  <StatCard label="Revenus"  value={formatAmount(avgRev)} sub="/ mois en moyenne" color="var(--success)" />
-                  <StatCard label="Dépenses" value={formatAmount(avgDep)} sub="/ mois en moyenne" color="var(--danger)" />
-                  <StatCard label="Épargne"  value={formatAmount(avgSav)} sub="/ mois en moyenne" color="var(--accent)" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="col-span-1 md:col-span-2">
+              <SectionCard title="Moyennes mensuelles">
+                {/* Grid adaptatif : 1 col mobile, 3 cols desktop */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <StatCard label="Revenus"  value={formatAmount(avgRev)} sub="/ mois moy." color="var(--success)" />
+                  <StatCard label="Dépenses" value={formatAmount(avgDep)} sub="/ mois moy." color="var(--danger)" />
+                  <StatCard label="Épargne"  value={formatAmount(avgSav)} sub="/ mois moy." color="var(--accent)" />
                 </div>
               </SectionCard>
             </div>
+            
             <SectionCard title="Solde net mensuel">
-              <BarChartVertical
-                data={netData}
-                height={220}
-                tooltipFormatter={(v) => [v !== undefined ? formatAmount(v) : '—', 'Solde net']}
-              />
+              <BarChartVertical data={netData} height={200} />
             </SectionCard>
+
             <SectionCard title="Revenus vs Dépenses">
               <MultiLineChart
                 data={revDepData}
-                lines={[
-                  { key: 'Revenus',  label: 'Revenus' },
-                  { key: 'Dépenses', label: 'Dépenses' },
-                ]}
-                height={220}
+                lines={[{ key: 'Revenus', label: 'Rev.' }, { key: 'Dépenses', label: 'Dép.' }]}
+                height={200}
               />
             </SectionCard>
           </div>

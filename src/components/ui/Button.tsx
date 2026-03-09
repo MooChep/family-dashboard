@@ -1,7 +1,7 @@
 import { type ButtonHTMLAttributes, type ReactElement } from 'react'
 import { cn } from '@/lib/utils'
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'discrete'
 type ButtonSize = 'sm' | 'md' | 'lg'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -30,6 +30,11 @@ const VARIANT_STYLES: Record<ButtonVariant, React.CSSProperties> = {
     backgroundColor: 'transparent',
     color: 'var(--danger)',
     border: '1px solid var(--danger)',
+  },
+  discrete: {
+    backgroundColor: 'transparent',
+    color: 'var(--accent)',
+    border: '1px solid var(--accent)',
   },
 }
 

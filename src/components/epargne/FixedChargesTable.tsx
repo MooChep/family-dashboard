@@ -2,6 +2,7 @@
 
 import { useState, type ReactElement } from 'react'
 import { formatAmount } from '@/lib/formatters'
+import { cn } from '@/lib/utils'
 
 interface FixedChargeRow {
   categoryId: string
@@ -38,32 +39,29 @@ export function FixedChargesTable({
 
   if (charges.length === 0) {
     return (
-      <p className="text-sm" style={{ color: 'var(--muted)' }}>
+      <p className="text-sm text-(--muted)]">
         Aucune charge fixe configurée
       </p>
     )
   }
 
   return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{
-        backgroundColor: 'var(--surface)',
-        border: '1px solid var(--border)',
-      }}
-    >
+    <div className="rounded-b-xl overflow-hidden bg-(--surface) border border-(--border)]">
       <table className="w-full">
         <thead>
-          <tr style={{ borderBottom: '1px solid var(--border)' }}>
-            {['Catégorie', 'Estimé', 'Réel', 'Écart'].map((h) => (
-              <th
-                key={h}
-                className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left"
-                style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}
-              >
-                {h}
-              </th>
-            ))}
+          <tr className="border-b border-(--border)]">
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">
+              Catégorie
+            </th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">
+              Estimé
+            </th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">
+              Réel
+            </th>
+            <th className="hidden md:table-cell px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">
+              Écart
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -72,26 +70,14 @@ export function FixedChargesTable({
             const isOver = ecart > 0
 
             return (
-              <tr
-                key={charge.categoryId}
-                style={{ borderBottom: '1px solid var(--border)' }}
-              >
-                <td
-                  className="px-4 py-3 text-sm"
-                  style={{ color: 'var(--text2)' }}
-                >
+              <tr key={charge.categoryId} className="border-b border-(--border) last:border-0 hover:bg-(--surface2) transition-colors">
+                <td className="px-4 py-3 text-sm text-(--text2) font-medium">
                   {charge.categoryName}
                 </td>
                 <td className="px-4 py-3">
                   {editingId === charge.categoryId ? (
                     <input
-                      className="w-24 px-2 py-1 rounded text-sm outline-none"
-                      style={{
-                        backgroundColor: 'var(--surface2)',
-                        border: '1px solid var(--accent)',
-                        color: 'var(--text)',
-                        fontFamily: 'var(--font-mono)',
-                      }}
+                      className="w-20 md:w-24 px-2 py-1 rounded text-sm outline-none bg-(--surface2) border border-(--accent) text-(--text) font-(--font-mono)]"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       onBlur={() => saveEdit(charge.categoryId)}
@@ -103,34 +89,24 @@ export function FixedChargesTable({
                     />
                   ) : (
                     <button
-                      className="text-sm text-left"
-                      style={{
-                        color: 'var(--text2)',
-                        fontFamily: 'var(--font-mono)',
-                      }}
+                      className="text-sm text-left text-(--text2) font-(--font-mono) hover:text-(--accent)]"
                       onClick={() => startEdit(charge.categoryId, charge.estimated)}
-                      title="Cliquer pour modifier"
                     >
                       {formatAmount(charge.estimated)}
                     </button>
                   )}
                 </td>
-                <td
-                  className="px-4 py-3 text-sm"
-                  style={{
-                    color: isOver ? 'var(--danger)' : 'var(--text2)',
-                    fontFamily: 'var(--font-mono)',
-                  }}
-                >
+                <td className={cn(
+                  "px-4 py-3 text-sm font-(--font-mono)]",
+                  isOver ? "text-(--danger)]" : "text-(--text2)]"
+                )} style={{ color: isOver ? 'var(--danger)' : 'var(--text2)' }}>
                   {formatAmount(charge.reel)}
                 </td>
-                <td
-                  className="px-4 py-3 text-sm"
-                  style={{
-                    color: isOver ? 'var(--danger)' : 'var(--success)',
-                    fontFamily: 'var(--font-mono)',
-                  }}
-                >
+                <td className={cn(
+                  "hidden md:table-cell px-4 py-3 text-sm font-(--font-mono)]",
+                  isOver ? "text-(--danger)]" : "text-(--success)]"
+                )}
+                style={{ color: isOver ? 'var(--danger)' : 'var(--success)' }}>
                   {isOver ? '+' : ''}{formatAmount(ecart)}
                 </td>
               </tr>

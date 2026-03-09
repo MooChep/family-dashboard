@@ -2,6 +2,7 @@
 
 import { useState, type ReactElement } from 'react'
 import { formatAmount } from '@/lib/formatters'
+import { cn } from '@/lib/utils'
 
 export interface VariableChargeRow {
   categoryId: string
@@ -36,73 +37,81 @@ export function VariableChargesTable({
 
   if (charges.length === 0) {
     return (
-      <p className="px-5 py-4 text-sm" style={{ color: 'var(--muted)' }}>
-        Aucune categorie variable ce mois
+      <p className="px-5 py-4 text-sm text-(--muted)]">
+        Aucune catégorie variable ce mois
       </p>
     )
   }
 
   return (
-    <table className="w-full">
-      <thead>
-        <tr style={{ borderBottom: '1px solid var(--border)' }}>
-          {['Categorie', 'Estime', 'Reel', 'Ecart', 'Moy. 3 mois'].map((h) => (
-            <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {charges.map((charge) => {
-          const ecart = charge.reel - charge.estimated
-          const isOver = ecart > 0
-          const vsAvg = charge.reel - charge.avg3months
-          const isOverAvg = vsAvg > 0
-          return (
-            <tr key={charge.categoryId} style={{ borderBottom: '1px solid var(--border)' }}>
-              <td className="px-4 py-3 text-sm" style={{ color: 'var(--text2)' }}>
-                {charge.categoryName}
-              </td>
-              <td className="px-4 py-3">
-                {editingId === charge.categoryId ? (
-                  <input
-                    className="w-24 px-2 py-1 rounded text-sm outline-none"
-                    style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--accent)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onBlur={() => saveEdit(charge.categoryId)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') void saveEdit(charge.categoryId); if (e.key === 'Escape') setEditingId(null) }}
-                    autoFocus
-                  />
-                ) : (
-                  <button className="text-sm text-left" style={{ color: charge.estimated > 0 ? 'var(--text2)' : 'var(--muted)', fontFamily: 'var(--font-mono)' }} onClick={() => startEdit(charge.categoryId, charge.estimated)} title="Cliquer pour modifier">
-                    {charge.estimated > 0 ? formatAmount(charge.estimated) : '--'}
-                  </button>
-                )}
-              </td>
-              <td className="px-4 py-3 text-sm" style={{ color: charge.estimated > 0 && isOver ? 'var(--danger)' : 'var(--text2)', fontFamily: 'var(--font-mono)' }}>
-                {formatAmount(charge.reel)}
-              </td>
-              <td className="px-4 py-3 text-sm" style={{ color: charge.estimated > 0 ? (isOver ? 'var(--danger)' : 'var(--success)') : 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-                {charge.estimated > 0 ? (isOver ? '+' : '') + formatAmount(ecart) : '--'}
-              </td>
-              <td className="px-4 py-3" style={{ fontFamily: 'var(--font-mono)' }}>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm" style={{ color: 'var(--text2)' }}>
-                    {charge.avg3months > 0 ? formatAmount(charge.avg3months) : '--'}
-                  </span>
-                  {charge.avg3months > 0 && (
-                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: isOverAvg ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)', color: isOverAvg ? 'var(--danger)' : 'var(--success)' }}>
-                      {isOverAvg ? '+' : ''}{formatAmount(vsAvg)}
-                    </span>
+    <div className="rounded-b-xl overflow-hidden bg-(--surface) border border-(--border)]">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-(--border)]">
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">Catégorie</th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">Estimé</th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">Réel</th>
+            <th className="hidden md:table-cell px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">Écart</th>
+            <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]">Moy. 3 mois</th>
+          </tr>
+        </thead>
+        <tbody>
+          {charges.map((charge) => {
+            const ecart = charge.reel - charge.estimated
+            const isOver = ecart > 0
+            const vsAvg = charge.reel - charge.avg3months
+            const isOverAvg = vsAvg > 0
+
+            return (
+              <tr key={charge.categoryId} className="border-b border-(--border) last:border-0 hover:bg-(--surface2) transition-colors">
+                <td className="px-4 py-3 text-sm text-(--text2) font-medium">
+                  {charge.categoryName}
+                </td>
+                <td className="px-4 py-3">
+                  {editingId === charge.categoryId ? (
+                    <input
+                      className="w-20 md:w-24 px-2 py-1 rounded text-sm outline-none bg-(--surface2) border border-(--accent) text-(--text) font-(--font-mono)]"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={() => saveEdit(charge.categoryId)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') void saveEdit(charge.categoryId); if (e.key === 'Escape') setEditingId(null) }}
+                      autoFocus
+                    />
+                  ) : (
+                    <button className="text-sm text-left font-(--font-mono) text-(--text2) hover:text-(--accent)]" onClick={() => startEdit(charge.categoryId, charge.estimated)}>
+                      {charge.estimated > 0 ? formatAmount(charge.estimated) : '--'}
+                    </button>
                   )}
-                </div>
-              </td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
+                </td>
+                <td className={cn("px-4 py-3 text-sm font-(--font-mono)]")} style={{ color: charge.estimated > 0 && isOver ? 'var(--danger)' : 'var(--text2)' }}>
+                  {formatAmount(charge.reel)}
+                </td>
+                <td className={cn("hidden md:table-cell px-4 py-3 text-sm font-(--font-mono)]")} style={{ color: charge.estimated > 0 ? (isOver ? 'var(--danger)' : 'var(--success)') : 'var(--muted)' }}>
+                  {charge.estimated > 0 ? (isOver ? '+' : '') + formatAmount(ecart) : '--'}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-(--font-mono) text-(--text2)]">
+                      {charge.avg3months > 0 ? formatAmount(charge.avg3months) : '--'}
+                    </span>
+                    {charge.avg3months > 0 && (
+                      <span 
+                        className="text-[10px] px-1.5 py-0.5 rounded font-(--font-mono)]"
+                        style={{ 
+                          backgroundColor: isOverAvg ? 'color-mix(in srgb, var(--danger) 15%, transparent)' : 'color-mix(in srgb, var(--success) 15%, transparent)',
+                          color: isOverAvg ? 'var(--danger)' : 'var(--success)' 
+                        }}
+                      >
+                        {isOverAvg ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
   )
 }

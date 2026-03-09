@@ -19,7 +19,7 @@ interface SummaryItemProps {
 
 function SummaryItem({ label, amount, color, sub }: SummaryItemProps): ReactElement {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 items-center">
       <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
         {label}
       </span>
@@ -48,11 +48,14 @@ export function MonthSummary({ revenus, depenses, reste, allocationPercent }: Mo
     </span>
   )
 
-  return (
+ return (
     <Card>
-      <div className="grid grid-cols-3 gap-6">
-        <SummaryItem label="Revenus"  amount={revenus}  color="var(--success)" />
+      <div className="flex flex-wrap justify-around md:grid-cols-3 gap-6">
+        
+        <SummaryItem label="Revenus" amount={revenus} color="var(--success)" />
+        {/* <div className="h-px w-full bg-(--border) md:hidden" /> Séparateur mobile */}
         <SummaryItem label="Dépenses" amount={depenses} color="var(--danger)" />
+        {/* <div className="h-px w-full bg-(--border) md:hidden" /> */}
         <SummaryItem
           label="Reste disponible"
           amount={reste}
