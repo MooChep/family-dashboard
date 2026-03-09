@@ -4,16 +4,12 @@ import { compare } from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 
 export const authOptions: NextAuthOptions = {
-  // On utilise JWT pour les sessions car Credentials Provider
-  // n'est pas compatible avec les sessions BDD de NextAuth
   session: {
     strategy: 'jwt',
-    // Durée de vie de la session : 30 jours
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: 30 * 24 * 60 * 60, // 30 jours
   },
 
   pages: {
-    // Page de connexion personnalisée
     signIn: '/auth/login',
   },
 
@@ -26,82 +22,101 @@ export const authOptions: NextAuthOptions = {
       },
 
       async authorize(credentials) {
+        // Log de début de tentative
+        console.log("DEBUG_AUTH: Tentative de connexion pour l'email :", credentials?.email);
+
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email et mot de passe requis')
+          console.error("DEBUG_AUTH: Email ou mot de passe manquant dans la requête");
+          throw new Error('Email et mot de passe requis');
         }
 
-        // Recherche de l'utilisateur avec sa config
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          include: {
-            config: {
-              include: {
-                theme: true,
+        try {
+          // Recherche de l'utilisateur
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email.toLowerCase().trim() }, // On nettoie l'email
+            include: {
+              config: {
+                include: {
+                  theme: true,
+                },
               },
             },
-          },
-        })
+          });
 
-        if (!user) {
-          throw new Error('Identifiants invalides')
-        }
+          if (!user) {
+            console.warn("DEBUG_AUTH: Aucun utilisateur trouvé en BDD avec cet email");
+            throw new Error('Identifiants invalides');
+          }
 
-        // compare() vérifie le mot de passe en clair contre le hash bcrypt stocké
-        const isPasswordValid = await compare(credentials.password, user.password)
+          console.log("DEBUG_AUTH: Utilisateur trouvé, vérification du mot de passe...");
 
-        if (!isPasswordValid) {
-          throw new Error('Identifiants invalides')
-        }
+          // Comparaison du mot de passe
+          const isPasswordValid = await compare(credentials.password, user.password);
+          
+          if (!isPasswordValid) {
+            console.warn("DEBUG_AUTH: Mot de passe incorrect pour cet utilisateur");
+            // Note : On vérifie si le hash en BDD ressemble à un hash bcrypt valide
+            if (!user.password.startsWith('$2')) {
+              console.error("DEBUG_AUTH: Attention, le hash en BDD semble corrompu ou mal formaté :", user.password.substring(0, 10) + "...");
+            }
+            throw new Error('Identifiants invalides');
+          }
 
-        // preferences est stocké en BDD comme string JSON — on le parse avant usage
-        const parsePreferences = (raw: unknown): Record<string, unknown> => {
-          if (!raw) return {}
-          try { return typeof raw === 'string' ? (JSON.parse(raw) as Record<string, unknown>) : (raw as Record<string, unknown>) }
-          catch { return {} }
-        }
+          console.log("DEBUG_AUTH: Connexion réussie pour :", user.email);
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          config: user.config
-            ? {
-                theme: user.config.themeId,
-                preferences: parsePreferences(user.config.preferences),
-              }
-            : {
-                theme: 'dark',
-                preferences: {},
-              },
+          // Parsing des préférences JSON
+          const parsePreferences = (raw: unknown): Record<string, unknown> => {
+            if (!raw) return {};
+            try { 
+              return typeof raw === 'string' ? JSON.parse(raw) : (raw as Record<string, unknown>);
+            } catch (e) { 
+              console.error("DEBUG_AUTH: Erreur lors du parse des préférences JSON", e);
+              return {}; 
+            }
+          };
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            config: user.config
+              ? {
+                  theme: user.config.themeId,
+                  preferences: parsePreferences(user.config.preferences),
+                }
+              : {
+                  theme: 'dark',
+                  preferences: {},
+                },
+          };
+        } catch (error: any) {
+          console.error("DEBUG_AUTH: Erreur critique dans authorize :", error.message);
+          return null;
         }
       },
     }),
   ],
 
   callbacks: {
-    // jwt() est appelé à la création du token et à chaque rafraîchissement
     async jwt({ token, user }) {
-      // "user" n'est présent que lors de la connexion initiale
       if (user) {
-        token.id = user.id
-        token.config = user.config
+        token.id = user.id;
+        token.config = user.config;
       }
-      return token
+      return token;
     },
 
-    // session() est appelé à chaque fois que la session est lue
-    // Il construit l'objet session à partir du token JWT
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id
+    async session({ session, token }: any) {
+      if (token && session.user) {
+        session.user.id = token.id;
         session.user.config = token.config ?? {
           theme: 'dark',
           preferences: {},
-        }
+        };
       }
-      return session
+      return session;
     },
   },
 
   secret: process.env.NEXTAUTH_SECRET,
-}
+};
