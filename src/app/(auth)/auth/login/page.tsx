@@ -1,26 +1,37 @@
 'use client'
 
-import { useState, type ReactElement, type FormEvent } from 'react'
+import { useState, useEffect, type ReactElement, type FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import Link from 'next/link'
 
 export default function LoginPage(): ReactElement {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  // Vérifier si on vient de créer un compte
+  useEffect(() => {
+    if (searchParams.get('registered') === 'true') {
+      setSuccess('Compte créé avec succès ! Connectez-vous maintenant.')
+    }
+  }, [searchParams])
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault()
     setError(null)
+    setSuccess(null)
     setIsLoading(true)
 
     try {
       const result = await signIn('credentials', {
-        email,
+        email: email.toLowerCase().trim(),
         password,
         redirect: false,
       })
@@ -47,7 +58,6 @@ export default function LoginPage(): ReactElement {
         border: '1px solid var(--border)',
       }}
     >
-      {/* Logo */}
       <div className="flex flex-col gap-1">
         <div
           className="w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold mb-2"
@@ -68,16 +78,18 @@ export default function LoginPage(): ReactElement {
         >
           Family Dashboard
         </h1>
-        <p
-          className="text-sm"
-          style={{ color: 'var(--muted)' }}
-        >
+        <p className="text-sm" style={{ color: 'var(--muted)' }}>
           Connectez-vous à votre espace
         </p>
       </div>
 
-      {/* Formulaire */}
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {success && (
+          <p className="text-sm p-3 rounded-md bg-green-500/10 border border-green-500/20 text-green-500">
+            {success}
+          </p>
+        )}
+
         <Input
           label="Email"
           type="email"
@@ -85,7 +97,6 @@ export default function LoginPage(): ReactElement {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="email@famille.fr"
           required
-          autoComplete="email"
         />
 
         <Input
@@ -95,14 +106,10 @@ export default function LoginPage(): ReactElement {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
           required
-          autoComplete="current-password"
         />
 
         {error && (
-          <p
-            className="text-sm"
-            style={{ color: 'var(--danger)' }}
-          >
+          <p className="text-sm" style={{ color: 'var(--danger)' }}>
             {error}
           </p>
         )}
@@ -117,6 +124,18 @@ export default function LoginPage(): ReactElement {
           Se connecter
         </Button>
       </form>
+
+      {/* Lien vers Register */}
+      <p className="text-center text-sm" style={{ color: 'var(--muted)' }}>
+        Nouveau sur la plateforme ?{' '}
+        <Link 
+          href="/auth/register" 
+          className="font-medium" 
+          style={{ color: 'var(--accent)' }}
+        >
+          Créer un compte
+        </Link>
+      </p>
     </div>
   )
 }
