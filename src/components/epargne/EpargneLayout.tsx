@@ -41,7 +41,7 @@ export function EpargneLayout({ children, stickySubHeader, periodPicker }: { chi
         ref={tabsRef}
         className="hidden md:block sticky top-0 z-50 w-full border-b border-(--border) bg-(--bg)]"
       >
-        <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+        <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4 bg-(--bg)">
           <div className="flex gap-1 p-1 rounded-xl bg-(--surface) border border-(--border)]">
 {TABS.map((tab) => {
   const isActive = tab.href === '/epargne' ? pathname === tab.href : pathname.startsWith(tab.href)
@@ -76,7 +76,7 @@ export function EpargneLayout({ children, stickySubHeader, periodPicker }: { chi
           className="sticky z-40 w-full border-b border-(--border) bg-(--bg)]"
           style={{ top: `${tabsHeight}px` }}
         >
-          <div className="max-w-7xl mx-auto px-4 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2">
+          <div className="max-w-7xl mx-auto px-4 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 bg-(--bg)">
             {stickySubHeader && (
               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
                 {stickySubHeader}

@@ -62,7 +62,7 @@ export function TransactionTable({
             <Th className="hidden md:table-cell">Tags</Th>
             <Th align="right">Montant</Th>
             <Th align="center" className="hidden md:table-cell">Pointé</Th>
-            <Th align="right">Actions</Th>
+            <Th align="right" className="w-[1%] whitespace-nowrap">Actions</Th>
           </tr>
         </TableHead>
         <TableBody>
@@ -118,7 +118,7 @@ export function TransactionTable({
                   <button
                     onClick={() => onTogglePointage(t.id)}
                     className={cn(
-                      "w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors border",
+                      "w-3 h-5 rounded flex items-center justify-center mx-auto transition-colors border",
                       t.pointed 
                         ? "bg-(--accent) border-(--accent) text-(--bg)]" 
                         : "bg-(--surface2) border-(--border) text-transparent"
@@ -129,12 +129,12 @@ export function TransactionTable({
                   </button>
                 </Td>
 
-                <Td align="right">
-                  <div className="flex items-center justify-end gap-1 md:gap-2">
+              <Td align="right" className="w-[1%] whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1 md:gap-2">
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="h-8 px-2 md:px-3 text-xs" 
+                      className="h-8 px-0 md:px-3 text-xs" 
                       onClick={() => onEdit(t)}
                     >
                       <span className="md:hidden text-lg leading-none">✎</span>

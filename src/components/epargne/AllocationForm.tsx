@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type ReactElement } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Card, CardHeader } from '@/components/ui/Card' // Assure-toi que le chemin est correct
 import { formatAmount, formatPercent } from '@/lib/formatters'
 import { type SavingsProject } from '@prisma/client'
 import { cn } from '@/lib/utils'
@@ -72,16 +73,17 @@ export function AllocationForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl overflow-hidden bg-(--surface) border border-(--border)]">
+      {/* Table des allocations */}
+      <div className="rounded-xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-(--border)]">
+            <tr className="border-b border-[var(--border)]">
               {['Projet', 'Solde total', 'Ajout', '%'].map((h) => (
                 <th 
                   key={h} 
                   className={cn(
-                    "px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-(--muted) font-(--font-mono)]",
-                    h === 'Solde total' && "hidden md:table-cell" // Masquage responsive de l'entête
+                    "px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]",
+                    h === 'Solde total' && "hidden md:table-cell"
                   )}
                 >
                   {h}
@@ -91,16 +93,15 @@ export function AllocationForm({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.projectId} className="border-b border-(--border) last:border-0">
-                <td className="px-4 py-3 text-sm text-(--text2) font-medium">
+              <tr key={row.projectId} className="border-b border-[var(--border)] last:border-0">
+                <td className="px-4 py-3 text-sm text-[var(--text2)] font-medium">
                   {row.projectName}
                 </td>
-                {/* Colonne masquée sur mobile */}
-                <td className="hidden md:table-cell px-4 py-3 text-sm text-(--text) font-(--font-mono)]">
+                <td className="hidden md:table-cell px-4 py-3 text-sm text-[var(--text)] font-[var(--font-mono)]">
                   {formatAmount(row.currentAmount)}
                 </td>
                 <td 
-                  className="px-4 py-3 text-sm font-(--font-mono)]"
+                  className="px-4 py-3 text-sm font-[var(--font-mono)]"
                   style={{ color: row.amount > 0 ? 'var(--success)' : 'var(--muted)' }}
                 >
                   {row.amount > 0 ? '+' : ''}{formatAmount(row.amount)}
@@ -111,23 +112,23 @@ export function AllocationForm({
                       type="number" min="0" max="100" step="0.1"
                       value={row.percentage}
                       onChange={(e) => updatePercentage(row.projectId, e.target.value)}
-                      className="w-14 md:w-20 px-2 py-1 rounded text-sm outline-none bg-(--surface2) border border-(--border) text-(--text) font-(--font-mono) focus:border-(--accent)]"
+                      className="w-14 md:w-20 px-2 py-1 rounded text-sm outline-none bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] font-[var(--font-mono)] focus:border-[var(--accent)]"
                     />
-                    <span className="hidden xs:inline text-xs text-(--muted)]">%</span>
+                    <span className="hidden xs:inline text-xs text-[var(--muted)]">%</span>
                   </div>
                 </td>
               </tr>
             ))}
 
-            <tr className="bg-(--surface2)]">
-              <td className="px-4 py-3 text-xs font-medium uppercase text-(--muted) font-(--font-mono)]">Total</td>
+            <tr className="bg-[var(--surface2)]">
+              <td className="px-4 py-3 text-xs font-medium uppercase text-[var(--muted)] font-[var(--font-mono)]">Total</td>
               <td className="hidden md:table-cell" />
-              <td className="px-4 py-3 text-sm font-semibold text-(--text) font-(--font-mono)]">
+              <td className="px-4 py-3 text-sm font-semibold text-[var(--text)] font-[var(--font-mono)]">
                 {formatAmount(totalAmount)}
               </td>
               <td className={cn(
-                "px-4 py-3 text-sm font-semibold font-(--font-mono)]",
-                totalPercent > 100 ? 'text-(--danger)]' : 'text-(--text)]'
+                "px-4 py-3 text-sm font-semibold font-[var(--font-mono)]",
+                totalPercent > 100 ? 'text-[var(--danger)]' : 'text-[var(--text)]'
               )}>
                 {formatPercent(totalPercent)}
               </td>
@@ -136,31 +137,37 @@ export function AllocationForm({
         </table>
       </div>
 
-      <div className="mx-0 px-5 py-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-(--surface2) border border-(--border)]">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs font-medium uppercase tracking-wider text-(--muted) font-(--font-mono)]">
-            Fortune totale
-          </span>
-          <span className="text-xs text-(--muted2)]">
-            Somme de tous les projets actifs
+      <Card className='mx-3 border'>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <CardHeader 
+            title="Fortune totale" 
+            subtitle="Somme de tous les projets actifs"
+          />
+          <span className="text-2xl font-semibold text-[var(--accent)] font-[var(--font-mono)]">
+            {formatAmount(totalFortune)}
           </span>
         </div>
-        <span className="text-2xl font-semibold text-(--accent) font-(--font-mono)]">
-          {formatAmount(totalFortune)}
-        </span>
-      </div>
+      </Card>
 
+      {/* Footer Actions */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 px-1 pb-2">
-        <span className="text-sm text-(--muted)]">
+        <span className="text-sm text-[var(--muted)] text-center">
           Reste après épargne :{' '}
           <span className={cn(
-            "font-(--font-mono)]",
-            reste - totalAmount < 0 ? 'text-(--danger)]' : 'text-(--text)]'
+            "font-[var(--font-mono)]",
+            reste - totalAmount < 0 ? 'text-[var(--danger)]' : 'text-[var(--text)]'
           )}>
             {formatAmount(reste - totalAmount)}
           </span>
         </span>
-        <Button variant="primary" size="md" isLoading={isLoading} onClick={handleSave} disabled={totalPercent > 100} className="w-full sm:w-auto">
+        <Button 
+          variant="primary" 
+          size="md" 
+          isLoading={isLoading} 
+          onClick={handleSave} 
+          disabled={totalPercent > 100} 
+          className="w-full sm:w-auto"
+        >
           Sauvegarder
         </Button>
       </div>
