@@ -69,11 +69,7 @@ export function PeriodPicker({
   }
 
   return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-        PÉRIODE
-      </span>
-
+    <div className="flex items-center gap-3 flex-wrap pt-2">
       {/* Présets */}
       <div
         className="flex gap-1 p-1 rounded-xl"
@@ -83,7 +79,7 @@ export function PeriodPicker({
           <button
             key={p.value}
             onClick={() => { onChange({ type: 'preset', value: p.value }); setShowCustom(false) }}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="px-2 py-2 rounded-lg text-sm font-medium transition-colors"
             style={{
               backgroundColor: period.type === 'preset' && period.value === p.value ? 'var(--accent)' : 'transparent',
               color:           period.type === 'preset' && period.value === p.value ? 'var(--bg)' : 'var(--text2)',

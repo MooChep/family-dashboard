@@ -4,6 +4,7 @@ import { useState, useEffect, type ReactElement } from 'react'
 import { Button } from '@/components/ui/Button'
 import { formatAmount, formatPercent } from '@/lib/formatters'
 import { type SavingsProject } from '@prisma/client'
+import { cn } from '@/lib/utils'
 
 interface AllocationRow {
   projectId: string
@@ -71,12 +72,18 @@ export function AllocationForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
         <table className="w-full">
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Projet', 'Solde total', 'Ajout ce mois', '%'].map((h) => (
-                <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-left" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+            <tr className="border-b border-[var(--border)]">
+              {['Projet', 'Solde total', 'Ajout', '%'].map((h) => (
+                <th 
+                  key={h} 
+                  className={cn(
+                    "px-4 py-3 text-xs font-medium uppercase tracking-wider text-left text-[var(--muted)] font-[var(--font-mono)]",
+                    h === 'Solde total' && "hidden md:table-cell" // Masquage responsive de l'entête
+                  )}
+                >
                   {h}
                 </th>
               ))}
@@ -84,38 +91,44 @@ export function AllocationForm({
           </thead>
           <tbody>
             {rows.map((row) => (
-  <tr key={row.projectId} className="border-b border-[var(--border)] last:border-0">
-    <td className="px-4 py-3 text-sm text-[var(--text2)] font-medium">{row.projectName}</td>
-    <td className="hidden md:table-cell px-4 py-3 text-sm text-[var(--text)] font-[var(--font-mono)]">
-      {formatAmount(row.currentAmount)}
-    </td>
-    <td 
-      className="px-4 py-3 text-sm font-[var(--font-mono)]"
-      style={{ color: row.amount > 0 ? 'var(--success)' : 'var(--muted)' }}
-    >
-      {row.amount > 0 ? '+' : ''}{formatAmount(row.amount)}
-    </td>
-    <td className="px-4 py-3">
-      <div className="flex items-center gap-1">
-        <input
-          type="number" min="0" max="100" step="0.1"
-          value={row.percentage}
-          onChange={(e) => updatePercentage(row.projectId, e.target.value)}
-          className="w-14 md:w-20 px-2 py-1 rounded text-sm outline-none bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] font-[var(--font-mono)] focus:border-[var(--accent)]"
-        />
-      </div>
-    </td>
-  </tr>
-))}
+              <tr key={row.projectId} className="border-b border-[var(--border)] last:border-0">
+                <td className="px-4 py-3 text-sm text-[var(--text2)] font-medium">
+                  {row.projectName}
+                </td>
+                {/* Colonne masquée sur mobile */}
+                <td className="hidden md:table-cell px-4 py-3 text-sm text-[var(--text)] font-[var(--font-mono)]">
+                  {formatAmount(row.currentAmount)}
+                </td>
+                <td 
+                  className="px-4 py-3 text-sm font-[var(--font-mono)]"
+                  style={{ color: row.amount > 0 ? 'var(--success)' : 'var(--muted)' }}
+                >
+                  {row.amount > 0 ? '+' : ''}{formatAmount(row.amount)}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number" min="0" max="100" step="0.1"
+                      value={row.percentage}
+                      onChange={(e) => updatePercentage(row.projectId, e.target.value)}
+                      className="w-14 md:w-20 px-2 py-1 rounded text-sm outline-none bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] font-[var(--font-mono)] focus:border-[var(--accent)]"
+                    />
+                    <span className="hidden xs:inline text-xs text-[var(--muted)]">%</span>
+                  </div>
+                </td>
+              </tr>
+            ))}
 
-            {/* Ligne total */}
-            <tr style={{ backgroundColor: 'var(--surface2)' }}>
-              <td className="px-4 py-3 text-xs font-medium uppercase" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>Total</td>
-              <td />
-              <td className="px-4 py-3 text-sm font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+            <tr className="bg-[var(--surface2)]">
+              <td className="px-4 py-3 text-xs font-medium uppercase text-[var(--muted)] font-[var(--font-mono)]">Total</td>
+              <td className="hidden md:table-cell" />
+              <td className="px-4 py-3 text-sm font-semibold text-[var(--text)] font-[var(--font-mono)]">
                 {formatAmount(totalAmount)}
               </td>
-              <td className="px-4 py-3 text-sm font-semibold" style={{ color: totalPercent > 100 ? 'var(--danger)' : 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+              <td className={cn(
+                "px-4 py-3 text-sm font-semibold font-[var(--font-mono)]",
+                totalPercent > 100 ? 'text-[var(--danger)]' : 'text-[var(--text)]'
+              )}>
                 {formatPercent(totalPercent)}
               </td>
             </tr>
@@ -123,32 +136,31 @@ export function AllocationForm({
         </table>
       </div>
 
-      {/* Fortune totale */}
-      <div
-        className="mx-0 px-5 py-4 rounded-xl flex items-center justify-between"
-        style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)' }}
-      >
+      <div className="mx-0 px-5 py-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[var(--surface2)] border border-[var(--border)]">
         <div className="flex flex-col gap-0.5">
-          <span className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+          <span className="text-xs font-medium uppercase tracking-wider text-[var(--muted)] font-[var(--font-mono)]">
             Fortune totale
           </span>
-          <span className="text-xs" style={{ color: 'var(--muted2)' }}>
+          <span className="text-xs text-[var(--muted2)]">
             Somme de tous les projets actifs
           </span>
         </div>
-        <span className="text-2xl font-semibold" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
+        <span className="text-2xl font-semibold text-[var(--accent)] font-[var(--font-mono)]">
           {formatAmount(totalFortune)}
         </span>
       </div>
 
-      <div className="flex items-center justify-between px-1 pb-2">
-        <span className="text-sm" style={{ color: 'var(--muted)' }}>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 px-1 pb-2">
+        <span className="text-sm text-[var(--muted)]">
           Reste après épargne :{' '}
-          <span style={{ color: reste - totalAmount < 0 ? 'var(--danger)' : 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+          <span className={cn(
+            "font-[var(--font-mono)]",
+            reste - totalAmount < 0 ? 'text-[var(--danger)]' : 'text-[var(--text)]'
+          )}>
             {formatAmount(reste - totalAmount)}
           </span>
         </span>
-        <Button variant="primary" size="md" isLoading={isLoading} onClick={handleSave} disabled={totalPercent > 100}>
+        <Button variant="primary" size="md" isLoading={isLoading} onClick={handleSave} disabled={totalPercent > 100} className="w-full sm:w-auto">
           Sauvegarder
         </Button>
       </div>

@@ -38,7 +38,6 @@ export default async function DashboardLayout({
             relative : permet de positionner des éléments par rapport à ce conteneur
         */}
         <div className="flex flex-col flex-1 min-w-0 relative">
-          <Header />
           
           {/* Le PageWrapper gère désormais lui-même ses marges internes et le décalage Header */}
           <PageWrapper>

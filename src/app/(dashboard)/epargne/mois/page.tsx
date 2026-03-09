@@ -198,7 +198,7 @@ export default function MoisPage(): ReactElement {
   }
 
   const monthSelector = (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-0">
       <button
         onClick={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
         className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"

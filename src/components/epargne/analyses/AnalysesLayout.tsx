@@ -24,21 +24,24 @@ export function AnalysesLayout({ children, subHeader }: AnalysesLayoutProps): Re
 
   useEffect(() => {
     if (!tabsRef.current) return
-    const ro = new ResizeObserver((entries) => setTabsH(entries[0]?.contentRect.height ?? 0))
+    const ro = new ResizeObserver((entries) => {
+      // On utilise offsetHeight pour inclure le padding et les bordures
+      for (let entry of entries) {
+        setTabsH(tabsRef.current?.offsetHeight ?? 0)
+      }
+    })
     ro.observe(tabsRef.current)
     return () => ro.disconnect()
   }, [])
 
-  const HEADER_H = 64
-
   return (
-    <div className="flex flex-col gap-6">
-      {/* Onglets analyses */}
+    <div className="flex flex-col gap-0">
+      {/* Onglets analyses - Barre 1 */}
       <div
         ref={tabsRef}
-        className="sticky z-20 -mx-6 px-6 py-3"
+        className="sticky z-20 -mx-6 px-6 py-2"
         style={{
-          top: `${HEADER_H}px`,
+          top: 0,
           backgroundColor: 'var(--bg)',
           borderBottom: subHeader ? 'none' : '1px solid var(--border)',
         }}
@@ -53,11 +56,11 @@ export function AnalysesLayout({ children, subHeader }: AnalysesLayoutProps): Re
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-colors')}
+                className={cn('px-4 py-1.5 rounded-lg text-sm font-bold transition-colors')}
                 style={{
                   backgroundColor: isActive ? 'var(--accent)' : 'transparent',
-                  color: isActive ? 'var(--bg)' : 'var(--text2)',
-                  fontFamily: 'var(--font-body)',
+                  // Correction : on force le texte en blanc/clair si actif sur fond sombre
+                  color: isActive ? 'white' : 'var(--text2)',
                 }}
               >
                 {tab.label}
@@ -67,12 +70,13 @@ export function AnalysesLayout({ children, subHeader }: AnalysesLayoutProps): Re
         </div>
       </div>
 
-      {/* Sous-header sticky (filtre période) */}
+      {/* Sous-header sticky (filtre période) - Barre 2 */}
       {subHeader && (
         <div
           className="sticky z-10 -mx-6 px-6 py-3"
           style={{
-            top: `${HEADER_H + tabsH}px`,
+            // C'est ici que la magie opère : décalage de la hauteur des tabs
+            top: `${tabsH}px`,
             backgroundColor: 'var(--bg)',
             borderBottom: '1px solid var(--border)',
           }}
@@ -81,7 +85,7 @@ export function AnalysesLayout({ children, subHeader }: AnalysesLayoutProps): Re
         </div>
       )}
 
-      <div className="flex flex-col gap-6">{children}</div>
+      <div className="flex flex-col gap-6 pt-4">{children}</div>
     </div>
   )
 }
