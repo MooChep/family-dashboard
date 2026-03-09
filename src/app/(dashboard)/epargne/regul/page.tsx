@@ -118,7 +118,7 @@ export default function RegulPage(): ReactElement {
 
   const chartsData = sortedReguls.map((r) => {
     const mk = new Date(r.month)
-    const label = MONTHS_SHORT[mk.getMonth() + ' ' + String(mk.getFullYear()).slice(2)
+    const label = MONTHS_SHORT[mk.getMonth()] + ' ' + String(mk.getFullYear()).slice(2)
     
     const row: any = { month: label, Fortune: r.totalReal }
     

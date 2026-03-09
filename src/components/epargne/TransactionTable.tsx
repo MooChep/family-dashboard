@@ -54,7 +54,7 @@ export function TransactionTable({
   }
 
   return (
-    <div className="rounded-xl overflow-hidden bg-(--surface) border border-(--border)]">
+    <div className="rounded-xl bg-(--surface)">
       <Table>
         <TableHead>
           <tr>
@@ -74,9 +74,8 @@ export function TransactionTable({
               <Tr key={t.id}>
                 <Td>
                   <Badge 
-                    variant={income ? 'success' : 'default'}
+                    variant={income ? 'success' : 'danger'}
                     className="whitespace-nowrap"
-                    style={!income ? { backgroundColor: 'var(--surface2)', color: 'var(--text2)' } : {}}
                   >
                     {t.category.name}
                   </Badge>

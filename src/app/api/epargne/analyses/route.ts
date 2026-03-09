@@ -219,7 +219,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   const allSavingsMonths = Object.keys(
-    allAllocations.reduce((acc, a) => { acc[toYearMonth(a.month) = true; return acc }, {} as Record<string, boolean>)
+    allAllocations.reduce((acc, a) => { acc[toYearMonth(a.month)] = true; return acc }, {} as Record<string, boolean>)
   ).sort()
 
   const allRevTransactions = await prisma.transaction.findMany({
@@ -289,7 +289,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   })
   const accountWealthByMonth: Record<string, number> = {}
   for (const r of reguls) {
-    accountWealthByMonth[toYearMonth(r.month) = r.totalReal
+    accountWealthByMonth[toYearMonth(r.month)] = r.totalReal
   }
 
   return NextResponse.json({
