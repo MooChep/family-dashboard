@@ -54,7 +54,7 @@ export function TransactionTable({
   }
 
   return (
-    <div className="rounded-xl bg-(--surface)">
+    <div className="rounded-b-xl bg-(--surface) border border-(--border)]">
       <Table>
         <TableHead>
           <tr>

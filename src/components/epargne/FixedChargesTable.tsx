@@ -46,7 +46,7 @@ export function FixedChargesTable({
   }
 
   return (
-    <div className="rounded-xl overflow-hidden bg-(--surface) border border-(--border)]">
+    <div className="rounded-b-xl overflow-hidden bg-(--surface) border border-(--border)]">
       <table className="w-full">
         <thead>
           <tr className="border-b border-(--border)]">
