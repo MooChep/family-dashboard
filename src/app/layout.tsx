@@ -24,7 +24,7 @@ export default async function DashboardLayout({
 
   return (
     <ThemeProvider initialTheme={initialTheme}>
-      <div className="flex min-h-screen bg-[var(--bg)]">
+      <div className="flex min-h-screen bg-(--bg)">
         <Sidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <PageWrapper>
