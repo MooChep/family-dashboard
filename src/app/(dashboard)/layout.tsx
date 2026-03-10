@@ -22,7 +22,7 @@ export default async function DashboardLayout({
   }
 
   // Utilisation de l'optional chaining pour éviter le crash "null reading user"
-  const initialTheme = (session?.user?.config?.theme ?? 'dark') as ThemeName
+  const initialTheme = (session?.user?.config?.themeId ?? 'dark') as ThemeName
 
   return (
     <ThemeProvider initialTheme={initialTheme}>
