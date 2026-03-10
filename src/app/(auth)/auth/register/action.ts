@@ -9,54 +9,31 @@ export async function registerUser(formData: FormData) {
   const password = formData.get('password') as string
   const invitationKey = formData.get('invitationKey') as string
 
-  // 1. Sécurité Invitation
   if (invitationKey !== process.env.REGISTRATION_SECRET) {
     return { error: "Clé d'invitation invalide." }
   }
 
-  if (!name || !email || !password) {
-    return { error: 'Tous les champs sont requis' }
-  }
-
   try {
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() }
-    })
+    const existingUser = await prisma.user.findUnique({ where: { email } })
+    if (existingUser) return { error: 'Email déjà utilisé' }
 
-    if (existingUser) {
-      return { error: 'Cet email est déjà utilisé' }
-    }
-
-    // 2. RECHERCHE DU THÈME (Fix TypeScript null)
+    // On cherche le thème 'dark' par défaut, sinon le premier dispo
     const themeRecord = await prisma.theme.findFirst({
-      where: { 
-        OR: [
-          { name: 'dark-green-1773092334564' },
-          { name: 'dark' },
-          { isDefault: true }
-        ]
-      }
-    }) || await prisma.theme.findFirst();
+      where: { OR: [{ name: 'dark' }, { isDefault: true }] }
+    }) || await prisma.theme.findFirst()
 
-    // Si vraiment aucun thème n'existe en BDD
-    if (!themeRecord) {
-      return { error: "Erreur système : Aucun thème disponible en base." }
-    }
+    if (!themeRecord) return { error: "Configuration système incomplète (Thèmes)." }
 
-    // Extraction du nom (TypeScript sait maintenant qu'il n'est pas null)
-    const selectedThemeName = themeRecord.name;
-
-    // 3. Hashage et Création
     const hashedPassword = await hash(password, 12)
 
     await prisma.user.create({
       data: {
-        name: name.trim(),
+        name,
         email: email.toLowerCase().trim(),
         password: hashedPassword,
         config: {
           create: {
-            themeId: selectedThemeName,
+            themeId: themeRecord.name,
             preferences: JSON.stringify({}),
           }
         }
@@ -65,7 +42,6 @@ export async function registerUser(formData: FormData) {
 
     return { success: true }
   } catch (error) {
-    console.error('Erreur registration:', error)
-    return { error: 'Une erreur est survenue lors de la création' }
+    return { error: 'Erreur lors de la création' }
   }
 }

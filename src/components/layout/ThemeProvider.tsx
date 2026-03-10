@@ -1,144 +1,115 @@
 'use client'
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  type ReactNode,
-} from 'react'
+import { createContext, useContext, useEffect, useState, useMemo, useCallback, type ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
-import { type ThemeContextValue, type ThemeName, type Theme } from '@/types/theme'
 
-// Création du contexte React qui exposera le thème à tous les composants enfants
-// Context = mécanisme React pour partager des données sans prop drilling
-const ThemeContext = createContext<ThemeContextValue | null>(null)
-
-// Script inline injecté dans <head> pour éviter le FOUC
-// (Flash Of Unstyled Content = flash du mauvais thème avant hydratation)
-// Ce script s'exécute de manière synchrone avant le premier rendu,
-// il lit le thème depuis le cookie de session NextAuth si disponible
-const ANTI_FOUC_SCRIPT = `
-(function() {
-  try {
-    var cookies = document.cookie.split(';');
-    var sessionToken = null;
-    for (var i = 0; i < cookies.length; i++) {
-      var cookie = cookies[i].trim();
-      if (cookie.startsWith('next-auth.session-token=') || 
-          cookie.startsWith('__Secure-next-auth.session-token=')) {
-        sessionToken = cookie.split('=')[1];
-        break;
-      }
-    }
-    // Fallback sur dark si pas de session trouvée
-    var theme = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', theme);
-  } catch(e) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
-})();
-`
-
-interface ThemeProviderProps {
-  children: ReactNode
-  // Thème initial passé depuis le serveur pour le premier rendu SSR
-  initialTheme?: ThemeName
+type Theme = {
+  name: string
+  label: string
+  cssVars: string | null
 }
 
-export function ThemeProvider({
-  children,
-  initialTheme = 'light',
-}: ThemeProviderProps): ReactNode {
+interface ThemeContextValue {
+  theme: string
+  setTheme: (name: string) => Promise<void>
+  themes: Theme[]
+  isLoading: boolean
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null)
+
+export function ThemeProvider({ children, initialTheme = 'dark' }: { children: ReactNode, initialTheme?: string }) {
   const { data: session, status } = useSession()
-  const [theme, setThemeState] = useState<ThemeName>(initialTheme)
+  const [currentThemeName, setCurrentThemeName] = useState(initialTheme)
   const [themes, setThemes] = useState<Theme[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Applique le thème sur <html> (attribut ET classe)
+  // 1. Chargement des thèmes depuis l'API
   useEffect(() => {
-    const root = document.documentElement;
-    
-    // 1. Nettoyage des anciennes classes de thème
-    const classes = Array.from(root.classList);
-    classes.forEach(c => {
-      if (c.startsWith('theme-')) root.classList.remove(c);
-    });
+    async function fetchThemes() {
+      try {
+        const res = await fetch('/api/themes')
+        if (res.ok) {
+          const data = await res.json()
+          setThemes(data)
+        }
+      } catch (e) {
+        console.error("Erreur chargement thèmes BDD:", e)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchThemes()
+  }, [])
 
-    // 2. Application du nouveau thème
-    root.setAttribute('data-theme', theme);
-    root.classList.add(`theme-${theme}`); // Ajoute la classe attendue par themes.css
-    
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  // Synchronise le thème avec la session NextAuth
+  // 2. Synchronisation avec la session utilisateur
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.config?.theme) {
-      const sessionTheme = session.user.config.theme as ThemeName
-      setThemeState(sessionTheme)
-      // Persiste dans localStorage comme cache local anti-FOUC
-      localStorage.setItem('theme', sessionTheme)
+    if (status === 'authenticated' && session?.user?.config?.themeId) {
+      setCurrentThemeName(session.user.config.themeId)
     }
   }, [session, status])
 
-  // Applique data-theme sur <html> à chaque changement de thème
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('theme', theme)
-  }, [theme])
-
-  // Change le thème et persiste en BDD via l'API
-  const setTheme = useCallback(async (newTheme: ThemeName): Promise<void> => {
-    setThemeState(newTheme)
-
+  // 3. Sauvegarde du thème
+  const setTheme = useCallback(async (newTheme: string) => {
+    setCurrentThemeName(newTheme)
     try {
-      const response = await fetch('/api/user/config', {
+      await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme: newTheme }),
+        body: JSON.stringify({ themeId: newTheme }),
       })
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la sauvegarde du thème')
-      }
-    } catch (error) {
-      console.error('Erreur sauvegarde thème:', error)
-      // On ne rollback pas le thème visuellement — l'UX reste fluide
-      // même si la persistence échoue
+    } catch (e) {
+      console.error("Erreur sauvegarde thème:", e)
     }
   }, [])
 
-  const value: ThemeContextValue = {
-    theme,
+  // 4. Génération du CSS dynamique
+  const dynamicCSS = useMemo(() => {
+    const activeTheme = themes.find(t => t.name === currentThemeName)
+    
+    // Fallback si l'API n'a pas encore répondu (évite l'écran noir)
+    if (!activeTheme || !activeTheme.cssVars) {
+      if (currentThemeName === 'dark') {
+        return `:root { --bg: #0a0c12; --text: #e8e8f0; --accent: #6c63ff; }`
+      }
+      return ''
+    }
+
+    try {
+      const vars = JSON.parse(activeTheme.cssVars)
+      const cssString = Object.entries(vars)
+        .map(([key, value]) => {
+          const propName = key.startsWith('--') ? key : `--${key}`
+          return `  ${propName}: ${value};`
+        })
+        .join('\n')
+      
+      return `:root {\n${cssString}\n}`
+    } catch (e) {
+      console.error("Erreur parsing cssVars:", e)
+      return ''
+    }
+  }, [themes, currentThemeName])
+
+  const value = useMemo(() => ({
+    theme: currentThemeName,
     setTheme,
     themes,
-    isLoading,
-  }
+    isLoading
+  }), [currentThemeName, setTheme, themes, isLoading])
 
   return (
-    <>
-      {/* Script anti-FOUC injecté de manière synchrone dans le DOM */}
-      <script
-        dangerouslySetInnerHTML={{ __html: ANTI_FOUC_SCRIPT }}
-        suppressHydrationWarning
-      />
-      <ThemeContext.Provider value={value}>
+    <ThemeContext.Provider value={value}>
+      {dynamicCSS && <style dangerouslySetInnerHTML={{ __html: dynamicCSS }} />}
+      <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] transition-colors duration-300">
         {children}
-      </ThemeContext.Provider>
-    </>
+      </div>
+    </ThemeContext.Provider>
   )
 }
 
-// Hook interne pour consommer le contexte
-// Export séparé dans useTheme.ts pour une meilleure organisation
-export function useThemeContext(): ThemeContextValue {
-  const context = useContext(ThemeContext)
-
-  if (!context) {
-    throw new Error('useThemeContext doit être utilisé dans un ThemeProvider')
-  }
-
-  return context
+export const useTheme = () => {
+  const ctx = useContext(ThemeContext)
+  if (!ctx) throw new Error("useTheme hors provider")
+  return ctx
 }
