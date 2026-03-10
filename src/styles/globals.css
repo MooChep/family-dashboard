@@ -15,7 +15,7 @@
 html {
   /* Thème dark appliqué par défaut avant que ThemeProvider se monte
      évite un flash de fond blanc au premier chargement */
-  background-color: #0a0c12;
+  /* background-color: #0a0c12; */
 }
 
 body {

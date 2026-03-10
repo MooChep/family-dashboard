@@ -5,8 +5,8 @@ import { SessionProvider } from '@/components/providers/SessionProvider'
 export default function AuthLayout({ children }: { children: ReactNode }): ReactElement {
   return (
     <SessionProvider>
-      <ThemeProvider initialTheme="dark">
-        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg)' }}>
+      <ThemeProvider initialTheme="light">
+        <div className="min-h-screen flex items-center justify-center">
           {children}
         </div>
       </ThemeProvider>
