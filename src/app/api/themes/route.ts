@@ -3,27 +3,38 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+// ── GET /api/themes ───────────────────────────────────────────────────────────
+/** Retourne tous les thèmes disponibles (système + custom) */
 export async function GET(): Promise<NextResponse> {
   const themes = await prisma.theme.findMany({ orderBy: { createdAt: 'asc' } })
   return NextResponse.json(themes)
 }
 
+// ── POST /api/themes ──────────────────────────────────────────────────────────
+/** Crée un thème custom pour l'utilisateur connecté */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+  }
 
   const body = await request.json() as {
     label: string
     base: 'dark' | 'light'
-    accent: string   // hex
+    accent: string // hex #rrggbb
   }
-  if (!body.label?.trim()) return NextResponse.json({ error: 'Nom requis' }, { status: 400 })
-  if (!body.accent?.match(/^#[0-9a-fA-F]{6}$/)) return NextResponse.json({ error: 'Couleur invalide' }, { status: 400 })
 
-  // Génère un name unique slug
-  const name = body.label.trim().toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now()
+  if (!body.label?.trim()) {
+    return NextResponse.json({ error: 'Nom requis' }, { status: 400 })
+  }
+  if (!body.accent?.match(/^#[0-9a-fA-F]{6}$/)) {
+    return NextResponse.json({ error: 'Couleur invalide' }, { status: 400 })
+  }
 
-  // Calcule les variables CSS depuis l'accent et la base
+  // Slug unique reproductible
+  const name =
+    body.label.trim().toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now()
+
   const cssVars = computeCssVars(body.accent, body.base)
 
   try {
@@ -38,11 +49,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     })
     return NextResponse.json(theme, { status: 201 })
   } catch {
-    return NextResponse.json({ error: 'Nom déjà pris' }, { status: 409 })
+    return NextResponse.json({ error: 'Erreur lors de la création' }, { status: 409 })
   }
 }
 
-// ── Calcul des variables CSS ──────────────────────────────────────────────────
+// ── Calcul des variables CSS depuis accent + base ─────────────────────────────
+
 function hexToHsl(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16) / 255
   const g = parseInt(hex.slice(3, 5), 16) / 255
@@ -66,9 +78,9 @@ function hslToHex(h: number, s: number, l: number): string {
   const hNorm = h / 360, sNorm = s / 100, lNorm = l / 100
   const hue2rgb = (p: number, q: number, t: number): number => {
     if (t < 0) t += 1; if (t > 1) t -= 1
-    if (t < 1/6) return p + (q - p) * 6 * t
-    if (t < 1/2) return q
-    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+    if (t < 1 / 6) return p + (q - p) * 6 * t
+    if (t < 1 / 2) return q
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
     return p
   }
   let r, g, b
@@ -76,9 +88,9 @@ function hslToHex(h: number, s: number, l: number): string {
   else {
     const q = lNorm < 0.5 ? lNorm * (1 + sNorm) : lNorm + sNorm - lNorm * sNorm
     const p = 2 * lNorm - q
-    r = hue2rgb(p, q, hNorm + 1/3)
+    r = hue2rgb(p, q, hNorm + 1 / 3)
     g = hue2rgb(p, q, hNorm)
-    b = hue2rgb(p, q, hNorm - 1/3)
+    b = hue2rgb(p, q, hNorm - 1 / 3)
   }
   return '#' + [r, g, b].map((x) => Math.round(x * 255).toString(16).padStart(2, '0')).join('')
 }
@@ -88,40 +100,40 @@ function computeCssVars(accent: string, base: 'dark' | 'light'): Record<string, 
 
   if (base === 'dark') {
     return {
-      '--bg':          hslToHex(h, Math.max(s - 40, 5), 5),
-      '--surface':     hslToHex(h, Math.max(s - 35, 6), 8),
-      '--surface2':    hslToHex(h, Math.max(s - 30, 8), 12),
-      '--border':      hslToHex(h, Math.max(s - 20, 10), 15),
-      '--border2':     hslToHex(h, Math.max(s - 15, 12), 20),
-      '--accent':      accent,
-      '--accent-dim':  accent + '22',
-      '--text':        hslToHex(h, 10, 92),
-      '--text2':       hslToHex(h, 8, 78),
-      '--muted':       hslToHex(h, 10, 40),
-      '--muted2':      hslToHex(h, 8, 55),
-      '--success':     '#43e8b0',
-      '--warning':     '#f9c74f',
-      '--danger':      '#f87171',
+      '--bg':           hslToHex(h, Math.max(s - 40, 5), 5),
+      '--surface':      hslToHex(h, Math.max(s - 35, 6), 8),
+      '--surface2':     hslToHex(h, Math.max(s - 30, 8), 12),
+      '--border':       hslToHex(h, Math.max(s - 20, 10), 15),
+      '--border2':      hslToHex(h, Math.max(s - 15, 12), 20),
+      '--accent':       accent,
+      '--accent-dim':   accent + '22',
+      '--text':         hslToHex(h, 10, 92),
+      '--text2':        hslToHex(h, 8, 78),
+      '--muted':        hslToHex(h, 10, 40),
+      '--muted2':       hslToHex(h, 8, 55),
+      '--success':      '#43e8b0',
+      '--warning':      '#f9c74f',
+      '--danger':       '#f87171',
       '--font-display': "'Syne', sans-serif",
       '--font-body':    "'Syne', sans-serif",
       '--font-mono':    "'DM Mono', monospace",
     }
   } else {
     return {
-      '--bg':          hslToHex(h, Math.max(s - 50, 8), 95),
-      '--surface':     '#ffffff',
-      '--surface2':    hslToHex(h, Math.max(s - 50, 5), 97),
-      '--border':      hslToHex(h, Math.max(s - 40, 8), 86),
-      '--border2':     hslToHex(h, Math.max(s - 35, 10), 80),
-      '--accent':      accent,
-      '--accent-dim':  accent + '18',
-      '--text':        hslToHex(h, 15, 10),
-      '--text2':       hslToHex(h, 10, 25),
-      '--muted':       hslToHex(h, 8, 52),
-      '--muted2':      hslToHex(h, 5, 68),
-      '--success':     '#3a7d5c',
-      '--warning':     '#c9a84c',
-      '--danger':      '#c9623f',
+      '--bg':           hslToHex(h, Math.max(s - 50, 8), 95),
+      '--surface':      '#ffffff',
+      '--surface2':     hslToHex(h, Math.max(s - 50, 5), 97),
+      '--border':       hslToHex(h, Math.max(s - 40, 8), 86),
+      '--border2':      hslToHex(h, Math.max(s - 35, 10), 80),
+      '--accent':       accent,
+      '--accent-dim':   accent + '18',
+      '--text':         hslToHex(h, 15, 10),
+      '--text2':        hslToHex(h, 10, 25),
+      '--muted':        hslToHex(h, 8, 52),
+      '--muted2':       hslToHex(h, 5, 68),
+      '--success':      '#3a7d5c',
+      '--warning':      '#c9a84c',
+      '--danger':       '#c9623f',
       '--font-display': "'Playfair Display', serif",
       '--font-body':    "'DM Sans', sans-serif",
       '--font-mono':    "'DM Mono', monospace",

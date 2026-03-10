@@ -12,16 +12,12 @@ function parsePreferences(raw: unknown): Record<string, unknown> {
   }
 }
 
-// GET /api/user/config
-// Retourne la UserConfig de l'utilisateur connecté
+// ── GET /api/user/config ──────────────────────────────────────────────────────
+/** Retourne la config de l'utilisateur connecté (thème actif depuis BDD, pas le JWT) */
 export async function GET(): Promise<NextResponse> {
   const session = await getServerSession(authOptions)
-
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: 'Non authentifié' },
-      { status: 401 }
-    )
+    return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
   }
 
   const config = await prisma.userConfig.findUnique({
@@ -30,10 +26,7 @@ export async function GET(): Promise<NextResponse> {
   })
 
   if (!config) {
-    return NextResponse.json(
-      { error: 'Configuration introuvable' },
-      { status: 404 }
-    )
+    return NextResponse.json({ error: 'Configuration introuvable' }, { status: 404 })
   }
 
   return NextResponse.json({
@@ -42,50 +35,33 @@ export async function GET(): Promise<NextResponse> {
   })
 }
 
-// PATCH /api/user/config
-// Met à jour theme ou preferences (merge partiel)
+// ── PATCH /api/user/config ────────────────────────────────────────────────────
+/** Met à jour le thème ou les préférences (merge partiel) */
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions)
-
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: 'Non authentifié' },
-      { status: 401 }
-    )
+    return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
   }
 
   let body: { theme?: string; preferences?: Record<string, unknown> }
-
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json(
-      { error: 'Corps de requête invalide' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Corps de requête invalide' }, { status: 400 })
   }
 
   // Vérifie que le thème existe en BDD avant de l'appliquer
   if (body.theme) {
-    const themeExists = await prisma.theme.findUnique({
-      where: { name: body.theme },
-    })
-
+    const themeExists = await prisma.theme.findUnique({ where: { name: body.theme } })
     if (!themeExists) {
-      return NextResponse.json(
-        { error: `Thème "${body.theme}" introuvable` },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: `Thème "${body.theme}" introuvable` }, { status: 400 })
     }
   }
 
-  // Récupère la config existante pour le merge des préférences
   const existingConfig = await prisma.userConfig.findUnique({
     where: { userId: session.user.id },
   })
 
-  // Merge des préférences : on fusionne l'existant avec le nouveau
-  // sans écraser les clés non mentionnées dans la requête
   const mergedPreferences = {
     ...parsePreferences(existingConfig?.preferences),
     ...(body.preferences ?? {}),
@@ -99,7 +75,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     },
     create: {
       userId: session.user.id,
-      themeId: body.theme ?? 'dark',
+      themeId: body.theme ?? 'light', // ── fallback système
       preferences: JSON.stringify(mergedPreferences),
     },
     include: { theme: true },

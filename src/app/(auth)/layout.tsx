@@ -1,15 +1,18 @@
 import { type ReactNode, type ReactElement } from 'react'
-import { ThemeProvider } from '@/components/layout/ThemeProvider'
 
+/**
+ * Layout des pages non-authentifiées (login, register).
+ * Le thème fallback `light` est appliqué directement via `data-theme`
+ * sans ThemeProvider ni fetch API — pas de flash, pas de JS nécessaire.
+ */
 export default function AuthLayout({ children }: { children: ReactNode }): ReactElement {
   return (
-    <ThemeProvider initialTheme="dark"> 
-      {/* On ajoute h-full et bg-[var(--bg)] pour forcer le fond du thème 
-          même sur la page de login/register 
-      */}
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] text-[var(--text)] transition-colors duration-300">
-        {children}
-      </div>
-    </ThemeProvider>
+    <div
+      data-theme="light"
+      className="min-h-screen flex items-center justify-center"
+      style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}
+    >
+      {children}
+    </div>
   )
 }

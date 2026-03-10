@@ -6,7 +6,6 @@ import { ThemeProvider } from '@/components/layout/ThemeProvider'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { BottomNav } from '@/components/layout/BottomNav'
-import { type ThemeName } from '@/types/theme'
 
 export default async function DashboardLayout({
   children,
@@ -15,18 +14,13 @@ export default async function DashboardLayout({
 }): Promise<ReactElement> {
   const session = await getServerSession(authOptions)
 
-  // Si pas de session, on redirige vers le login
-  // Comme ce layout est isolé dans (dashboard), ça ne boucle pas
   if (!session) {
     redirect('/auth/login')
   }
 
-  // Utilisation de l'optional chaining pour éviter le crash "null reading user"
-  const initialTheme = (session?.user?.config?.themeId ?? 'dark') as ThemeName
-
   return (
-    <ThemeProvider initialTheme={initialTheme}>
-      <div className="flex min-h-screen bg-(--bg)">
+    <ThemeProvider>
+      <div className="flex min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
         <Sidebar />
         <div className="flex flex-col flex-1 min-w-0 relative">
           <PageWrapper>

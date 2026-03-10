@@ -3,10 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { ActiveThemeBadge } from '@/components/ui/ActiveThemeBadge'
 
 export default async function DashboardPage(): Promise<ReactElement> {
   const session = await getServerSession(authOptions)
-
   // session est forcément défini ici — (dashboard)/layout.tsx redirige sinon
   const user = session!.user
 
@@ -38,7 +38,7 @@ export default async function DashboardPage(): Promise<ReactElement> {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs w-24" style={{ color: 'var(--muted)' }}>thème actif</span>
-            <Badge variant="accent">{user.config.theme}</Badge>
+            <ActiveThemeBadge />
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs w-24" style={{ color: 'var(--muted)' }}>id</span>
@@ -56,31 +56,30 @@ export default async function DashboardPage(): Promise<ReactElement> {
         </h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {MODULES.map((module) => (
-            <a href={module.href}>
-            <div
-              key={module.href}
-              className="rounded-xl p-5 flex flex-col gap-3"
-              style={{
-                backgroundColor: 'var(--surface)',
-                border: '1px solid var(--border)',
-                opacity: module.soon ? 0.6 : 1,
-                cursor: module.soon ? 'default' : 'pointer',
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl" style={{ color: 'var(--accent)' }}>{module.icon}</span>
-                  <span className="text-sm font-medium" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
-                    {module.label}
-                  </span>
+            <a key={module.href} href={module.href}>
+              <div
+                className="rounded-xl p-5 flex flex-col gap-3"
+                style={{
+                  backgroundColor: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  opacity: module.soon ? 0.6 : 1,
+                  cursor: module.soon ? 'default' : 'pointer',
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl" style={{ color: 'var(--accent)' }}>{module.icon}</span>
+                    <span className="text-sm font-medium" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
+                      {module.label}
+                    </span>
+                  </div>
+                  {module.soon && <Badge variant="success">bientôt</Badge>}
                 </div>
-                {module.soon && <Badge variant="success">bientôt</Badge>}
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+                  {module.description}
+                </p>
               </div>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
-                {module.description}
-              </p>
-            </div>
-          </a>
+            </a>
           ))}
         </div>
       </div>
