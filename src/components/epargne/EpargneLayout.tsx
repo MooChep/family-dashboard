@@ -39,7 +39,7 @@ export function EpargneLayout({ children, stickySubHeader, periodPicker }: { chi
       {/* --- BARRE 1 : Desktop Uniquement --- */}
       <div 
         ref={tabsRef}
-        className="hidden md:block sticky top-0 z-50 w-full border-b border-(--border) bg-(--bg)]"
+        className="hidden md:block sticky top-0 z-20 w-full border-b border-(--border) bg-(--bg)]"
       >
         <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4 bg-(--bg)">
           <div className="flex gap-1 p-1 rounded-xl bg-(--surface) border border-(--border)]">
