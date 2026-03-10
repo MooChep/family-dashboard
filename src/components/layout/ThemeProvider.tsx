@@ -56,24 +56,22 @@ export function ThemeProvider({
   const [themes, setThemes] = useState<Theme[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Charge la liste des thèmes disponibles depuis l'API
+  // Applique le thème sur <html> (attribut ET classe)
   useEffect(() => {
-    async function loadThemes(): Promise<void> {
-      try {
-        const response = await fetch('/api/themes')
-        if (response.ok) {
-          const data = await response.json() as Theme[]
-          setThemes(data)
-        }
-      } catch (error) {
-        console.error('Erreur chargement thèmes:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
+    const root = document.documentElement;
+    
+    // 1. Nettoyage des anciennes classes de thème
+    const classes = Array.from(root.classList);
+    classes.forEach(c => {
+      if (c.startsWith('theme-')) root.classList.remove(c);
+    });
 
-    void loadThemes()
-  }, [])
+    // 2. Application du nouveau thème
+    root.setAttribute('data-theme', theme);
+    root.classList.add(`theme-${theme}`); // Ajoute la classe attendue par themes.css
+    
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   // Synchronise le thème avec la session NextAuth
   useEffect(() => {

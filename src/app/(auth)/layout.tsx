@@ -4,14 +4,10 @@ import { ThemeProvider } from '@/components/layout/ThemeProvider'
 export default function AuthLayout({ children }: { children: ReactNode }): ReactElement {
   return (
     <ThemeProvider initialTheme="dark"> 
-      {/* On utilise une div qui prend TOUTE l'image et applique le fond du thème */}
-      <div 
-        className="min-h-screen flex items-center justify-center transition-colors duration-300"
-        style={{ 
-          backgroundColor: 'var(--bg)', 
-          color: 'var(--text)' 
-        }}
-      >
+      {/* On ajoute h-full et bg-[var(--bg)] pour forcer le fond du thème 
+          même sur la page de login/register 
+      */}
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] text-[var(--text)] transition-colors duration-300">
         {children}
       </div>
     </ThemeProvider>
