@@ -31,7 +31,7 @@ function ThemePreview({ cssVars }: { cssVars: Record<string, string> | null }): 
 // ── Composant principal ───────────────────────────────────────────────────────
 export function ProfileModal({ isOpen, onClose }: ProfileModalProps): ReactElement {
   const { data: session, update: updateSession } = useSession()
-  const { theme: currentTheme, setTheme, previewTheme, deleteTheme, themes, isLoading: themesLoading } = useTheme()
+  const { theme: currentTheme, setTheme, deleteTheme, themes, isLoading: themesLoading } = useTheme()
   const [tab, setTab] = useState<Tab>('profil')
 
   // ── Profil ────────────────────────────────────────────────────────────────
