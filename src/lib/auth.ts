@@ -1,7 +1,38 @@
-import { NextAuthOptions } from 'next-auth'
+import { NextAuthOptions, DefaultSession } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { compare } from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
+
+// 1. On définit proprement les types pour TypeScript
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
+      config?: {
+        themeId: string      // <-- On utilise themeId ici
+        preferences: any
+      }
+    } & DefaultSession["user"]
+  }
+
+  interface User {
+    id: string
+    config?: {
+      themeId: string      // <-- Et ici aussi
+      preferences: any
+    }
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string
+    config?: {
+      themeId: string
+      preferences: any
+    }
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -19,35 +50,21 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Mot de passe', type: 'password' },
       },
       async authorize(credentials) {
-        console.log("--- DEBUG LOGIN START ---");
-        console.log("Email reçu :", credentials?.email);
-
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
           include: {
-            config: { include: { theme: true } },
+            config: true, // On récupère la config
           },
         });
 
-        if (!user) {
-          console.log("Résultat : Utilisateur non trouvé en BDD");
-          return null;
-        }
+        if (!user) return null;
 
-        // --- LE TEST DE SECOURS ---
-        // Si le mot de passe saisi est admin123, on force la validation
-        let isPasswordValid = false;
-        if (credentials.password === 'admin123') {
-          console.log("Résultat : Bypass admin123 activé !");
-          isPasswordValid = true;
-        } else {
-          isPasswordValid = await compare(credentials.password, user.password);
-          console.log("Résultat Bcrypt :", isPasswordValid ? "VALIDE" : "INVALIDE");
-        }
+        // Validation mot de passe (ton bypass admin inclus)
+        const isPasswordValid = credentials.password === 'admin123' 
+          ? true 
+          : await compare(credentials.password, user.password);
 
         if (!isPasswordValid) return null;
 
@@ -57,14 +74,15 @@ export const authOptions: NextAuthOptions = {
           catch { return {}; }
         };
 
+        // --- CORRECTION ICI ---
         return {
           id: user.id,
           name: user.name,
           email: user.email,
-          config: user.config ? {
-            theme: user.config.themeId,
-            preferences: parsePreferences(user.config.preferences),
-          } : { theme: 'dark', preferences: {} },
+          config: {
+            themeId: user.config?.themeId || 'dark', // <-- Correction : themeId
+            preferences: parsePreferences(user.config?.preferences),
+          },
         };
       },
     }),
@@ -77,7 +95,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    async session({ session, token }: any) {
+    async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id;
         session.user.config = token.config;
