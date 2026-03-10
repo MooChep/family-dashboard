@@ -21,12 +21,19 @@ interface FixedChargeRow {
   chargeId: string | null
   estimated: number
   reel: number
+  // Champ ajouté : total des BudgetEntry du mois pour cette catégorie
+  budgeted: number | null
 }
 
 interface AllocationRow {
   projectId: string
   percentage: number
   amount: number
+}
+
+// Réponse de l'API budget/{month} — on n'utilise que les entries ici
+interface BudgetMonthResponse {
+  entries: { categoryId: string; amount: number }[]
 }
 
 function getCurrentMonth(): string {
@@ -51,7 +58,6 @@ function extractUniqueTags(txs: TransactionWithCategory[]): string[] {
   return Array.from(set).sort()
 }
 
-// Projets avec categoryId pour la résolution
 type ProjectWithCategory = SavingsProject & { category: { id: string } | null }
 
 export default function MoisPage(): ReactElement {
@@ -74,15 +80,17 @@ export default function MoisPage(): ReactElement {
   const loadAll = useCallback(async (): Promise<void> => {
     setIsLoading(true)
     try {
-      const [txRes, chargesRes, varRes, catsRes, projetsRes, allocRes, allTxRes] =
+      const [txRes, chargesRes, varRes, catsRes, projetsRes, allocRes, allTxRes, budgetRes] =
         await Promise.all([
           fetch('/api/epargne/transactions?month=' + currentMonth),
           fetch('/api/epargne/charges-fixes?month=' + currentMonth),
           fetch('/api/epargne/charges-variables?month=' + currentMonth),
-          fetch('/api/epargne/categories'),          // catégories actives uniquement (isArchived=false)
+          fetch('/api/epargne/categories'),
           fetch('/api/epargne/projets'),
           fetch('/api/epargne/allocations?month=' + currentMonth),
           fetch('/api/epargne/transactions'),
+          // Fetch du budget du mois — on ignore l'erreur si pas encore créé (404 = pas de budget)
+          fetch('/api/epargne/budget/' + currentMonth).then((r) => r.ok ? r.json() : null),
         ])
 
       const [txData, chargesData, varData, catsData, projetsData, allocData, allTxData] =
@@ -96,9 +104,32 @@ export default function MoisPage(): ReactElement {
           allTxRes.json() as Promise<TransactionWithCategory[]>,
         ])
 
+      const budgetData = budgetRes as BudgetMonthResponse | null
+
+      // ── Construit un map categoryId → total budgété ────────────────────────
+      // Somme toutes les BudgetEntry du mois par catégorie
+      const budgetMap: Record<string, number> = {}
+      if (budgetData?.entries) {
+        for (const entry of budgetData.entries) {
+          budgetMap[entry.categoryId] = (budgetMap[entry.categoryId] ?? 0) + entry.amount
+        }
+      }
+
+      // ── Injecte le budgeted dans les charges fixes ─────────────────────────
+      const chargesWithBudget: FixedChargeRow[] = chargesData.map((c) => ({
+        ...c,
+        budgeted: budgetMap[c.categoryId] ?? null,
+      }))
+
+      // ── Injecte le budgeted dans les charges variables ─────────────────────
+      const varWithBudget: VariableChargeRow[] = varData.map((c) => ({
+        ...c,
+        budgeted: budgetMap[c.categoryId] ?? null,
+      }))
+
       setTransactions(txData)
-      setCharges(chargesData)
-      setVariableCharges(Array.isArray(varData) ? varData : [])
+      setCharges(chargesWithBudget)
+      setVariableCharges(Array.isArray(varWithBudget) ? varWithBudget : [])
       setCategories(catsData)
       setProjects(projetsData)
       setTotalFortune(projetsData.filter((p) => p.isActive).reduce((s, p) => s + p.currentAmount, 0))
@@ -106,7 +137,6 @@ export default function MoisPage(): ReactElement {
       setExistingTags(extractUniqueTags(Array.isArray(allTxData) ? allTxData : []))
       setAllocations(allocData.allocations)
 
-      // Calcul du résumé mensuel
       const revenus           = txData.filter((t) => t.category.type === 'INCOME').reduce((s, t) => s + t.amount, 0)
       const depenses          = txData.filter((t) => t.category.type === 'EXPENSE').reduce((s, t) => s + Math.abs(t.amount), 0)
       const allocationPercent = allocData.allocations.reduce((s, a) => s + a.percentage, 0)
@@ -124,29 +154,19 @@ export default function MoisPage(): ReactElement {
     tags: string[]
     pointed: boolean
   }): Promise<void> {
-    // Détecter si la catégorie est de type PROJECT
     const cat = categories.find((c) => c.id === f.categoryId)
     const isProjectCat = cat?.type === 'PROJECT'
 
     if (isProjectCat && !editingTransaction) {
-      // Trouver le projet lié à cette catégorie
-      // Le montant est signé : négatif = dépense, positif = entrée
       const projet = projects.find((p) => p.categoryId === f.categoryId)
       if (!projet) throw new Error('Projet introuvable pour cette catégorie')
-
       const res = await fetch(`/api/epargne/projets/${projet.id}/depense`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: f.amount,   // signé
-          month: currentMonth,
-          tags: f.tags,
-          pointed: f.pointed,
-        }),
+        body: JSON.stringify({ amount: f.amount, month: currentMonth, tags: f.tags, pointed: f.pointed }),
       })
       if (!res.ok) throw new Error('Erreur sauvegarde opération projet')
     } else {
-      // Transaction normale (ou édition d'une transaction projet existante)
       const url = editingTransaction
         ? '/api/epargne/transactions/' + editingTransaction.id
         : '/api/epargne/transactions'
@@ -157,7 +177,6 @@ export default function MoisPage(): ReactElement {
       })
       if (!res.ok) throw new Error('Erreur sauvegarde')
     }
-
     await loadAll()
   }
 
@@ -236,7 +255,6 @@ export default function MoisPage(): ReactElement {
           </div>
         ) : (
           <>
-            {/* Résumé du mois */}
             <MonthSummary
               revenus={summary.revenus}
               depenses={summary.depenses}
@@ -246,7 +264,6 @@ export default function MoisPage(): ReactElement {
 
             {/* Transactions */}
             <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-              {/* Barre de recherche */}
               <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
                 <input
                   type="text"
@@ -254,12 +271,7 @@ export default function MoisPage(): ReactElement {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{
-                    backgroundColor: 'var(--surface2)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text)',
-                    fontFamily: 'var(--font-body)',
-                  }}
+                  style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'var(--font-body)' }}
                 />
               </div>
               <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -285,7 +297,7 @@ export default function MoisPage(): ReactElement {
               />
             </div>
 
-            {/* Charges fixes */}
+            {/* Charges fixes — reçoit maintenant le champ budgeted */}
             <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
                 <h2 className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Charges fixes</h2>
@@ -294,7 +306,7 @@ export default function MoisPage(): ReactElement {
               <FixedChargesTable charges={charges} onUpdateEstimated={handleUpdateFixed} />
             </div>
 
-            {/* Dépenses variables */}
+            {/* Dépenses variables — reçoit maintenant le champ budgeted */}
             <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
                 <h2 className="text-base font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Dépenses variables</h2>

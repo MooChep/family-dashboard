@@ -21,7 +21,7 @@ model User {
 model UserConfig {
   id          String   @id @default(cuid())
   userId      String   @unique
-  themeId     String   @default("dark")
+  themeId     String   @default("light")
   preferences String   @db.LongText
   updatedAt   DateTime @updatedAt
   theme       Theme    @relation(fields: [themeId], references: [name])
@@ -35,21 +35,25 @@ model Theme {
   name      String       @unique
   label     String
   isDefault Boolean      @default(false)
-  cssVars   String?      @db.LongText   // JSON des variables CSS custom
-  createdBy String?                     // userId du créateur (null = système)
+  cssVars   String?      @db.LongText
+  createdBy String?
   createdAt DateTime     @default(now())
   configs   UserConfig[]
 }
+
 model Category {
-  id           String           @id @default(cuid())
-  name         String           @unique
-  type         CategoryType
-  isFixed      Boolean          @default(false)
-  createdAt    DateTime         @default(now())
-  isArchived   Boolean          @default(false)
-  fixedCharges FixedCharge[]
-  projects     SavingsProject[]
-  transactions Transaction[]
+  id            String        @id @default(cuid())
+  name          String        @unique
+  type          CategoryType
+  isFixed       Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  isArchived    Boolean       @default(false)
+  fixedCharges  FixedCharge[]
+  projects      SavingsProject[]
+  transactions  Transaction[]
+  // ── Budget ──────────────────────────────────────────────────────────────
+  budgetLines   BudgetLine[]
+  budgetEntries BudgetEntry[]
 }
 
 model Transaction {
@@ -87,9 +91,9 @@ model SavingsProject {
   currentAmount     Float               @default(0)
   isActive          Boolean             @default(true)
   categoryId        String?
-  transferredToId   String?             // id du projet cible lors d'une réaffectation
-  transferredMonth  DateTime?           // mois de la réaffectation (pour retrouver l'allocation)
-  transferredAmount Float?              // montant transféré (pour annulation exacte)
+  transferredToId   String?
+  transferredMonth  DateTime?
+  transferredAmount Float?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   allocations       SavingsAllocation[]
@@ -146,8 +150,74 @@ model ReconciliationEntry {
   @@index([reconciliationId])
 }
 
+// ── Budget ─────────────────────────────────────────────────────────────────────
+
+// BudgetLine : template récurrent d'une dépense/revenu prévu
+// Ex: "Netflix 5€ tous les mois", "Carte bancaire 15€ tous les 3 mois"
+model BudgetLine {
+  id               String      @id @default(cuid())
+  label            String      // libellé lisible, ex: "Netflix"
+  amount           Float       // montant prévu
+  categoryId       String
+  recurrence       Recurrence  @default(NONE)
+  recurrenceMonths Int?        // si CUSTOM : tous les X mois (ex: 3)
+  recurrenceStart  DateTime?   // mois de référence pour calculer les échéances
+  isActive         Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  category         Category    @relation(fields: [categoryId], references: [id])
+  entries          BudgetEntry[]
+
+  @@index([categoryId])
+}
+
+// BudgetEntry : instance mensuelle concrète d'une ligne de budget
+// Peut être générée automatiquement depuis une BudgetLine récurrente,
+// ou créée manuellement (budgetLineId = null)
+model BudgetEntry {
+  id           String      @id @default(cuid())
+  month        DateTime    // mois concerné (normalisé au 1er)
+  label        String      // peut différer du template si modif ponctuelle
+  amount       Float       // peut différer du template si modif ponctuelle
+  categoryId   String
+  budgetLineId String?     // null = entrée ponctuelle sans récurrence
+  isModified   Boolean     @default(false) // true = modifié après validation du mois
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  category     Category    @relation(fields: [categoryId], references: [id])
+  budgetLine   BudgetLine? @relation(fields: [budgetLineId], references: [id], onDelete: SetNull)
+
+  @@index([month])
+  @@index([categoryId])
+  @@index([budgetLineId])
+}
+
+// BudgetMonth : état global du budget pour un mois donné
+model BudgetMonth {
+  id        String            @id @default(cuid())
+  month     DateTime          @unique // normalisé au 1er du mois UTC
+  status    BudgetMonthStatus @default(DRAFT)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────────────
+
 enum CategoryType {
   INCOME
   EXPENSE
   PROJECT
+}
+
+enum Recurrence {
+  NONE      // ponctuel, pas de récurrence
+  MONTHLY   // tous les mois
+  QUARTERLY // tous les 3 mois
+  ANNUAL    // tous les 12 mois
+  CUSTOM    // tous les N mois (recurrenceMonths)
+}
+
+enum BudgetMonthStatus {
+  DRAFT     // en cours de préparation
+  VALIDATED // verrouillé comme référence
 }
