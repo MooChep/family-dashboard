@@ -1,18 +1,26 @@
--- Migration : light devient le thème système par défaut, dark est retiré
--- Appliquée automatiquement par `prisma migrate deploy` au démarrage Docker
+-- Désactive temporairement les contraintes FK
+SET FOREIGN_KEY_CHECKS = 0;
 
--- 1. Bascule tous les UserConfig qui pointent vers 'dark' → 'light'
---    Doit être fait AVANT la suppression du thème dark (contrainte FK)
-UPDATE `UserConfig`
-SET `themeId` = 'light'
-WHERE `themeId` = 'dark';
+-- S'assure que le thème light existe (idempotent)
+INSERT IGNORE INTO `Theme` (`id`, `name`, `label`, `isDefault`, `cssVars`, `createdBy`, `createdAt`)
+VALUES (
+  UUID(),
+  'light',
+  'Clair',
+  TRUE,
+  '{"--bg":"#f5f3ef","--surface":"#ffffff","--surface2":"#faf8f5","--border":"#e4dfd6","--border2":"#d4cec4","--accent":"#2d4a3e","--accent-dim":"#2d4a3e18","--text":"#1a1a18","--text2":"#3d3d38","--muted":"#8c8880","--muted2":"#b0aba3","--success":"#3a7d5c","--warning":"#c9a84c","--danger":"#c9623f","--font-display":"\'Playfair Display\', serif","--font-body":"\'DM Sans\', sans-serif","--font-mono":"\'DM Mono\', monospace"}',
+  NULL,
+  NOW()
+);
 
--- 2. Supprime le thème 'dark' de la table Theme
-DELETE FROM `Theme`
-WHERE `name` = 'dark';
+-- Bascule les UserConfig dark → light
+UPDATE `UserConfig` SET `themeId` = 'light' WHERE `themeId` = 'dark';
 
--- 3. Marque 'light' comme thème système par défaut
-UPDATE `Theme`
-SET `isDefault` = TRUE,
-    `createdBy` = NULL
-WHERE `name` = 'light';
+-- Supprime le thème dark
+DELETE FROM `Theme` WHERE `name` = 'dark';
+
+-- Marque light comme défaut système
+UPDATE `Theme` SET `isDefault` = TRUE, `createdBy` = NULL WHERE `name` = 'light';
+
+-- Réactive les contraintes FK
+SET FOREIGN_KEY_CHECKS = 1;
