@@ -1,5 +1,4 @@
 'use client'
-
 import {
   useEffect,
   type ReactNode,
@@ -12,7 +11,7 @@ interface ModalProps {
   onClose: () => void
   title?: string
   children: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
 
@@ -20,6 +19,7 @@ const SIZE_CLASSES: Record<string, string> = {
   sm: 'max-w-sm',
   md: 'max-w-md',
   lg: 'max-w-lg',
+  xl: 'max-w-xl',
 }
 
 export function Modal({
@@ -30,18 +30,14 @@ export function Modal({
   size = 'md',
   className,
 }: ModalProps): ReactElement | null {
-  // Ferme la modale avec Escape
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {
       if (e.key === 'Escape') onClose()
     }
-
     if (isOpen) {
       document.addEventListener('keydown', handleKeyDown)
-      // Bloque le scroll du body quand la modale est ouverte
       document.body.style.overflow = 'hidden'
     }
-
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = ''
@@ -51,43 +47,39 @@ export function Modal({
   if (!isOpen) return null
 
   return (
-    // Overlay
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
       onClick={onClose}
     >
-      {/* Contenu — stopPropagation évite la fermeture au clic sur le contenu */}
       <div
         className={cn(
-          'w-full rounded-xl shadow-2xl',
+          'w-full rounded-xl shadow-2xl flex flex-col',
           SIZE_CLASSES[size],
           className,
         )}
         style={{
           backgroundColor: 'var(--surface)',
           border: '1px solid var(--border2)',
+          maxHeight: 'calc(100vh - 2rem)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Header — fixe, ne scroll pas */}
         {title && (
           <div
-            className="flex items-center justify-between px-5 py-4"
+            className="flex items-center justify-between px-5 py-4 flex-shrink-0"
             style={{ borderBottom: '1px solid var(--border)' }}
           >
             <h2
               className="text-base font-semibold"
-              style={{
-                color: 'var(--text)',
-                fontFamily: 'var(--font-display)',
-              }}
+              style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}
             >
               {title}
             </h2>
             <button
               onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-sm transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-sm"
               style={{ color: 'var(--muted)' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = 'var(--text)'
@@ -104,8 +96,8 @@ export function Modal({
           </div>
         )}
 
-        {/* Body */}
-        <div className="p-5">{children}</div>
+        {/* Body — scrollable */}
+        <div className="p-5 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   )
