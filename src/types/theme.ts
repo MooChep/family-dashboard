@@ -17,13 +17,17 @@ export type ThemeCssVars = Record<string, string>
 
 // Structure du contexte exposé par ThemeProvider
 export interface ThemeContextValue {
-  /** Nom du thème actuellement actif */
+  /** Nom du thème actuellement actif (persisté en BDD) */
   theme: string
-  /** Change le thème, applique les vars CSS et persiste en BDD */
+  /** Prévisualise un thème localement sans persister en BDD */
+  previewTheme: (name: string) => void
+  /** Applique un thème ET persiste en BDD — à appeler à la confirmation */
   setTheme: (name: string) => Promise<void>
-  /** Supprime un thème custom (désactivé côté UI pour l'instant) */
+  /** Supprime un thème custom */
   deleteTheme: (name: string) => Promise<void>
-  /** Liste des thèmes disponibles chargés depuis la BDD */
+  /** Recharge la liste des thèmes depuis la BDD (après création) */
+  reloadThemes: () => Promise<void>
+  /** Liste des thèmes disponibles */
   themes: Theme[]
   /** True pendant le chargement initial */
   isLoading: boolean

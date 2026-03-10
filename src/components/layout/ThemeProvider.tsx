@@ -11,13 +11,9 @@ import {
 } from 'react'
 import type { Theme, ThemeContextValue, ThemeCssVars } from '@/types/theme'
 
-// ── Constante fallback ────────────────────────────────────────────────────────
 const FALLBACK_THEME = 'light'
 
-// ── Context ───────────────────────────────────────────────────────────────────
 const ThemeContext = createContext<ThemeContextValue | null>(null)
-
-// ── Helpers DOM ───────────────────────────────────────────────────────────────
 
 const CSS_VAR_KEYS = [
   '--bg', '--surface', '--surface2',
@@ -29,7 +25,6 @@ const CSS_VAR_KEYS = [
   '--font-display', '--font-body', '--font-mono',
 ]
 
-/** Applique un thème sur <html> : data-theme + cssVars inline si thème custom */
 function applyThemeToDOM(name: string, cssVars: ThemeCssVars | null): void {
   const root = document.documentElement
   for (const v of CSS_VAR_KEYS) root.style.removeProperty(v)
@@ -46,15 +41,12 @@ function parseCssVars(raw: string | null): ThemeCssVars | null {
   try { return JSON.parse(raw) as ThemeCssVars } catch { return null }
 }
 
-// ── Provider ──────────────────────────────────────────────────────────────────
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [currentThemeName, setCurrentThemeName] = useState<string>(FALLBACK_THEME)
   const [themes, setThemes] = useState<Theme[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // ── 1. Chargement initial : thèmes BDD + thème actif frais depuis /api/user/config
-  //       On ne lit PAS session.user.config (JWT figé à la connexion)
+  // ── 1. Init : fetch thèmes + config user depuis BDD ───────────────────────
   useEffect(() => {
     async function init(): Promise<void> {
       try {
@@ -92,7 +84,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     void init()
   }, [])
 
-  // ── 2. setTheme : applique visuellement + persiste en BDD ─────────────────
+  // ── 2. previewTheme : aperçu DOM sans persistance BDD ────────────────────
+  const previewTheme = useCallback((name: string): void => {
+    const themeData = themes.find((t) => t.name === name)
+    applyThemeToDOM(
+      themeData?.name ?? FALLBACK_THEME,
+      parseCssVars(themeData?.cssVars ?? null)
+    )
+  }, [themes])
+
+  // ── 3. setTheme : applique + persiste en BDD ──────────────────────────────
   const setTheme = useCallback(async (newTheme: string): Promise<void> => {
     const themeData = themes.find((t) => t.name === newTheme)
     applyThemeToDOM(
@@ -112,7 +113,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [themes])
 
-  // ── 3. deleteTheme : supprime un thème custom ──────────────────────────────
+  // ── 4. deleteTheme : supprime un thème custom ─────────────────────────────
   const deleteTheme = useCallback(async (name: string): Promise<void> => {
     const res = await fetch(`/api/themes/${encodeURIComponent(name)}`, {
       method: 'DELETE',
@@ -127,13 +128,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [currentThemeName, setTheme])
 
+  // ── 5. reloadThemes : recharge la liste après création ────────────────────
+  const reloadThemes = useCallback(async (): Promise<void> => {
+    const res = await fetch('/api/themes')
+    if (res.ok) setThemes(await res.json() as Theme[])
+  }, [])
+
   const value = useMemo<ThemeContextValue>(() => ({
     theme: currentThemeName,
+    previewTheme,
     setTheme,
     deleteTheme,
+    reloadThemes,
     themes,
     isLoading,
-  }), [currentThemeName, setTheme, deleteTheme, themes, isLoading])
+  }), [currentThemeName, previewTheme, setTheme, deleteTheme, reloadThemes, themes, isLoading])
 
   return (
     <ThemeContext.Provider value={value}>
@@ -141,8 +150,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     </ThemeContext.Provider>
   )
 }
-
-// ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext)
