@@ -1,12 +1,12 @@
 import { type ReactNode } from 'react'
 import '@/styles/globals.css'
 import '@/styles/themes.css'
-import { SessionProvider } from '@/components/providers/SessionProvider' // Vérifie le chemin exact
+import {SessionProvider} from '@/components/providers/SessionProvider'
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr">
-      <body>
+    <html lang="fr" suppressHydrationWarning>
+      <body className="antialiased">
         <SessionProvider>
           {children}
         </SessionProvider>
