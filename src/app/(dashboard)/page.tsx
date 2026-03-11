@@ -19,7 +19,7 @@ export default async function DashboardPage(): Promise<ReactElement> {
   ]
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 pt-15">
       <div className="flex flex-col gap-1">
         <p className="text-sm" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
           Bonjour,
@@ -28,8 +28,8 @@ export default async function DashboardPage(): Promise<ReactElement> {
           {user.name}
         </h2>
       </div>
-
-      <Card>
+{/* Card session */}
+      {/* <Card>
         <CardHeader title="Session active" subtitle="Informations de connexion courante" />
         <div className="flex flex-col gap-2 mt-2" style={{ fontFamily: 'var(--font-mono)' }}>
           <div className="flex items-center gap-3">
@@ -45,7 +45,7 @@ export default async function DashboardPage(): Promise<ReactElement> {
             <span className="text-xs" style={{ color: 'var(--muted2)' }}>{user.id}</span>
           </div>
         </div>
-      </Card>
+      </Card> */}
 
       <div className="flex flex-col gap-3">
         <h3

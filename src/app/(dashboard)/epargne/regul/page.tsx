@@ -140,7 +140,7 @@ export default function RegulPage(): ReactElement {
 
   return (
     <EpargneLayout>
-      <div className="flex flex-col gap-8 pb-24">
+      <div className="flex flex-col gap-8 pb-24 pt-15 md:pt-0">
         
         {/* Navigation */}
         <div className="flex items-center justify-between">
