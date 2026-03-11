@@ -87,9 +87,11 @@ export default function AnalysesEpargnePage(): ReactElement {
 
   return (
     <EpargneLayout>
+      {/* padding décalage avec le header */}
+      <div className='pt-10 md:pt-0'> 
       <AnalysesLayout subHeader={periodHeader}>
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-10 md:pt-0">
             <SkeletonCard /><SkeletonCard /><SkeletonCard />
           </div>
         ) : (
@@ -192,6 +194,7 @@ export default function AnalysesEpargnePage(): ReactElement {
           </div>
         )}
       </AnalysesLayout>
+        </div>
     </EpargneLayout>
   )
 }

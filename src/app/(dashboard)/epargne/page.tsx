@@ -139,7 +139,7 @@ export default function EpargneDashboard(): ReactElement {
 
   return (
     <EpargneLayout>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 pt-12 md:pt-0">
         {/* Warning régul manquante */}
         {regulDone === false && (
           <a href="/epargne/regul" className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline"

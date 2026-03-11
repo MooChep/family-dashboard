@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 import { useRef, useEffect, useState, type ReactNode, type ReactElement } from 'react'
 import { cn } from '@/lib/utils'
 import { LayoutDashboard, Calendar, BarChart3, Scale, Settings, Wallet } from 'lucide-react'
+import { FAB } from '@/components/epargne/FAB'
+import { type Category } from '@prisma/client'
 
 const TABS = [
   { label: 'Dashboard', href: '/epargne',          icon: LayoutDashboard },
@@ -19,10 +21,17 @@ export function EpargneLayout({
   children,
   stickySubHeader,
   periodPicker,
+  // Props FAB — optionnelles, le FAB n'apparaît que si les deux sont fournis
+  fabCategories,
+  fabMonth,
+  onFabSaved,
 }: {
   children: ReactNode
   stickySubHeader?: ReactNode
   periodPicker?: ReactNode
+  fabCategories?: Category[]
+  fabMonth?: string
+  onFabSaved?: () => void
 }): ReactElement {
   const pathname = usePathname()
   const tabsRef = useRef<HTMLDivElement>(null)
@@ -81,7 +90,7 @@ export function EpargneLayout({
       {/* ── SubHeader ── */}
       {(stickySubHeader ?? periodPicker) && (
         <aside
-          className="sticky z-40 w-full border-b border-(--border) bg-(--bg)"
+          className="sticky z-20 w-full border-b border-(--border) bg-(--bg) pt-13"
           style={{ top: `${tabsHeight}px` }}
         >
           <div className="max-w-7xl mx-auto px-4 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 bg-(--bg)">
@@ -99,15 +108,21 @@ export function EpargneLayout({
         </aside>
       )}
 
-      {/* ── Contenu
-            pb-32 sur mobile : compense la bottom nav (64px) + le MobileHeader (56px)
-            pb-12 sur desktop : pas de bottom nav
-      ── */}
+      {/* ── Contenu ── */}
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 pt-2 md:pt-6 md:p-6 pb-32 md:pb-12">
         {children}
       </main>
 
-      {/* ── Bottom nav mobile — 6 onglets ── */}
+      {/* ── FAB saisie rapide — visible uniquement si fabCategories + fabMonth fournis ── */}
+      {fabCategories && fabMonth && (
+        <FAB
+          categories={fabCategories}
+          currentMonth={fabMonth}
+          onSaved={onFabSaved ?? (() => {})}
+        />
+      )}
+
+      {/* ── Bottom nav mobile ── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-(--surface) border-t border-(--border) px-1 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
         <div className="flex justify-around items-center h-16">
           {TABS.map((tab) => {
@@ -122,7 +137,6 @@ export function EpargneLayout({
                 style={{ color: isActive ? 'var(--accent)' : 'var(--text2)' }}
               >
                 <tab.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                {/* 9px pour tenir sur 6 onglets sans overflow */}
                 <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {tab.label}
                 </span>

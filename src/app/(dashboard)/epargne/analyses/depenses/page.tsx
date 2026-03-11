@@ -73,11 +73,12 @@ export default function AnalysesDepensesPage(): ReactElement {
 
   return (
     <EpargneLayout>
+      <div className='pt-10 md:pt-0'> 
       <AnalysesLayout subHeader={periodHeader}>
         {/* ... error handling ... */}
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-10 md:pt-0">
             <SkeletonCard /><SkeletonCard /><SkeletonCard />
           </div>
         ) : (
@@ -139,6 +140,7 @@ export default function AnalysesDepensesPage(): ReactElement {
           </div>
         )}
       </AnalysesLayout>
+      </div>
     </EpargneLayout>
   )
 }

@@ -143,7 +143,23 @@ export function MobileHeader(): React.ReactElement {
           style={{ borderBottom: '1px solid var(--border)' }}
         >
           <div className="flex items-center gap-3">
-            <div
+            {/* Bouton fermer */}
+          <button
+            onClick={() => setDrawerOpen(false)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-sm"
+            style={{ color: 'var(--muted)', backgroundColor: 'var(--surface2)' }}
+            aria-label="Fermer"
+          >
+            ✕
+          </button>
+            <span
+              className="text-base font-semibold tracking-wide"
+              style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}
+            >
+              Family Dashboard
+            </span>
+          {/* Remplacer un jour par une icone d'app */}
+          {/* <div
               className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
               style={{
                 backgroundColor: 'var(--accent)',
@@ -153,22 +169,8 @@ export function MobileHeader(): React.ReactElement {
             >
               F
             </div>
-            <span
-              className="text-base font-semibold tracking-wide"
-              style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}
-            >
-              Family Dashboard
-            </span>
+           */}
           </div>
-          {/* Bouton fermer */}
-          <button
-            onClick={() => setDrawerOpen(false)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-sm"
-            style={{ color: 'var(--muted)', backgroundColor: 'var(--surface2)' }}
-            aria-label="Fermer"
-          >
-            ✕
-          </button>
         </div>
 
         {/* Navigation */}

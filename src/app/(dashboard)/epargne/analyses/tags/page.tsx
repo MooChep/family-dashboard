@@ -119,6 +119,7 @@ export default function AnalysesTagsPage(): ReactElement {
 
   return (
     <EpargneLayout>
+      <div className='pt-10 md:pt-0'> 
       <AnalysesLayout subHeader={periodHeader}>
 
         {/* 3. Empilement des Filtres (Stacking) */}
@@ -202,7 +203,7 @@ export default function AnalysesTagsPage(): ReactElement {
         )}
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><SkeletonCard /><SkeletonCard /></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-10 md:pt-0"><SkeletonCard /><SkeletonCard /></div>
         ) : searchTags.length > 0 ? (
 
           /* ── 1. La Dualité d'Affichage : Mode Tableau Actif ── */
@@ -325,6 +326,7 @@ export default function AnalysesTagsPage(): ReactElement {
           </div>
         )}
       </AnalysesLayout>
+      </div>
     </EpargneLayout>
   )
 }

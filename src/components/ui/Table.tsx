@@ -60,7 +60,7 @@ export function Th({
   return (
     <th
       className={cn(
-        'px-4 py-3 text-xs font-medium uppercase tracking-wider',
+        'px-2 md:px-4 py-3 text-xs font-medium uppercase tracking-tight',
         ALIGN_CLASSES[align],
         className,
       )}
@@ -100,7 +100,7 @@ export function Td({
   return (
     <td
       className={cn(
-        'px-4 py-3 text-sm',
+        'px-2 md:px-4 py-3 text-sm',
         ALIGN_CLASSES[align],
         className,
       )}
