@@ -1,6 +1,7 @@
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
 
 datasource db {
@@ -16,6 +17,9 @@ model User {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   config    UserConfig?
+
+  // ── Relations Cerveau ──
+  entries               Entry[]
 }
 
 model UserConfig {
@@ -220,4 +224,133 @@ enum Recurrence {
 enum BudgetMonthStatus {
   DRAFT     // en cours de préparation
   VALIDATED // verrouillé comme référence
+}
+
+// ── Enums Cerveau ──────────────────────────────────────────────────────────────
+
+enum EntryType {
+  NOTE
+  TODO
+  REMINDER
+  LIST
+  PROJECT
+  DISCUSSION
+  EVENT
+}
+
+enum EntryStatus {
+  OPEN
+  DONE
+  CANCELLED
+  ARCHIVED
+  SNOOZED   // Rappels uniquement
+  PASSED    // Événements uniquement
+  PAUSED    // Projets uniquement
+}
+
+enum EntryPriority {
+  LOW    // !
+  MEDIUM // !!
+  HIGH   // !!!
+}
+
+enum EntryAssignee {
+  SHARED
+  ILAN
+  CAMILLE
+}
+
+enum EntrySource {
+  CAPTURE
+  VIDE_TETE
+  TEMPLATE
+  RECURRING
+}
+
+enum EntryFormat {
+  PLAIN
+  MARKDOWN
+}
+
+enum NotificationType {
+  REMINDER
+  EVENT
+  ENRICHMENT
+  BRIEF
+  RECAP
+  ESCALATION
+}
+
+// ── Modèle Cerveau ────────────────────────────────────────────────────────────
+
+model Entry {
+  id            String        @id @default(cuid())
+
+  // ── Champs communs ──
+  type          EntryType
+  content       String        @db.Text
+  status        EntryStatus   @default(OPEN)
+  authorId      String
+  assignedTo    EntryAssignee @default(SHARED)
+  source        EntrySource   @default(CAPTURE)
+  contentFormat EntryFormat   @default(PLAIN)
+  isPinned      Boolean       @default(false) // Notes uniquement
+  isUrgent      Boolean       @default(false) // Discussions uniquement
+
+  // ── Temporel ──
+  dueDate      DateTime? // Rappels (obligatoire), Todos (optionnel)
+  snoozedUntil DateTime? // Rappels uniquement
+  archivedAt   DateTime? // renseigné à l'archivage
+
+  // ── Récurrence ──
+  recurrenceRule String? // iCal RRULE
+
+  // ── Sous-tâches / hiérarchie (dormant v1) ──
+  parentId  String?
+  parent    Entry?  @relation("EntryChildren", fields: [parentId], references: [id])
+  children  Entry[] @relation("EntryChildren")
+
+  // ── Projet ──
+  projectId      String?
+  project        Entry?  @relation("ProjectEntries", fields: [projectId], references: [id])
+  projectEntries Entry[] @relation("ProjectEntries")
+
+  // ── Événement ──
+  startDate   DateTime?
+  endDate     DateTime?
+  allDay      Boolean   @default(false)
+  location    String?
+  locationLat Float? // dormant v1
+  locationLng Float? // dormant v1
+  calendarId  String? // FK Calendar, dormant v1
+  externalUid String? // sync Google Calendar, dormant v1
+
+  // ── Discussion ──
+  description      String?   @db.Text
+  enrichNotifiedAt DateTime?
+
+  // ── Pièces jointes ──
+  attachmentPath String?
+  attachmentMime String?
+  attachmentSize Int?
+
+  // ── Lieu (dormant v1) ──
+  placeId String? // FK Place
+
+  // ── Relations ──
+  author User @relation(fields: [authorId], references: [id])
+
+  // ── Métadonnées ──
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ── Index ──
+  @@index([authorId, type, status])
+  @@index([authorId, status, dueDate])
+  @@index([projectId, status, dueDate])
+  @@index([type, status, archivedAt])
+  @@index([status, archivedAt])
+  @@index([calendarId]) // dormant v1
+  @@index([placeId]) // dormant v1
+  @@fulltext([content])
 }

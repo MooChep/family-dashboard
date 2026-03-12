@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "prisma": {
-  "seed": "node --loader ts-node/esm prisma/seed/themes.ts"
+  "seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed/themes.ts"
 },
   "scripts": {
     "dev": "next dev",
