@@ -19,7 +19,10 @@ model User {
   config    UserConfig?
 
   // ── Relations Cerveau ──
-  entries               Entry[]
+  entries                Entry[]
+  pushSubscriptions      PushSubscription[]
+  notificationPreference NotificationPreference?
+  nlpFeedbacks           NlpFeedback[]
 }
 
 model UserConfig {
@@ -46,12 +49,12 @@ model Theme {
 }
 
 model Category {
-  id            String        @id @default(cuid())
-  name          String        @unique
+  id            String           @id @default(cuid())
+  name          String           @unique
   type          CategoryType
-  isFixed       Boolean       @default(false)
-  createdAt     DateTime      @default(now())
-  isArchived    Boolean       @default(false)
+  isFixed       Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  isArchived    Boolean          @default(false)
   fixedCharges  FixedCharge[]
   projects      SavingsProject[]
   transactions  Transaction[]
@@ -159,17 +162,17 @@ model ReconciliationEntry {
 // BudgetLine : template récurrent d'une dépense/revenu prévu
 // Ex: "Netflix 5€ tous les mois", "Carte bancaire 15€ tous les 3 mois"
 model BudgetLine {
-  id               String      @id @default(cuid())
-  label            String      // libellé lisible, ex: "Netflix"
-  amount           Float       // montant prévu
+  id               String        @id @default(cuid())
+  label            String // libellé lisible, ex: "Netflix"
+  amount           Float // montant prévu
   categoryId       String
-  recurrence       Recurrence  @default(NONE)
-  recurrenceMonths Int?        // si CUSTOM : tous les X mois (ex: 3)
-  recurrenceStart  DateTime?   // mois de référence pour calculer les échéances
-  isActive         Boolean     @default(true)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  category         Category    @relation(fields: [categoryId], references: [id])
+  recurrence       Recurrence    @default(NONE)
+  recurrenceMonths Int? // si CUSTOM : tous les X mois (ex: 3)
+  recurrenceStart  DateTime? // mois de référence pour calculer les échéances
+  isActive         Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  category         Category      @relation(fields: [categoryId], references: [id])
   entries          BudgetEntry[]
 
   @@index([categoryId])
@@ -180,11 +183,11 @@ model BudgetLine {
 // ou créée manuellement (budgetLineId = null)
 model BudgetEntry {
   id           String      @id @default(cuid())
-  month        DateTime    // mois concerné (normalisé au 1er)
-  label        String      // peut différer du template si modif ponctuelle
-  amount       Float       // peut différer du template si modif ponctuelle
+  month        DateTime // mois concerné (normalisé au 1er)
+  label        String // peut différer du template si modif ponctuelle
+  amount       Float // peut différer du template si modif ponctuelle
   categoryId   String
-  budgetLineId String?     // null = entrée ponctuelle sans récurrence
+  budgetLineId String? // null = entrée ponctuelle sans récurrence
   isModified   Boolean     @default(false) // true = modifié après validation du mois
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -214,15 +217,15 @@ enum CategoryType {
 }
 
 enum Recurrence {
-  NONE      // ponctuel, pas de récurrence
-  MONTHLY   // tous les mois
+  NONE // ponctuel, pas de récurrence
+  MONTHLY // tous les mois
   QUARTERLY // tous les 3 mois
-  ANNUAL    // tous les 12 mois
-  CUSTOM    // tous les N mois (recurrenceMonths)
+  ANNUAL // tous les 12 mois
+  CUSTOM // tous les N mois (recurrenceMonths)
 }
 
 enum BudgetMonthStatus {
-  DRAFT     // en cours de préparation
+  DRAFT // en cours de préparation
   VALIDATED // verrouillé comme référence
 }
 
@@ -243,15 +246,15 @@ enum EntryStatus {
   DONE
   CANCELLED
   ARCHIVED
-  SNOOZED   // Rappels uniquement
-  PASSED    // Événements uniquement
-  PAUSED    // Projets uniquement
+  SNOOZED // Rappels uniquement
+  PASSED // Événements uniquement
+  PAUSED // Projets uniquement
 }
 
 enum EntryPriority {
-  LOW    // !
+  LOW // !
   MEDIUM // !!
-  HIGH   // !!!
+  HIGH // !!!
 }
 
 enum EntryAssignee {
@@ -284,7 +287,7 @@ enum NotificationType {
 // ── Modèle Cerveau ────────────────────────────────────────────────────────────
 
 model Entry {
-  id            String        @id @default(cuid())
+  id String @id @default(cuid())
 
   // ── Champs communs ──
   type          EntryType
@@ -306,9 +309,9 @@ model Entry {
   recurrenceRule String? // iCal RRULE
 
   // ── Sous-tâches / hiérarchie (dormant v1) ──
-  parentId  String?
-  parent    Entry?  @relation("EntryChildren", fields: [parentId], references: [id])
-  children  Entry[] @relation("EntryChildren")
+  parentId String?
+  parent   Entry?  @relation("EntryChildren", fields: [parentId], references: [id])
+  children Entry[] @relation("EntryChildren")
 
   // ── Projet ──
   projectId      String?
@@ -338,7 +341,11 @@ model Entry {
   placeId String? // FK Place
 
   // ── Relations ──
-  author User @relation(fields: [authorId], references: [id])
+  author         User              @relation(fields: [authorId], references: [id])
+  tags           EntryTag[]
+  listItems      ListItem[]
+  eventReminders EventReminder[]
+  notifications  NotificationLog[]
 
   // ── Métadonnées ──
   createdAt DateTime @default(now())
@@ -353,4 +360,151 @@ model Entry {
   @@index([calendarId]) // dormant v1
   @@index([placeId]) // dormant v1
   @@fulltext([content])
+}
+
+// ── Modèles secondaires Cerveau ────────────────────────────────────────────────
+
+model Tag {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  entries   EntryTag[]
+  createdAt DateTime   @default(now())
+}
+
+model EntryTag {
+  entryId String
+  tagId   String
+  entry   Entry  @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, tagId])
+  @@index([tagId])
+}
+
+model ListItem {
+  id          String    @id @default(cuid())
+  entryId     String
+  content     String
+  quantity    String?
+  checked     Boolean   @default(false)
+  addedById   String
+  checkedById String?
+  addedAt     DateTime  @default(now())
+  checkedAt   DateTime?
+  archivedAt  DateTime?
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId, checked])
+  @@index([entryId, archivedAt])
+}
+
+model EventReminder {
+  id      String    @id @default(cuid())
+  entryId String
+  delay   String // ISO 8601 duration: "-P1D", "-PT2H"
+  sentAt  DateTime?
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId])
+}
+
+model NotificationPreference {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  reminderDelays     String   @default("[\"PT0S\",\"-PT15M\",\"-PT1H\"]")
+  snoozeTonightHour  String   @default("20:00")
+  eventDefaultDelays String   @default("[\"-P1D\",\"-PT2H\"]")
+  enrichDelay        Int      @default(60)
+  briefEnabled       Boolean  @default(false)
+  briefTime          String   @default("08:00")
+  recapEnabled       Boolean  @default(false)
+  recapDay           Int      @default(0)
+  recapTime          String   @default("19:00")
+  silenceEnabled     Boolean  @default(false)
+  silenceStart       String?
+  silenceEnd         String?
+  escalationEnabled  Boolean  @default(false)
+  escalationDelay    Int      @default(30)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model NotificationLog {
+  id          String           @id @default(cuid())
+  userId      String
+  entryId     String?
+  type        NotificationType
+  scheduledAt DateTime
+  sentAt      DateTime?
+  dismissedAt DateTime?
+  snoozedTo   DateTime?
+
+  entry Entry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, scheduledAt])
+  @@index([entryId])
+  @@index([sentAt])
+  @@index([scheduledAt, sentAt])
+}
+
+model PushSubscription {
+  id           String   @id @default(cuid())
+  userId       String
+  endpoint     String   @db.Text
+  p256dh       String   @db.Text
+  auth         String
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @updatedAt
+  User         User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, endpoint(length: 255)])
+  @@index([userId])
+}
+
+model NlpFeedback {
+  id        String    @id @default(cuid())
+  userId    String
+  input     String    @db.Text
+  predicted EntryType
+  corrected EntryType
+  createdAt DateTime  @default(now())
+  User      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([predicted, corrected])
+}
+
+// ── Modèles dormants v1 ────────────────────────────────────────────────────────
+
+model Calendar {
+  id        String           @id @default(cuid())
+  name      String
+  color     String?
+  createdAt DateTime         @default(now())
+  members   CalendarMember[]
+}
+
+model CalendarMember {
+  calendarId String
+  userId     String
+  role       String @default("MEMBER") // OWNER | MEMBER
+
+  calendar Calendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+
+  @@id([calendarId, userId])
+}
+
+model Place {
+  id      String @id @default(cuid())
+  slug    String @unique // "maison", "travail"
+  label   String // "Maison", "Bureau"
+  lat     Float?
+  lng     Float?
+  radius  Int    @default(100) // mètres
+  ownerId String
 }

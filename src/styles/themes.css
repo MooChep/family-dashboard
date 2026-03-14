@@ -38,6 +38,22 @@
   --font-display: 'Syne', sans-serif;
   --font-body:    'Syne', sans-serif;
   --font-mono:    'DM Mono', monospace;
+
+  /* ─── Cerveau — couleurs de types ─── */
+  --cerveau-note:       #fb923c;
+  --cerveau-todo:       #60a5fa;
+  --cerveau-reminder:   #fbbf24;
+  --cerveau-list:       #34d399;
+  --cerveau-project:    #22d3ee;
+  --cerveau-discussion: #c084fc;
+  --cerveau-event:      #f87171;
+
+  /* Raccourcis inline capture */
+  --cerveau-tag:        #fbbf24;
+  --cerveau-assign:     #c084fc;
+  --cerveau-date:       #60a5fa;
+  --cerveau-recur:      #22d3ee;
+  --cerveau-template:   #fde68a;
 }
 
 /* ─── Thème Light ────────────────────────────────────────────────────────── */
@@ -60,4 +76,20 @@
   --font-display: 'Playfair Display', serif;
   --font-body:    'DM Sans', sans-serif;
   --font-mono:    'DM Mono', monospace;
+
+  /* ─── Cerveau — couleurs de types ─── */
+  --cerveau-note:       #fb923c;
+  --cerveau-todo:       #3b82f6;
+  --cerveau-reminder:   #f59e0b;
+  --cerveau-list:       #10b981;
+  --cerveau-project:    #06b6d4;
+  --cerveau-discussion: #a855f7;
+  --cerveau-event:      #ef4444;
+
+  /* Raccourcis inline capture */
+  --cerveau-tag:        #f59e0b;
+  --cerveau-assign:     #a855f7;
+  --cerveau-date:       #3b82f6;
+  --cerveau-recur:      #06b6d4;
+  --cerveau-template:   #eab308;
 }
