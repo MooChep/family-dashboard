@@ -25,6 +25,7 @@
     "@types/web-push": "^3.6.4",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.71.0",
+    "chrono-node": "^2.9.0",
     "clsx": "^2.1.1",
     "ioredis": "^5.10.0",
     "lucide-react": "^0.577.0",

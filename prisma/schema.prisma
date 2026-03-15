@@ -297,8 +297,9 @@ model Entry {
   assignedTo    EntryAssignee @default(SHARED)
   source        EntrySource   @default(CAPTURE)
   contentFormat EntryFormat   @default(PLAIN)
-  isPinned      Boolean       @default(false) // Notes uniquement
-  isUrgent      Boolean       @default(false) // Discussions uniquement
+  isPinned      Boolean        @default(false)  // Notes uniquement
+  isUrgent      Boolean        @default(false)  // Discussions uniquement
+  priority      EntryPriority?                  // Todos + Rappels uniquement
 
   // ── Temporel ──
   dueDate      DateTime? // Rappels (obligatoire), Todos (optionnel)

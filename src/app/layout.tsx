@@ -5,9 +5,7 @@ import {SessionProvider} from '@/components/providers/SessionProvider'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  // ... tes métadonnées existantes ...
   manifest: '/manifest.json',
-  themeColor: '#0f1117',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -22,6 +20,7 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  themeColor: '#0f1117',
 }
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
