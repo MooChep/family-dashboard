@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');
+
 @config "../../tailwind.config.ts";
 @import "tailwindcss";
 
@@ -66,6 +68,18 @@ code, pre, kbd, samp {
 ::selection {
   background-color: var(--accent-dim);
   color: var(--text);
+}
+
+/* ─── Cerveau — signature line input ────────────────────────────────────── */
+.cerveau-input {
+  color: var(--text);
+  border-bottom-color: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.cerveau-input:focus {
+  border-bottom-color: var(--accent);
+}
+.cerveau-input::placeholder {
+  color: var(--muted);
 }
 
 /* ─── Focus visible accessible ───────────────────────────────────────────── */

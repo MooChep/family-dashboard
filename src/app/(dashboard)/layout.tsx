@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { MobileHeader } from '@/components/layout/MobileHeader'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { BottomNav } from '@/components/layout/BottomNav'
+import { CerveauBottomNav } from '@/components/layout/CerveauBottomNav'
 
 export default async function DashboardLayout({
   children,
@@ -31,6 +32,7 @@ export default async function DashboardLayout({
             {children}
           </PageWrapper>
           <BottomNav />
+          <CerveauBottomNav />
         </div>
       </div>
     </ThemeProvider>

@@ -13,9 +13,13 @@ model User {
   name      String
   email     String      @unique
   password  String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  config    UserConfig?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  config               UserConfig?
+  cerveauEntries       CerveauEntry[]      @relation("CerveauCreatedBy")
+  pushSubscriptions    PushSubscription[]
+  cerveauPreferences   CerveauPreferences?
+  cerveauTemplates     CerveauTemplate[]   @relation("CerveauTemplateCreatedBy")
 }
 
 model UserConfig {
@@ -201,6 +205,130 @@ model BudgetMonth {
   updatedAt DateTime          @updatedAt
 }
 
+// ── Cerveau ────────────────────────────────────────────────────────────────────
+
+model CerveauEntry {
+  id           String      @id @default(cuid())
+  type         EntryType
+  title        String
+  body         String?     @db.Text
+  status       EntryStatus @default(ACTIVE)
+  priority     Priority?
+  assignedTo   AssignedTo  @default(BOTH)
+  pinned       Boolean     @default(false)
+
+  dueDate      DateTime?
+  remindAt     DateTime?
+  snoozedUntil DateTime?
+
+  createdById  String
+  createdBy    User        @relation("CerveauCreatedBy", fields: [createdById], references: [id])
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  archivedAt   DateTime?
+  doneAt       DateTime?
+
+  tags         String?           // JSON array: '["santé","maison"]'
+  recurrence   String?           // "quotidien" | "hebdo" | "mensuel" | "annuel"
+
+  notificationCount  Int       @default(0)
+  lastNotifiedAt     DateTime?
+
+  listItems    CerveauListItem[]
+  children     CerveauEntry[]    @relation("ProjectChildren")
+  parentId     String?
+  parent       CerveauEntry?     @relation("ProjectChildren", fields: [parentId], references: [id])
+
+  @@index([status])
+  @@index([type])
+  @@index([assignedTo])
+  @@index([dueDate])
+  @@index([remindAt])
+}
+
+model CerveauListItem {
+  id        String       @id @default(cuid())
+  entryId   String
+  entry     CerveauEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  label     String
+  checked   Boolean      @default(false)
+  order     Int          @default(0)
+  createdAt DateTime     @default(now())
+
+  @@index([entryId])
+}
+
+// ── Push Notifications ─────────────────────────────────────────────────────────
+
+model PushSubscription {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  endpoint     String   @db.Text
+  p256dh       String   @db.Text
+  auth         String
+  userAgent    String?
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@map("PushSubscription")
+}
+
+model CerveauPreferences {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eveningStartsAt    String    @default("19:00")
+  eventLeadTime      Int       @default(1440)
+  quietFrom          String?
+  quietUntil         String?
+  morningDigestAt    String?   @default("08:00")
+  lastDailyDigestAt  DateTime?
+  lastWeeklyRecapAt  DateTime?
+  weeklyRecapEnabled Boolean   @default(true)
+  updatedAt          DateTime  @updatedAt
+}
+
+model CerveauTemplate {
+  id            String     @id @default(cuid())
+  name          String
+  shortcut      String?
+  type          EntryType
+  titlePattern  String
+  body          String?    @db.Text
+  priority      Priority?
+  assignedTo    AssignedTo @default(BOTH)
+  tags          String?    @db.Text
+  recurrence    String?
+
+  items          CerveauTemplateItem[]
+
+  childTemplates CerveauTemplate[]  @relation("TemplateChildren")
+  parentId       String?
+  parent         CerveauTemplate?   @relation("TemplateChildren", fields: [parentId], references: [id])
+
+  createdById    String
+  createdBy      User               @relation("CerveauTemplateCreatedBy", fields: [createdById], references: [id])
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([shortcut])
+  @@index([createdById])
+  @@index([parentId])
+}
+
+model CerveauTemplateItem {
+  id         String          @id @default(cuid())
+  templateId String
+  template   CerveauTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  label      String
+  order      Int             @default(0)
+
+  @@index([templateId])
+}
+
 // ── Enums ──────────────────────────────────────────────────────────────────────
 
 enum CategoryType {
@@ -220,4 +348,33 @@ enum Recurrence {
 enum BudgetMonthStatus {
   DRAFT     // en cours de préparation
   VALIDATED // verrouillé comme référence
+}
+
+enum EntryType {
+  NOTE
+  TODO
+  REMINDER
+  LIST
+  PROJECT
+  DISCUSSION
+  EVENT
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AssignedTo {
+  ILAN
+  CAMILLE
+  BOTH
+}
+
+enum EntryStatus {
+  ACTIVE
+  DONE
+  ARCHIVED
+  SNOOZED
 }

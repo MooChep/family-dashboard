@@ -17,14 +17,16 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',  href: '/',          icon: '⊞' },
   { label: 'Épargne',    href: '/epargne',   icon: '◈' },
+  { label: 'Cerveau',    href: '/cerveau',   icon: '◎' },
   { label: 'Ménage',     href: '/menage',    icon: '⌂', soon: true },
   { label: 'Projets',    href: '/projets',   icon: '◉', soon: true },
-  { label: 'Habitudes',  href: '/habitudes', icon: '◎', soon: true },
+  { label: 'Habitudes',  href: '/habitudes', icon: '◆', soon: true },
   { label: 'Notes',      href: '/notes',     icon: '◧', soon: true },
 ]
 
 const PAGE_TITLES: Record<string, string> = {
   '/':                        'Dashboard',
+  '/cerveau':                 'Cerveau',
   '/epargne':                 'Épargne',
   '/epargne/mois':            'Mois',
   '/epargne/analyses':        'Analyses',
@@ -104,7 +106,7 @@ export function MobileHeader(): React.ReactElement {
         {/* Avatar — ouvre le profil */}
         <button
           onClick={() => setProfileOpen(true)}
-          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
           style={{
             backgroundColor: 'var(--accent-dim)',
             color: 'var(--accent)',
@@ -139,7 +141,7 @@ export function MobileHeader(): React.ReactElement {
       >
         {/* Header drawer */}
         <div
-          className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+          className="flex items-center justify-between px-5 py-4 shrink-0"
           style={{ borderBottom: '1px solid var(--border)' }}
         >
           <div className="flex items-center gap-3">
@@ -227,7 +229,7 @@ export function MobileHeader(): React.ReactElement {
 
         {/* Utilisateur + déconnexion */}
         <div
-          className="px-4 py-4 flex flex-col gap-2 flex-shrink-0"
+          className="px-4 py-4 flex flex-col gap-2 shrink-0"
           style={{ borderTop: '1px solid var(--border)' }}
         >
           <button
@@ -236,7 +238,7 @@ export function MobileHeader(): React.ReactElement {
             style={{ backgroundColor: 'var(--surface2)' }}
           >
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
               style={{
                 backgroundColor: 'var(--accent-dim)',
                 color: 'var(--accent)',

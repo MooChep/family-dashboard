@@ -1,10 +1,12 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { cn } from '@/lib/utils'
 import { ProfileModal } from '@/components/layout/ProfileModal'
+import { CategoryNav } from '@/components/cerveau/CategoryNav'
+import type { EntryType } from '@prisma/client'
 
 interface NavItem {
   label: string
@@ -16,11 +18,30 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',  href: '/',          icon: '⊞' },
   { label: 'Épargne',    href: '/epargne',   icon: '◈' },
+  { label: 'Cerveau',    href: '/cerveau',   icon: '◎' },
   { label: 'Ménage',     href: '/menage',    icon: '⌂', soon: true },
   { label: 'Projets',    href: '/projets',   icon: '◉', soon: true },
-  { label: 'Habitudes',  href: '/habitudes', icon: '◎', soon: true },
+  { label: 'Habitudes',  href: '/habitudes', icon: '◆', soon: true },
   { label: 'Notes',      href: '/notes',     icon: '◧', soon: true },
 ]
+
+// ── CategoryNav section (needs useSearchParams → Suspense boundary) ────────
+
+function SidebarCategorySection({ pathname }: { pathname: string }) {
+  const searchParams   = useSearchParams()
+  const activeCategory = (searchParams.get('cat') as EntryType | null) ?? 'ALL'
+
+  if (!pathname.startsWith('/cerveau')) return null
+
+  return (
+    <div className="border-t border-(--border)">
+      <CategoryNav
+        active={activeCategory}
+        layout="vertical"
+      />
+    </div>
+  )
+}
 
 export function Sidebar(): React.ReactElement {
   const pathname = usePathname()
@@ -82,13 +103,18 @@ export function Sidebar(): React.ReactElement {
         })}
       </nav>
 
+      {/* ─── CategoryNav (Cerveau routes only) ───────────────────────── */}
+      <Suspense>
+        <SidebarCategorySection pathname={pathname} />
+      </Suspense>
+
       {/* ─── Utilisateur ─────────────────────────────────────────────── */}
       <div className="px-4 py-4 flex flex-col gap-2 border-t border-(--border)]">
         <button
           onClick={() => setProfileOpen(true)}
           className="flex items-center gap-3 px-2 py-2 rounded-xl w-full text-left transition-colors hover:bg-(--surface2)]"
         >
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-(--accent-dim) text-(--accent) font-(--font-mono)]">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-(--accent-dim) text-(--accent) font-(--font-mono)]">
             {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : '?'}
           </div>
           <div className="flex flex-col min-w-0 flex-1">
