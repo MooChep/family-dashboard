@@ -7,7 +7,6 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   // ... tes métadonnées existantes ...
   manifest: '/manifest.json',
-  themeColor: '#0f1117',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -19,6 +18,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport = {
+  themeColor: '#0f1117',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

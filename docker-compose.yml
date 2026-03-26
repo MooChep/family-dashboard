@@ -37,6 +37,9 @@ services:
       - "3010:3000"
     # Note : On ne met plus de volumes ici pour laisser Docker utiliser
     # les fichiers compilés à l'intérieur de l'image.
-
+    command: >
+          sh -c "npx prisma migrate deploy && 
+                npm run prisma:seed && 
+                node server.js"
 volumes:
   db_data:
