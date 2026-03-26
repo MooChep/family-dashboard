@@ -24,12 +24,6 @@ type SubRow = {
   auth:     string
 }
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT ?? 'mailto:admin@famille.fr',
-  process.env.VAPID_PUBLIC_KEY ?? '',
-  process.env.VAPID_PRIVATE_KEY ?? '',
-)
-
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 async function sendPush(sub: SubRow, payload: PushPayload): Promise<void> {
@@ -100,12 +94,6 @@ async function processRecurringEntries(): Promise<number> {
 
 // ── Escalation sender ──────────────────────────────────────────────────────
 
-// Escalation schedule:
-//   count 0 → first send
-//   count 1 → resend after 30 min
-//   count 2 → resend after 60 min
-//   count 3 → final urgent send (⚠️ prefix), then stop
-//   count ≥ 4 → never send again
 async function sendWithEscalation(entry: CerveauEntry, subs: SubRow[]): Promise<boolean> {
   const count = entry.notificationCount
 
@@ -149,14 +137,11 @@ async function sendWeeklyRecap(
   prefs:  CerveauPreferences | null,
   now:    Date,
 ): Promise<void> {
-  // Only on Sunday between 19:00 and 20:00
   if (now.getDay() !== 0) return
   if (now.getHours() < 19 || now.getHours() >= 20) return
 
-  // Feature toggle
   if (prefs?.weeklyRecapEnabled === false) return
 
-  // Anti double-send
   if (prefs?.lastWeeklyRecapAt) {
     const daysSince = (now.getTime() - prefs.lastWeeklyRecapAt.getTime()) / 86_400_000
     if (daysSince < 6) return
@@ -204,16 +189,13 @@ async function sendDailyDigest(
   const scheduledMinutes = h * 60 + m
   const nowMinutes       = now.getHours() * 60 + now.getMinutes()
 
-  // Window: ±5 minutes around configured time
   if (Math.abs(nowMinutes - scheduledMinutes) > 5) return
 
-  // Anti double-send (guard against multiple cron fires in same window)
   if (prefs?.lastDailyDigestAt) {
     const hoursSince = (now.getTime() - prefs.lastDailyDigestAt.getTime()) / 3_600_000
     if (hoursSince < 20) return
   }
 
-  // Respect quiet hours
   if (isQuietTime(now, prefs?.quietFrom ?? null, prefs?.quietUntil ?? null)) return
 
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -237,7 +219,6 @@ async function sendDailyDigest(
     }),
   ])
 
-  // Nothing to report → skip
   if (todayItems === 0 && overdue === 0) return
 
   const weekday = now.toLocaleDateString('fr-FR', { weekday: 'long' })
@@ -262,6 +243,19 @@ async function sendDailyDigest(
 
 export async function runNotificationScheduler(): Promise<{ sent: number; recurrences: number }> {
   const now = new Date()
+
+  // Initialiser VAPID ici (runtime uniquement) — jamais au niveau module
+  const vapidPublic  = process.env.VAPID_PUBLIC_KEY
+  const vapidPrivate = process.env.VAPID_PRIVATE_KEY
+  const vapidSubject = process.env.VAPID_SUBJECT ?? 'mailto:admin@famille.fr'
+
+  if (!vapidPublic || !vapidPrivate) {
+    console.warn('[scheduler] VAPID keys not set — push disabled')
+    const recurrences = await processRecurringEntries()
+    return { sent: 0, recurrences }
+  }
+
+  webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
 
   // Load all subscriptions with user prefs in one query
   const allSubs = await prisma.pushSubscription.findMany({
@@ -352,7 +346,7 @@ export async function runNotificationScheduler(): Promise<{ sent: number; recurr
     }
 
     // ── Daily digest ──────────────────────────────────────────────
-    await sendDailyDigest(userId, subs, prefs, now)  // digest checks quiet internally
+    await sendDailyDigest(userId, subs, prefs, now)
   }
 
   const recurrences = await processRecurringEntries()
