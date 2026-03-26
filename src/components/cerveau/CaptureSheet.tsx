@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import type { EntryType, Priority, AssignedTo } from '@prisma/client'
 import { X, ChevronDown, Flag, Users, Calendar, Bell, Inbox, FolderOpen, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { DatePickerFR, type DatePickerFRHandle } from '@/components/cerveau/DatePickerFR'
 import { ContextSelectorSheet } from '@/components/cerveau/ContextSelectorSheet'
 import { TypeSelector } from '@/components/cerveau/TypeSelector'
 import { TYPE_CONFIG } from '@/lib/cerveau/typeConfig'
@@ -68,6 +67,58 @@ function ChipBtn({ icon, label, active, color, onClick, onClear }: ChipBtnProps)
   )
 }
 
+// ── DateChipBtn — chip with transparent input overlay (iOS-compatible) ────────
+
+interface DateChipBtnProps {
+  icon:      React.ReactNode
+  label:     string
+  active:    boolean
+  color?:    string
+  value:     string
+  onChange:  (v: string) => void
+  showTime:  boolean
+  onClear:   () => void
+}
+
+function DateChipBtn({ icon, label, active, color, value, onChange, showTime, onClear }: DateChipBtnProps) {
+  return (
+    <span
+      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium select-none transition-colors overflow-hidden"
+      style={{
+        backgroundColor: active
+          ? `color-mix(in srgb, ${color ?? 'var(--accent)'} 15%, var(--surface2))`
+          : 'var(--surface2)',
+        color:  active ? (color ?? 'var(--accent)') : 'var(--text2)',
+        cursor: 'pointer',
+      }}
+    >
+      {icon}
+      {label}
+      {active && (
+        <button
+          type="button"
+          onClick={e => { e.stopPropagation(); onClear() }}
+          className="ml-0.5 rounded-full"
+          style={{ color: 'var(--muted)', position: 'relative', zIndex: 2 }}
+          aria-label="Effacer"
+        >
+          <X size={11} />
+        </button>
+      )}
+      {/* Transparent overlay — iOS : tap direct ouvre le picker natif
+           Desktop : onClick appelle showPicker() explicitement */}
+      <input
+        type={showTime ? 'datetime-local' : 'date'}
+        value={value}
+        onChange={e => { if (e.target.value) onChange(e.target.value) }}
+        onClick={e => { try { (e.target as HTMLInputElement).showPicker?.() } catch { /* ignore */ } }}
+        style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 1 }}
+        tabIndex={-1}
+      />
+    </span>
+  )
+}
+
 // ── Priority helpers ──────────────────────────────────────────────────────────
 
 const PRIORITY_CYCLE: (Priority | undefined)[] = [undefined, 'LOW', 'MEDIUM', 'HIGH']
@@ -116,9 +167,7 @@ export function CaptureSheet({
   const [localType,      setLocalType]      = useState<EntryType>(effectiveType)
   const [showTypeSelect, setShowTypeSelect] = useState(false)
 
-  const titleRef    = useRef<HTMLInputElement>(null)
-  const dateRef     = useRef<DatePickerFRHandle>(null)
-  const remindRef   = useRef<DatePickerFRHandle>(null)
+  const titleRef = useRef<HTMLInputElement>(null)
 
   // ── Init on open ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -285,47 +334,31 @@ export function CaptureSheet({
             style={{ color: 'var(--text2)' }}
           />
 
-          {/* Hidden DatePickerFR pickers (triggered by chips) */}
-          <div style={{ width: 0, height: 0, overflow: 'hidden' }}>
-            <DatePickerFR
-              ref={dateRef}
-              value={dueDate}
-              onChange={setDueDate}
-              showTime={effectiveType === 'EVENT'}
-            />
-            <DatePickerFR
-              ref={remindRef}
-              value={remindAt}
-              onChange={setRemindAt}
-              showTime
-            />
-          </div>
-
           {/* Chips row */}
   <div className="flex flex-wrap gap-2 md:mt-4">
   {localType !== 'REMINDER' && (
-    <div className="w-[48%] md:w-auto">
-      <ChipBtn
-        icon={<Calendar size={12} />}
-        label={dateLabel}
-        active={!!dueDate}
-        color="var(--accent)"
-        onClick={() => dateRef.current?.openPicker()}
-        onClear={() => setDueDate('')}
-      />
-    </div>
+    <DateChipBtn
+      icon={<Calendar size={12} />}
+      label={dateLabel}
+      active={!!dueDate}
+      color="var(--accent)"
+      value={dueDate}
+      onChange={setDueDate}
+      showTime={localType === 'EVENT'}
+      onClear={() => setDueDate('')}
+    />
   )}
 
-  <div className="w-[48%] md:w-auto">
-    <ChipBtn
-      icon={<Bell size={12} />}
-      label={remindLabel}
-      active={!!remindAt}
-      color="var(--warning, #b5860d)"
-      onClick={() => remindRef.current?.openPicker()}
-      onClear={() => setRemindAt('')}
-    />
-  </div>
+  <DateChipBtn
+    icon={<Bell size={12} />}
+    label={remindLabel}
+    active={!!remindAt}
+    color="var(--warning, #b5860d)"
+    value={remindAt}
+    onChange={setRemindAt}
+    showTime
+    onClear={() => setRemindAt('')}
+  />
 
   <div className="w-[48%] md:w-auto">
     <ChipBtn

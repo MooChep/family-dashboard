@@ -288,6 +288,14 @@ model CerveauPreferences {
   lastDailyDigestAt  DateTime?
   lastWeeklyRecapAt  DateTime?
   weeklyRecapEnabled Boolean   @default(true)
+  snoozeSlot1Label   String    @default("15 min")
+  snoozeSlot1Minutes Int       @default(15)
+  snoozeSlot2Label   String    @default("1 heure")
+  snoozeSlot2Minutes Int       @default(60)
+  snoozeSlot3Label   String    @default("Ce soir")
+  snoozeSlot3Minutes Int?
+  snoozeSlot3Dynamic Boolean   @default(true)
+  snoozeDefaultSlot  Int       @default(2)
   updatedAt          DateTime  @updatedAt
 }
 

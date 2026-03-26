@@ -32,7 +32,11 @@ export async function subscribeToPush(): Promise<void> {
   // Attendre que le SW soit actif
   await navigator.serviceWorker.ready
 
-  // 3. S'abonner via pushManager
+  // 3. Désabonner toute souscription existante (clé VAPID peut avoir changé)
+  const existing = await reg.pushManager.getSubscription()
+  if (existing) await existing.unsubscribe()
+
+  // 4. S'abonner via pushManager
   const subscription = await reg.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(keyData.data),

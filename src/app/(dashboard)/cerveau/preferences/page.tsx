@@ -13,6 +13,14 @@ type Prefs = {
   quietUntil:         string | null
   morningDigestAt:    string | null
   weeklyRecapEnabled: boolean
+  snoozeDefaultSlot:  number
+  snoozeSlot1Label:   string
+  snoozeSlot1Minutes: number
+  snoozeSlot2Label:   string
+  snoozeSlot2Minutes: number
+  snoozeSlot3Label:   string
+  snoozeSlot3Minutes: number | null
+  snoozeSlot3Dynamic: boolean
 }
 
 const LEAD_TIME_OPTIONS = [
@@ -31,6 +39,14 @@ export default function PreferencesPage() {
     quietUntil:         null,
     morningDigestAt:    '08:00',
     weeklyRecapEnabled: true,
+    snoozeDefaultSlot:  2,
+    snoozeSlot1Label:   '15 min',
+    snoozeSlot1Minutes: 15,
+    snoozeSlot2Label:   '1 heure',
+    snoozeSlot2Minutes: 60,
+    snoozeSlot3Label:   'Ce soir',
+    snoozeSlot3Minutes: null,
+    snoozeSlot3Dynamic: true,
   })
   const [isSaving, setIsSaving] = useState(false)
   const [notifGranted, setNotifGranted] = useState(false)
@@ -65,16 +81,27 @@ export default function PreferencesPage() {
   async function handleEnableNotifications() {
     setIsSubscribing(true)
     try {
+      // Cas 1 — API absente (iOS Safari hors PWA, navigateur trop ancien)
+      if (typeof Notification === 'undefined') {
+        showToast('Notifications non supportées — ajoute l\'app à l\'écran d\'accueil (iOS)', 'error')
+        return
+      }
+      // Cas 2 — déjà bloqué dans les réglages du navigateur
+      if (Notification.permission === 'denied') {
+        showToast('Notifications bloquées — autorise-les dans les réglages du navigateur', 'error')
+        return
+      }
       const granted = await requestNotificationPermission()
       if (!granted) {
-        showToast('Permission refusée par le navigateur', 'error')
+        showToast('Permission refusée', 'error')
         return
       }
       await subscribeToPush()
       setNotifGranted(true)
       showToast('Notifications activées', 'success')
-    } catch {
-      showToast('Erreur lors de l\'activation', 'error')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      showToast(`Erreur : ${msg}`, 'error')
     } finally {
       setIsSubscribing(false)
     }
@@ -291,6 +318,142 @@ export default function PreferencesPage() {
                 style={{ transform: prefs.weeklyRecapEnabled ? 'translateX(20px)' : 'translateX(0)' }}
               />
             </button>
+          </div>
+        </section>
+
+        {/* Options de snooze */}
+        <section>
+          <h2 className="font-mono text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--muted)' }}>
+            Options de snooze
+          </h2>
+          <p className="font-mono text-[10px] uppercase tracking-widest mb-6" style={{ color: 'var(--text2)' }}>
+            3 raccourcis sur chaque notification
+          </p>
+
+          {/* Slot par défaut */}
+          <div className="mb-6">
+            <label className="font-mono text-xs uppercase tracking-widest block mb-2" style={{ color: 'var(--text2)' }}>
+              Option par défaut
+            </label>
+            <div className="flex gap-3">
+              {([1, 2, 3] as const).map(n => {
+                const label = n === 1 ? prefs.snoozeSlot1Label : n === 2 ? prefs.snoozeSlot2Label : prefs.snoozeSlot3Label
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setPrefs(p => ({ ...p, snoozeDefaultSlot: n }))}
+                    className="flex-1 py-2 rounded-xl font-mono text-xs transition-all"
+                    style={prefs.snoozeDefaultSlot === n
+                      ? { backgroundColor: 'var(--accent)', color: '#fff' }
+                      : { backgroundColor: 'var(--surface2)', color: 'var(--text2)', border: '0.5px solid var(--border)' }}
+                  >
+                    {label || `Option ${n}`}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Slot 1 */}
+          <div className="mb-4 p-4 rounded-xl" style={{ backgroundColor: 'var(--surface2)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-mono text-xs uppercase tracking-wider" style={{ color: 'var(--text2)' }}>
+                Option 1{prefs.snoozeDefaultSlot === 1 && (
+                  <span className="ml-2 px-2 py-0.5 rounded-full text-[10px]"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' }}>
+                    par défaut
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="mb-3">
+              <label className="font-mono text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--text2)' }}>Libellé</label>
+              <input type="text" value={prefs.snoozeSlot1Label}
+                onChange={e => setPrefs(p => ({ ...p, snoozeSlot1Label: e.target.value }))}
+                className={fieldClass} style={{ color: 'var(--text)', borderColor: 'var(--border)' }} />
+            </div>
+            <div>
+              <label className="font-mono text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--text2)' }}>Durée (minutes)</label>
+              <input type="number" min={1} max={1440} value={prefs.snoozeSlot1Minutes}
+                onChange={e => setPrefs(p => ({ ...p, snoozeSlot1Minutes: parseInt(e.target.value) || 15 }))}
+                className={fieldClass} style={{ color: 'var(--text)', borderColor: 'var(--border)' }} />
+            </div>
+          </div>
+
+          {/* Slot 2 */}
+          <div className="mb-4 p-4 rounded-xl" style={{ backgroundColor: 'var(--surface2)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-mono text-xs uppercase tracking-wider" style={{ color: 'var(--text2)' }}>
+                Option 2{prefs.snoozeDefaultSlot === 2 && (
+                  <span className="ml-2 px-2 py-0.5 rounded-full text-[10px]"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' }}>
+                    par défaut
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="mb-3">
+              <label className="font-mono text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--text2)' }}>Libellé</label>
+              <input type="text" value={prefs.snoozeSlot2Label}
+                onChange={e => setPrefs(p => ({ ...p, snoozeSlot2Label: e.target.value }))}
+                className={fieldClass} style={{ color: 'var(--text)', borderColor: 'var(--border)' }} />
+            </div>
+            <div>
+              <label className="font-mono text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--text2)' }}>Durée (minutes)</label>
+              <input type="number" min={1} max={1440} value={prefs.snoozeSlot2Minutes}
+                onChange={e => setPrefs(p => ({ ...p, snoozeSlot2Minutes: parseInt(e.target.value) || 60 }))}
+                className={fieldClass} style={{ color: 'var(--text)', borderColor: 'var(--border)' }} />
+            </div>
+          </div>
+
+          {/* Slot 3 — dynamique ou fixe */}
+          <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: 'var(--surface2)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-mono text-xs uppercase tracking-wider" style={{ color: 'var(--text2)' }}>
+                Option 3{prefs.snoozeDefaultSlot === 3 && (
+                  <span className="ml-2 px-2 py-0.5 rounded-full text-[10px]"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' }}>
+                    par défaut
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="mb-3">
+              <label className="font-mono text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--text2)' }}>Libellé</label>
+              <input type="text" value={prefs.snoozeSlot3Label}
+                onChange={e => setPrefs(p => ({ ...p, snoozeSlot3Label: e.target.value }))}
+                className={fieldClass} style={{ color: 'var(--text)', borderColor: 'var(--border)' }} />
+            </div>
+            <div className="flex gap-3 mb-3">
+              <button type="button"
+                onClick={() => setPrefs(p => ({ ...p, snoozeSlot3Dynamic: true }))}
+                className="flex-1 py-1.5 rounded-lg font-mono text-xs transition-all"
+                style={prefs.snoozeSlot3Dynamic
+                  ? { backgroundColor: 'var(--accent)', color: '#fff' }
+                  : { backgroundColor: 'var(--surface)', color: 'var(--text2)' }}>
+                Ce soir
+              </button>
+              <button type="button"
+                onClick={() => setPrefs(p => ({ ...p, snoozeSlot3Dynamic: false }))}
+                className="flex-1 py-1.5 rounded-lg font-mono text-xs transition-all"
+                style={!prefs.snoozeSlot3Dynamic
+                  ? { backgroundColor: 'var(--accent)', color: '#fff' }
+                  : { backgroundColor: 'var(--surface)', color: 'var(--text2)' }}>
+                Durée fixe
+              </button>
+            </div>
+            {prefs.snoozeSlot3Dynamic
+              ? <p className="font-mono text-[10px]" style={{ color: 'var(--text2)' }}>
+                  Calculé selon l'heure de début de soirée
+                </p>
+              : <div>
+                  <label className="font-mono text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--text2)' }}>Durée (minutes)</label>
+                  <input type="number" min={1} max={1440} value={prefs.snoozeSlot3Minutes ?? 240}
+                    onChange={e => setPrefs(p => ({ ...p, snoozeSlot3Minutes: parseInt(e.target.value) || 240 }))}
+                    className={fieldClass} style={{ color: 'var(--text)', borderColor: 'var(--border)' }} />
+                </div>
+            }
           </div>
         </section>
 

@@ -12,20 +12,28 @@ self.addEventListener('activate', e => e.waitUntil(self.clients.claim()))
 
 self.addEventListener('push', (event) => {
   const data = event.data?.json() ?? {}
-  const title = data.title ?? 'Cerveau'
-  const body  = data.body  ?? ''
+
+  // Actions dynamiques depuis le payload (slots snooze personnalisés)
+  const snoozeActions = (data.snoozeOptions ?? [
+    { action: 'snooze_0', label: '15 min' },
+    { action: 'snooze_1', label: '1 heure' },
+  ]).map(s => ({ action: s.action, title: s.label }))
 
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
+    self.registration.showNotification(data.title ?? 'Cerveau', {
+      body:  data.body ?? '',
       icon:  '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       tag:   data.entryId ?? 'cerveau',
-      data:  { entryId: data.entryId, url: data.url ?? '/cerveau' },
+      data: {
+        entryId:             data.entryId,
+        url:                 data.url ?? '/cerveau',
+        snoozeOptions:       data.snoozeOptions,
+        defaultSnoozeMinutes: data.defaultSnoozeMinutes ?? 60,
+      },
       actions: [
-        { action: 'snooze_15', title: '15 min' },
-        { action: 'snooze_1h', title: '1 heure' },
-        { action: 'done',      title: '✓ Fait'  },
+        ...snoozeActions,
+        { action: 'done', title: '✓ Fait' },
       ],
     })
   )
@@ -35,33 +43,38 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const { entryId, url } = event.notification.data ?? {}
+  const { entryId, snoozeOptions, defaultSnoozeMinutes } = event.notification.data ?? {}
 
   if (event.action === 'done' && entryId) {
     event.waitUntil(
-      fetch(`/api/cerveau/entries/${entryId}/done`, { method: 'POST' })
-    )
-    return
-  }
-
-  if ((event.action === 'snooze_15' || event.action === 'snooze_1h') && entryId) {
-    const minutes = event.action === 'snooze_15' ? 15 : 60
-    const until = new Date(Date.now() + minutes * 60 * 1000).toISOString()
-    event.waitUntil(
-      fetch(`/api/cerveau/entries/${entryId}/snooze`, {
+      fetch(`/api/cerveau/entries/${entryId}/done`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ until }),
+        credentials: 'include',
       })
     )
     return
   }
 
-  // Default: open/focus app
+  if (event.action.startsWith('snooze_') && entryId) {
+    const slot    = (snoozeOptions ?? []).find(s => s.action === event.action)
+    const minutes = slot?.minutes ?? defaultSnoozeMinutes ?? 60
+    const until   = new Date(Date.now() + minutes * 60_000).toISOString()
+    event.waitUntil(
+      fetch(`/api/cerveau/entries/${entryId}/snooze`, {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ until }),
+      })
+    )
+    return
+  }
+
+  // Clic direct → ouvrir / focus l'app
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-      const target = url ?? '/cerveau'
-      const existing = clients.find(c => c.url.includes(target))
+      const target = entryId ? `/cerveau` : (event.notification.data?.url ?? '/cerveau')
+      const existing = clients.find(c => c.url.includes('/cerveau'))
       if (existing) return existing.focus()
       return self.clients.openWindow(target)
     })

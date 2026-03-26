@@ -10,8 +10,6 @@ interface SwipeableCardProps {
   rightLabel?: string
   leftColor: string
   rightColor?: string
-  leftLabelColor?: string
-  rightLabelColor?: string
   children: React.ReactNode
 }
 
@@ -26,8 +24,6 @@ export function SwipeableCard({
   rightLabel,
   leftColor,
   rightColor,
-  leftLabelColor  = 'text-white',
-  rightLabelColor = 'text-white',
   children,
 }: SwipeableCardProps) {
   const [offsetX, setOffsetX] = useState(0)
@@ -112,7 +108,7 @@ export function SwipeableCard({
           showLeft ? 'opacity-100' : 'opacity-0',
         )}
       >
-        <span className={cn('font-semibold text-sm tracking-wide', leftLabelColor)}>{leftLabel}</span>
+        <span className="font-semibold text-sm tracking-wide" style={{ color: 'var(--bg)' }}>{leftLabel}</span>
       </div>
 
       {/* Right background (action) */}
@@ -124,7 +120,7 @@ export function SwipeableCard({
             showRight ? 'opacity-100' : 'opacity-0',
           )}
         >
-          <span className={cn('font-semibold text-sm tracking-wide', rightLabelColor)}>{rightLabel}</span>
+          <span className="font-semibold text-sm tracking-wide" style={{ color: 'var(--bg)' }}>{rightLabel}</span>
         </div>
       )}
 

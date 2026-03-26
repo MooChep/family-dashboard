@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Search, RotateCcw, ArrowLeft } from 'lucide-react'
+import { Search, RotateCcw, ArrowLeft, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { TYPE_CONFIG } from '@/lib/cerveau/typeConfig'
 import { useCerveauToast, CerveauToast } from '@/components/cerveau/CerveauToast'
@@ -29,11 +29,12 @@ function getPeriodStart(period: Period): Date | null {
 }
 
 export default function ArchivePage() {
-  const [entries, setEntries] = useState<EntryWithRelations[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [entries,    setEntries]    = useState<EntryWithRelations[]>([])
+  const [isLoading,  setIsLoading]  = useState(true)
+  const [search,     setSearch]     = useState('')
   const [typeFilter, setTypeFilter] = useState<EntryType | null>(null)
-  const [period, setPeriod] = useState<Period>('all')
+  const [period,     setPeriod]     = useState<Period>('all')
+  const [confirmId,  setConfirmId]  = useState<string | null>(null)
   const { toast, showToast, dismiss } = useCerveauToast()
 
   async function load() {
@@ -48,6 +49,18 @@ export default function ArchivePage() {
   }
 
   useEffect(() => { void load() }, [])
+
+  async function handleDelete(id: string) {
+    const res = await fetch(`/api/cerveau/entries/${id}?purge=true`, { method: 'DELETE' })
+    const data = await res.json() as { success: boolean }
+    if (data.success) {
+      setEntries(prev => prev.filter(e => e.id !== id))
+      setConfirmId(null)
+      showToast('Entrée supprimée', 'success')
+    } else {
+      showToast('Erreur lors de la suppression', 'error')
+    }
+  }
 
   async function handleRestore(id: string) {
     const res = await fetch(`/api/cerveau/entries/${id}`, {
@@ -213,15 +226,47 @@ export default function ArchivePage() {
                     {meta.label} · {dateStr} · {entry.status === 'DONE' ? 'Terminé' : 'Archivé'}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void handleRestore(entry.id)}
-                  className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                  style={{ backgroundColor: 'var(--surface2)', color: 'var(--accent)' }}
-                  title="Restaurer"
-                >
-                  <RotateCcw size={14} />
-                </button>
+                {confirmId === entry.id ? (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(entry.id)}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                      style={{ backgroundColor: 'var(--danger, #e53e3e)', color: '#fff' }}
+                    >
+                      Supprimer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmId(null)}
+                      className="px-2.5 py-1.5 rounded-lg text-xs transition-colors"
+                      style={{ backgroundColor: 'var(--surface2)', color: 'var(--muted)' }}
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => void handleRestore(entry.id)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                      style={{ backgroundColor: 'var(--surface2)', color: 'var(--accent)' }}
+                      title="Restaurer"
+                    >
+                      <RotateCcw size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmId(entry.id)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                      style={{ backgroundColor: 'var(--surface2)', color: 'var(--muted)' }}
+                      title="Supprimer définitivement"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
             )
           })}

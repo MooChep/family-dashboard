@@ -10,12 +10,15 @@ import webpush from 'web-push'
 import type { CerveauEntry, CerveauPreferences } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isQuietTime } from '@/lib/cerveau/isQuietTime'
+import { resolveSnoozeSlots, getDefaultSnoozeMinutes } from '@/lib/cerveau/snoozeOptions'
 
 type PushPayload = {
-  title:    string
-  body:     string
-  entryId?: string
-  url:      string
+  title:                string
+  body:                 string
+  entryId?:             string
+  url:                  string
+  snoozeOptions?:       { action: string; label: string; minutes: number }[]
+  defaultSnoozeMinutes?: number
 }
 
 type SubRow = {
@@ -94,7 +97,11 @@ async function processRecurringEntries(): Promise<number> {
 
 // ── Escalation sender ──────────────────────────────────────────────────────
 
-async function sendWithEscalation(entry: CerveauEntry, subs: SubRow[]): Promise<boolean> {
+async function sendWithEscalation(
+  entry: CerveauEntry,
+  subs:  SubRow[],
+  prefs: CerveauPreferences | null,
+): Promise<boolean> {
   const count = entry.notificationCount
 
   if (count >= 4) return false
@@ -114,8 +121,18 @@ async function sendWithEscalation(entry: CerveauEntry, subs: SubRow[]): Promise<
     ? `Rappel ${count + 1} — ${formatAbsolute(entry.remindAt ?? new Date())}`
     : formatAbsolute(entry.remindAt ?? new Date())
 
+  const slots = resolveSnoozeSlots(prefs)
+  const payload: PushPayload = {
+    title,
+    body,
+    entryId:             entry.id,
+    url:                 '/cerveau',
+    snoozeOptions:        slots.map(s => ({ action: s.action, label: s.label, minutes: s.minutes })),
+    defaultSnoozeMinutes: getDefaultSnoozeMinutes(prefs),
+  }
+
   for (const sub of subs) {
-    await sendPush(sub, { title, body, entryId: entry.id, url: '/cerveau' })
+    await sendPush(sub, payload)
   }
 
   await prisma.cerveauEntry.update({
@@ -310,7 +327,7 @@ export async function runNotificationScheduler(): Promise<{ sent: number; recurr
         console.log(`[scheduler] quiet time — skipped reminder ${entry.id}`)
         continue
       }
-      const didSend = await sendWithEscalation(entry, subs)
+      const didSend = await sendWithEscalation(entry, subs, prefs)
       if (didSend) sent += subs.length
     }
 

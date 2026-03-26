@@ -65,7 +65,7 @@ export function CerveauToast({ toast, onDismiss }: CerveauToastProps) {
       className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg text-sm font-medium"
       style={{
         backgroundColor: toast.kind === 'success' ? 'var(--accent)' : 'var(--danger)',
-        color: '#fff',
+        color: 'var(--bg)',
         maxWidth: '90vw',
         minWidth: '200px',
       }}
@@ -74,7 +74,7 @@ export function CerveauToast({ toast, onDismiss }: CerveauToastProps) {
         ? <CheckCircle size={16} className="shrink-0" />
         : <AlertCircle size={16} className="shrink-0" />
       }
-      <span className="flex-1">{toast.message}</span>
+      <span className="flex-1" style={{color: 'var(--surface2)'}}>{toast.message}</span>
       {toast.undo && (
         <button
           type="button"

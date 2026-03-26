@@ -169,7 +169,21 @@ function CerveauDashboardInner() {
             ))}
           </div>
 
-          {/* Desktop Bento Grid */}
+          {/* Desktop Bento Grid (ALL) or filtered list */}
+          {activeCategory !== 'ALL' ? (
+            <div className="hidden md:block px-8 mt-6 space-y-8">
+              {sections.map(section => (
+                <DashboardSection
+                  key={section.id}
+                  section={section}
+                  refetch={refetch}
+                  showToast={showToast}
+                  onOpenDetail={setDetailEntry}
+                  showOverdueBars={section.isOverdue}
+                />
+              ))}
+            </div>
+          ) : (
           <div className="hidden md:block px-8 mt-6">
 
             {/* EN RETARD — full width panel */}
@@ -226,6 +240,7 @@ function CerveauDashboardInner() {
               </div>
             </div>
           </div>
+          )}
         </>
       )}
 

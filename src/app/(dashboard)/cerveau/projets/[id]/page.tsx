@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, Plus, ChevronDown, RotateCcw, Trash2 } from 'lucide-react'
+import { TYPE_CONFIG } from '@/lib/cerveau/typeConfig'
+import { formatDateFR } from '@/lib/cerveau/formatDate'
 import { groupEntries } from '@/lib/cerveau/groupEntries'
 import { computeProjectHealth } from '@/lib/cerveau/projectHealth'
 import { DashboardSection } from '@/components/cerveau/DashboardSection'
@@ -63,11 +65,13 @@ export default function ProjetPage() {
   const router = useRouter()
   const { toast, showToast, dismiss } = useCerveauToast()
 
-  const [project,     setProject]     = useState<EntryWithRelations | null>(null)
-  const [children,    setChildren]    = useState<EntryWithRelations[]>([])
-  const [isLoading,   setIsLoading]   = useState(true)
-  const [description, setDescription] = useState('')
-  const [detailEntry, setDetailEntry] = useState<EntryWithRelations | null>(null)
+  const [project,      setProject]      = useState<EntryWithRelations | null>(null)
+  const [children,     setChildren]     = useState<EntryWithRelations[]>([])
+  const [isLoading,    setIsLoading]    = useState(true)
+  const [description,  setDescription]  = useState('')
+  const [detailEntry,  setDetailEntry]  = useState<EntryWithRelations | null>(null)
+  const [showArchive,  setShowArchive]  = useState(false)
+  const [confirmId,    setConfirmId]    = useState<string | null>(null)
   const descRef = useRef<HTMLDivElement>(null)
 
   const refetch = useCallback(async () => {
@@ -105,6 +109,26 @@ export default function ProjetPage() {
       body: JSON.stringify({ body: text }),
     })
   }, [id])
+
+  const archivedChildren = children.filter(c => c.status === 'ARCHIVED' || c.status === 'DONE')
+
+  async function handleRestore(entryId: string) {
+    const res = await fetch(`/api/cerveau/entries/${entryId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'ACTIVE' }),
+    })
+    const data = await res.json() as { success: boolean }
+    if (data.success) { showToast('Restauré', 'success'); await refetch() }
+    else showToast('Erreur', 'error')
+  }
+
+  async function handleDelete(entryId: string) {
+    const res = await fetch(`/api/cerveau/entries/${entryId}?purge=true`, { method: 'DELETE' })
+    const data = await res.json() as { success: boolean }
+    if (data.success) { setConfirmId(null); showToast('Supprimé', 'success'); await refetch() }
+    else showToast('Erreur', 'error')
+  }
 
   const allSections    = groupEntries(children)
   // Split: discussions sidebar vs main content
@@ -259,6 +283,93 @@ export default function ProjetPage() {
                     onOpenDetail={setDetailEntry}
                   />
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Archives du projet ──────────────────────────────────────── */}
+        {!isLoading && archivedChildren.length > 0 && (
+          <div className="px-4 md:px-8 mt-8 mb-4">
+            <button
+              type="button"
+              onClick={() => setShowArchive(v => !v)}
+              className="flex items-center gap-2 mb-3"
+              style={{ color: 'var(--muted)' }}
+            >
+              <ChevronDown
+                size={14}
+                style={{ transform: showArchive ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}
+              />
+              <span className="font-mono text-[10px] uppercase tracking-widest">
+                Archives · {archivedChildren.length}
+              </span>
+            </button>
+
+            {showArchive && (
+              <div className="space-y-1">
+                {archivedChildren.map(entry => {
+                  const meta = TYPE_CONFIG[entry.type]
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                      style={{ backgroundColor: 'var(--surface)' }}
+                    >
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${meta.color}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-headline text-sm truncate" style={{ color: 'var(--text)' }}>
+                          {entry.title}
+                        </p>
+                        <p className="font-mono text-[10px]" style={{ color: 'var(--muted)' }}>
+                          {meta.label} · {entry.status === 'DONE' ? 'Terminé' : 'Archivé'} · {formatDateFR(new Date(entry.archivedAt ?? entry.doneAt ?? entry.createdAt))}
+                        </p>
+                      </div>
+
+                      {confirmId === entry.id ? (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(entry.id)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                            style={{ backgroundColor: 'var(--danger, #e53e3e)', color: '#fff' }}
+                          >
+                            Supprimer
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmId(null)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs"
+                            style={{ backgroundColor: 'var(--surface2)', color: 'var(--muted)' }}
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => void handleRestore(entry.id)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center"
+                            style={{ backgroundColor: 'var(--surface2)', color: 'var(--accent)' }}
+                            title="Restaurer"
+                          >
+                            <RotateCcw size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmId(entry.id)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center"
+                            style={{ backgroundColor: 'var(--surface2)', color: 'var(--muted)' }}
+                            title="Supprimer définitivement"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

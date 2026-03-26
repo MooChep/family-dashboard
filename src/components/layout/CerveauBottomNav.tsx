@@ -2,10 +2,7 @@
 
 import { Suspense } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import {
-  Rss, Search, LayoutGrid, CheckSquare, Bell, List,
-  FolderOpen, MessageCircle, Calendar,
-} from 'lucide-react'
+import { Rss, Search } from 'lucide-react'
 
 interface NavItem {
   id: string
@@ -16,15 +13,8 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'flux',       icon: Rss,           href: '/cerveau', isFilter: false, isSearch: false },
-  { id: 'search',     icon: Search,        href: null,       isFilter: false, isSearch: true  },
-  { id: 'ALL',        icon: LayoutGrid,    href: null,       isFilter: true,  isSearch: false },
-  { id: 'TODO',       icon: CheckSquare,   href: null,       isFilter: true,  isSearch: false },
-  { id: 'REMINDER',   icon: Bell,          href: null,       isFilter: true,  isSearch: false },
-  { id: 'LIST',       icon: List,          href: null,       isFilter: true,  isSearch: false },
-  { id: 'PROJECT',    icon: FolderOpen,    href: null,       isFilter: true,  isSearch: false },
-  { id: 'DISCUSSION', icon: MessageCircle, href: null,       isFilter: true,  isSearch: false },
-  { id: 'EVENT',      icon: Calendar,      href: null,       isFilter: true,  isSearch: false },
+  { id: 'flux',   icon: Rss,    href: '/cerveau', isFilter: false, isSearch: false },
+  { id: 'search', icon: Search, href: null,       isFilter: false, isSearch: true  },
 ]
 
 function CerveauBottomNavInner(): React.ReactElement | null {

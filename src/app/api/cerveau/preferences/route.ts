@@ -38,6 +38,14 @@ export async function PATCH(request: NextRequest): Promise<Response> {
     quietUntil?:         string | null
     morningDigestAt?:    string | null
     weeklyRecapEnabled?: boolean
+    snoozeDefaultSlot?:  number
+    snoozeSlot1Label?:   string
+    snoozeSlot1Minutes?: number
+    snoozeSlot2Label?:   string
+    snoozeSlot2Minutes?: number
+    snoozeSlot3Label?:   string
+    snoozeSlot3Minutes?: number | null
+    snoozeSlot3Dynamic?: boolean
   }
   try {
     body = await request.json()
@@ -55,6 +63,14 @@ export async function PATCH(request: NextRequest): Promise<Response> {
         ...(body.quietUntil         !== undefined && { quietUntil:         body.quietUntil }),
         ...(body.morningDigestAt    !== undefined && { morningDigestAt:    body.morningDigestAt }),
         ...(body.weeklyRecapEnabled !== undefined && { weeklyRecapEnabled: body.weeklyRecapEnabled }),
+        ...(body.snoozeDefaultSlot  !== undefined && { snoozeDefaultSlot:  body.snoozeDefaultSlot }),
+        ...(body.snoozeSlot1Label   !== undefined && { snoozeSlot1Label:   body.snoozeSlot1Label }),
+        ...(body.snoozeSlot1Minutes !== undefined && { snoozeSlot1Minutes: body.snoozeSlot1Minutes }),
+        ...(body.snoozeSlot2Label   !== undefined && { snoozeSlot2Label:   body.snoozeSlot2Label }),
+        ...(body.snoozeSlot2Minutes !== undefined && { snoozeSlot2Minutes: body.snoozeSlot2Minutes }),
+        ...(body.snoozeSlot3Label   !== undefined && { snoozeSlot3Label:   body.snoozeSlot3Label }),
+        ...(body.snoozeSlot3Minutes !== undefined && { snoozeSlot3Minutes: body.snoozeSlot3Minutes }),
+        ...(body.snoozeSlot3Dynamic !== undefined && { snoozeSlot3Dynamic: body.snoozeSlot3Dynamic }),
       },
       create: {
         userId:             session.user.id,

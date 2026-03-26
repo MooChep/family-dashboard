@@ -40,23 +40,21 @@ export const DatePickerFR = forwardRef<DatePickerFRHandle, DatePickerFRProps>(
     useImperativeHandle(ref, () => ({ openPicker }))
 
     return (
-      <div className="relative">
-        {/* Visible FR display — clicking triggers the native picker */}
-        <div
-          className={`${className ?? ''} cursor-pointer select-none`}
-          style={{ color: value ? 'var(--text)' : 'var(--text2)' }}
-          onClick={openPicker}
-        >
+      <div className={`relative cursor-pointer select-none ${className ?? ''}`}>
+        {/* Visible FR display */}
+        <div style={{ color: value ? 'var(--text)' : 'var(--text2)' }}>
           {display}
         </div>
 
-        {/* Hidden input — only used to open the native OS picker */}
+        {/* Transparent input overlay — iOS : tap direct sur l'input ouvre le picker natif
+             Desktop : onClick appelle showPicker() explicitement */}
         <input
           ref={inputRef}
           type={showTime ? 'datetime-local' : 'date'}
           value={value}
           onChange={e => e.target.value && onChange(e.target.value)}
-          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+          onClick={() => { try { inputRef.current?.showPicker?.() } catch { /* ignore */ } }}
+          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
           tabIndex={-1}
         />
       </div>

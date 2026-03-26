@@ -86,9 +86,11 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/cerveau/entries/[id] — soft delete (archive)
+// DELETE /api/cerveau/entries/[id]
+// ?purge=true → suppression permanente (hard delete)
+// sans paramètre → soft delete (archive)
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<Response> {
   const session = await getServerSession(authOptions)
@@ -96,7 +98,14 @@ export async function DELETE(
     return Response.json({ success: false, error: 'Non autorisé' } satisfies ApiResponse<never>, { status: 401 })
   }
 
+  const purge = new URL(request.url).searchParams.get('purge') === 'true'
+
   try {
+    if (purge) {
+      await prisma.cerveauEntry.delete({ where: { id: params.id } })
+      return Response.json({ success: true } satisfies ApiResponse<never>)
+    }
+
     const entry = await prisma.cerveauEntry.update({
       where: { id: params.id },
       data: {
