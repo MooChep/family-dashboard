@@ -7,22 +7,21 @@ import { cn } from '@/lib/utils'
 import { ProfileModal } from '@/components/layout/ProfileModal'
 import { CategoryNav } from '@/components/cerveau/CategoryNav'
 import type { EntryType } from '@prisma/client'
+import { PiggyBank, Brain, ChefHat, CalendarDays, LayoutDashboard, Settings2, LogOut} from 'lucide-react'
 
 interface NavItem {
   label: string
   href: string
-  icon: string
+  icon: React.ReactNode // Changé de string à ReactNode
   soon?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard',  href: '/',          icon: '⊞' },
-  { label: 'Épargne',    href: '/epargne',   icon: '◈' },
-  { label: 'Cerveau',    href: '/cerveau',   icon: '◎' },
-  { label: 'Ménage',     href: '/menage',    icon: '⌂', soon: true },
-  { label: 'Projets',    href: '/projets',   icon: '◉', soon: true },
-  { label: 'Habitudes',  href: '/habitudes', icon: '◆', soon: true },
-  { label: 'Notes',      href: '/notes',     icon: '◧', soon: true },
+  { label: 'Dashboard',  href: '/',          icon: <LayoutDashboard size={18} strokeWidth={1.5} /> },
+  { label: 'Épargne',   href: '/epargne',   icon: <PiggyBank size={18} strokeWidth={1.5} />, soon: false },
+  { label: 'Cerveau',    href: '/cerveau',   icon: <Brain size={18} strokeWidth={1.5} />, soon: false },
+  { label: 'Popote',    href: '/popote',    icon: <ChefHat size={18} strokeWidth={1.5} />, soon: true },
+  { label: 'Calendrier',href: '/habitudes',icon: <CalendarDays size={18} strokeWidth={1.5} />, soon: true },
 ]
 
 // ── CategoryNav section (needs useSearchParams → Suspense boundary) ────────
@@ -80,7 +79,7 @@ export function Sidebar(): React.ReactElement {
               <div key={item.href}
                 className="flex items-center justify-between px-3 py-2 rounded-lg cursor-not-allowed opacity-45">
                 <div className="flex items-center gap-3">
-                  <span className="text-base w-5 text-center text-(--muted)]">{item.icon}</span>
+                  <span className="w-5 flex justify-center text-(--muted)]">{item.icon}</span>
                   <span className="text-sm text-(--muted)]">{item.label}</span>
                 </div>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-(--surface2) text-(--muted2) font-(--font-mono) text-[10px]">
@@ -95,7 +94,7 @@ export function Sidebar(): React.ReactElement {
                 'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
                 active ? 'bg-(--accent-dim) text-(--accent)]' : 'text-(--text2) hover:bg-(--surface2)]'
               )}>
-              <span className="text-base w-5 text-center">{item.icon}</span>
+              <span className="w-5 flex justify-center">{item.icon}</span>
               <span className="text-sm font-medium">{item.label}</span>
               {active && <div className="ml-auto w-1 h-4 rounded-full bg-(--accent)]" />}
             </Link>
@@ -125,12 +124,16 @@ export function Sidebar(): React.ReactElement {
               {session?.user?.email ?? '—'}
             </span>
           </div>
-          <span className="text-xs text-(--muted)]">✎</span>
+          <span className="text-(--muted)]">
+            <Settings2 size={14} />
+          </span>
         </button>
 
         <button onClick={handleSignOut}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left text-(--danger) hover:bg-(--accent-dim)]">
-          <span className="text-base w-5 text-center">→</span>
+          <span className="w-5 flex justify-center">
+            <LogOut size={18} strokeWidth={1.5} />
+          </span>
           Déconnexion
         </button>
       </div>

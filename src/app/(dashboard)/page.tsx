@@ -1,23 +1,46 @@
 import { type ReactElement } from 'react'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { Card, CardHeader } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { ActiveThemeBadge } from '@/components/ui/ActiveThemeBadge'
+// Import des icônes Lucide
+import { PiggyBank, Brain, ChefHat, CalendarDays } from 'lucide-react'
 
 export default async function DashboardPage(): Promise<ReactElement> {
   const session = await getServerSession(authOptions)
   // session est forcément défini ici — (dashboard)/layout.tsx redirige sinon
   const user = session!.user
 
-  const MODULES = [
-    { label: 'Épargne',    href: '/epargne',   icon: '◈', description: "Suivi des comptes et objectifs d'épargne", soon: false },
-    { label: 'Ménage',     href: '/menage',    icon: '⌂', description: 'Organisation des tâches ménagères', soon: true },
-    { label: 'Projets',    href: '/projets',   icon: '◉', description: 'Suivi des projets familiaux', soon: true },
-    { label: 'Habitudes',  href: '/habitudes', icon: '◎', description: 'Suivi des habitudes quotidiennes', soon: true },
-    { label: 'Notes',      href: '/notes',     icon: '◧', description: 'Notes et mémos partagés', soon: true },
-  ]
-
+  // Remplacement des symboles texte par des composants d'icônes Lucide
+const MODULES = [
+  { 
+    label: 'Épargne',    
+    href: '/epargne',   
+    icon: <PiggyBank size={20} strokeWidth={1.5} />, 
+    description: "Suivi des comptes et objectifs d'épargne", 
+    soon: false 
+  },
+  { 
+    label: 'Cerveau',    
+    href: '/cerveau',    
+    icon: <Brain size={20} strokeWidth={1.5} />,      
+    description: 'Vider sa charge mentale', 
+    soon: false 
+  },
+  { 
+    label: 'Popote',     
+    href: '/popote',    
+    icon: <ChefHat size={20} strokeWidth={1.5} />, 
+    description: 'Gestion des recettes et planification des repas', 
+    soon: true 
+  },
+  { 
+    label: 'Calendrier', 
+    href: '/habitudes', 
+    icon: <CalendarDays size={20} strokeWidth={1.5} />, 
+    description: 'Événements familiaux et planning partagé', 
+    soon: true 
+  },
+]
   return (
     <div className="flex flex-col gap-8 pt-15">
       <div className="flex flex-col gap-1">
@@ -28,25 +51,6 @@ export default async function DashboardPage(): Promise<ReactElement> {
           {user.name}
         </h2>
       </div>
-{/* Card session */}
-      {/* <Card>
-        <CardHeader title="Session active" subtitle="Informations de connexion courante" />
-        <div className="flex flex-col gap-2 mt-2" style={{ fontFamily: 'var(--font-mono)' }}>
-          <div className="flex items-center gap-3">
-            <span className="text-xs w-24" style={{ color: 'var(--muted)' }}>utilisateur</span>
-            <span className="text-sm" style={{ color: 'var(--text2)' }}>{user.email}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs w-24" style={{ color: 'var(--muted)' }}>thème actif</span>
-            <ActiveThemeBadge />
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs w-24" style={{ color: 'var(--muted)' }}>id</span>
-            <span className="text-xs" style={{ color: 'var(--muted2)' }}>{user.id}</span>
-          </div>
-        </div>
-      </Card> */}
-
       <div className="flex flex-col gap-3">
         <h3
           className="text-sm font-medium"
@@ -68,6 +72,7 @@ export default async function DashboardPage(): Promise<ReactElement> {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
+                    {/* Le style de couleur var(--accent) s'appliquera directement à l'icône SVG */}
                     <span className="text-xl" style={{ color: 'var(--accent)' }}>{module.icon}</span>
                     <span className="text-sm font-medium" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
                       {module.label}
