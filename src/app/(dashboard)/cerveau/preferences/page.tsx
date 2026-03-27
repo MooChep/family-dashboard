@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Bell, BellOff, Loader2, ArrowLeft } from 'lucide-react'
+import { Bell, BellOff, Loader2, ArrowLeft, Send } from 'lucide-react'
 import { useCerveauToast, CerveauToast } from '@/components/cerveau/CerveauToast'
 import { subscribeToPush, requestNotificationPermission } from '@/lib/cerveau/notifications'
 
@@ -51,6 +51,7 @@ export default function PreferencesPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [notifGranted, setNotifGranted] = useState(false)
   const [isSubscribing, setIsSubscribing] = useState(false)
+  const [isTesting, setIsTesting] = useState(false)
   const { toast, showToast, dismiss } = useCerveauToast()
 
   useEffect(() => {
@@ -75,6 +76,20 @@ export default function PreferencesPage() {
       else showToast('Erreur lors de la sauvegarde', 'error')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleTestNotification() {
+    setIsTesting(true)
+    try {
+      const res = await fetch('/api/cerveau/push/test', { method: 'POST' })
+      const data = await res.json() as { success: boolean; error?: string }
+      if (data.success) showToast('Notification envoyée !', 'success')
+      else showToast(data.error ?? 'Erreur', 'error')
+    } catch {
+      showToast('Erreur réseau', 'error')
+    } finally {
+      setIsTesting(false)
     }
   }
 
@@ -174,7 +189,21 @@ export default function PreferencesPage() {
                 </p>
               </div>
             </div>
-            {!notifGranted && (
+            {notifGranted ? (
+              <button
+                type="button"
+                onClick={() => void handleTestNotification()}
+                disabled={isTesting}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-60"
+                style={{ backgroundColor: 'var(--surface2)', color: 'var(--text2)' }}
+              >
+                {isTesting
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <Send size={14} />
+                }
+                Tester
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={() => void handleEnableNotifications()}
