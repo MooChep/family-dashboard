@@ -49,13 +49,19 @@ export default function PreferencesPage() {
     snoozeSlot3Dynamic: true,
   })
   const [isSaving, setIsSaving] = useState(false)
-  const [notifGranted, setNotifGranted] = useState(false)
+  const [permissionGranted, setPermissionGranted] = useState(false)
+  const [isSubscribed, setIsSubscribed] = useState(false)
   const [isSubscribing, setIsSubscribing] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
   const { toast, showToast, dismiss } = useCerveauToast()
 
   useEffect(() => {
-    setNotifGranted(typeof Notification !== 'undefined' && Notification.permission === 'granted')
+    setPermissionGranted(typeof Notification !== 'undefined' && Notification.permission === 'granted')
+    void fetch('/api/cerveau/push/subscribe')
+      .then(r => r.json())
+      .then((data: { success: boolean; data: { subscribed: boolean } }) => {
+        if (data.success) setIsSubscribed(data.data.subscribed)
+      })
     void fetch('/api/cerveau/preferences')
       .then(r => r.json())
       .then((data: { success: boolean; data: Prefs | null }) => {
@@ -112,7 +118,8 @@ export default function PreferencesPage() {
         return
       }
       await subscribeToPush()
-      setNotifGranted(true)
+      setPermissionGranted(true)
+      setIsSubscribed(true)
       showToast('Notifications activées', 'success')
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -176,45 +183,45 @@ export default function PreferencesPage() {
             style={{ backgroundColor: 'var(--surface)' }}
           >
             <div className="flex items-center gap-3">
-              {notifGranted
+              {isSubscribed
                 ? <Bell size={18} style={{ color: 'var(--accent)' }} />
                 : <BellOff size={18} style={{ color: 'var(--muted)' }} />
               }
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                  {notifGranted ? 'Notifications activées' : 'Notifications désactivées'}
+                  {isSubscribed ? 'Notifications activées' : 'Notifications désactivées'}
                 </p>
                 <p className="font-mono text-[10px]" style={{ color: 'var(--muted)' }}>
-                  Rappels, événements à venir
+                  {isSubscribed && permissionGranted ? 'Appareil enregistré' : 'Rappels, événements à venir'}
                 </p>
               </div>
             </div>
-            {notifGranted ? (
-              <button
-                type="button"
-                onClick={() => void handleTestNotification()}
-                disabled={isTesting}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-60"
-                style={{ backgroundColor: 'var(--surface2)', color: 'var(--text2)' }}
-              >
-                {isTesting
-                  ? <Loader2 size={14} className="animate-spin" />
-                  : <Send size={14} />
-                }
-                Tester
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => void handleEnableNotifications()}
-                disabled={isSubscribing}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-60"
-                style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
-              >
-                {isSubscribing && <Loader2 size={14} className="animate-spin" />}
-                Activer
-              </button>
-            )}
+            <div className="flex gap-2">
+              {isSubscribed && (
+                <button
+                  type="button"
+                  onClick={() => void handleTestNotification()}
+                  disabled={isTesting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-60"
+                  style={{ backgroundColor: 'var(--surface2)', color: 'var(--text2)' }}
+                >
+                  {isTesting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  Tester
+                </button>
+              )}
+              {!isSubscribed && (
+                <button
+                  type="button"
+                  onClick={() => void handleEnableNotifications()}
+                  disabled={isSubscribing}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-60"
+                  style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+                >
+                  {isSubscribing && <Loader2 size={14} className="animate-spin" />}
+                  {permissionGranted ? 'Réactiver' : 'Activer'}
+                </button>
+              )}
+            </div>
           </div>
         </section>
 

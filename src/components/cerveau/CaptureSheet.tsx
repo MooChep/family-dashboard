@@ -258,8 +258,8 @@ export function CaptureSheet({
         ...(contextType === 'project' && contextId ? { parentId: contextId } : {}),
       }
 
-      if (type !== 'REMINDER' && dueDate)  payload.dueDate  = new Date(dueDate).toISOString()
-      if (type === 'REMINDER' && remindAt) payload.remindAt = new Date(remindAt).toISOString()
+      if (dueDate)  payload.dueDate  = new Date(dueDate).toISOString()
+      if (remindAt) payload.remindAt = new Date(remindAt).toISOString()
 
       const result = await onSubmit(payload)
       showToast?.(result.message, result.success ? 'success' : 'error')

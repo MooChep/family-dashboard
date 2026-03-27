@@ -117,9 +117,10 @@ async function sendWithEscalation(
     ? `⚠️ Urgent : ${entry.title}`
     : entry.title
 
+  const triggerDate = entry.remindAt ?? entry.dueDate ?? new Date()
   const body = count >= 1
-    ? `Rappel ${count + 1} — ${formatAbsolute(entry.remindAt ?? new Date())}`
-    : formatAbsolute(entry.remindAt ?? new Date())
+    ? `Rappel ${count + 1} — ${formatAbsolute(triggerDate)}`
+    : formatAbsolute(triggerDate)
 
   const slots = resolveSnoozeSlots(prefs)
   const payload: PushPayload = {
@@ -303,41 +304,42 @@ export async function runNotificationScheduler(): Promise<{ sent: number; recurr
     })
   }
 
-  const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-  const in25h = new Date(in24h.getTime() + 60 * 1000)
-
   let sent = 0
 
   for (const [userId, { subs, prefs }] of byUser) {
     const inQuiet = isQuietTime(now, prefs?.quietFrom ?? null, prefs?.quietUntil ?? null)
 
-    // ── Reminders with escalation ─────────────────────────────────
-    const reminders = await prisma.cerveauEntry.findMany({
+    // ── remindAt for ALL types (REMINDER + others) ────────────────
+    const remindAtEntries = await prisma.cerveauEntry.findMany({
       where: {
         createdById:       userId,
-        type:              'REMINDER',
         status:            'ACTIVE',
         remindAt:          { lte: now },
         notificationCount: { lt: 4 },
       },
     })
 
-    for (const entry of reminders) {
+    for (const entry of remindAtEntries) {
       if (inQuiet) {
-        console.log(`[scheduler] quiet time — skipped reminder ${entry.id}`)
+        console.log(`[scheduler] quiet time — skipped entry ${entry.id}`)
         continue
       }
       const didSend = await sendWithEscalation(entry, subs, prefs)
       if (didSend) sent += subs.length
     }
 
-    // ── Events (24h advance notice) ───────────────────────────────
+    // ── Events (advance notice per prefs.eventLeadTime) ───────────
+    const leadMs = (prefs?.eventLeadTime ?? 1440) * 60 * 1000
+    const inLeadTime     = new Date(now.getTime() + leadMs)
+    const inLeadTimePlus = new Date(inLeadTime.getTime() + 60_000)
+
     const events = await prisma.cerveauEntry.findMany({
       where: {
-        createdById: userId,
-        type:        'EVENT',
-        status:      'ACTIVE',
-        dueDate:     { gte: in24h, lt: in25h },
+        createdById:       userId,
+        type:              'EVENT',
+        status:            'ACTIVE',
+        dueDate:           { gte: inLeadTime, lt: inLeadTimePlus },
+        notificationCount: { lt: 1 },
       },
     })
 
@@ -346,15 +348,23 @@ export async function runNotificationScheduler(): Promise<{ sent: number; recurr
         console.log(`[scheduler] quiet time — skipped event ${event.id}`)
         continue
       }
+      const leadLabel = prefs?.eventLeadTime === 60  ? '1h'
+                      : prefs?.eventLeadTime === 120 ? '2h'
+                      : prefs?.eventLeadTime === 480 ? '8h'
+                      : 'demain'
       for (const sub of subs) {
         await sendPush(sub, {
           title:   event.title,
-          body:    'Événement dans 24h',
+          body:    `Événement dans ${leadLabel}`,
           entryId: event.id,
           url:     '/cerveau',
         })
         sent++
       }
+      await prisma.cerveauEntry.update({
+        where: { id: event.id },
+        data:  { notificationCount: { increment: 1 }, lastNotifiedAt: new Date() },
+      })
     }
 
     // ── Weekly recap ──────────────────────────────────────────────

@@ -12,6 +12,16 @@ interface PushSubscriptionBody {
   }
 }
 
+// GET /api/cerveau/push/subscribe — vérifie si une subscription existe en DB
+export async function GET(): Promise<Response> {
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    return Response.json({ success: false, error: 'Non autorisé' } satisfies ApiResponse<never>, { status: 401 })
+  }
+  const sub = await prisma.pushSubscription.findFirst({ where: { userId: session.user.id } })
+  return Response.json({ success: true, data: { subscribed: !!sub } } satisfies ApiResponse<{ subscribed: boolean }>)
+}
+
 // POST /api/cerveau/push/subscribe — enregistre une push subscription
 export async function POST(request: NextRequest): Promise<Response> {
   const session = await getServerSession(authOptions)
