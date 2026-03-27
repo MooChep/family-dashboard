@@ -50,9 +50,15 @@ export function MobileHeader(): React.ReactElement {
     <>
       {/* ── Top bar ────────────────────────────────────────────────────── */}
       <header
-        className="fixed top-0 left-0 right-0 h-14 flex items-center justify-between px-4 z-40 md:hidden"
-        style={{ backgroundColor: 'var(--surface)', borderBottom: '1px solid var(--border)' }}
+        className="fixed top-0 left-0 right-0 flex items-end justify-between px-4 z-40 md:hidden"
+        style={{
+          backgroundColor: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
+          paddingTop: 'env(safe-area-inset-top)',
+          height: 'calc(3.5rem + env(safe-area-inset-top))',
+        }}
       >
+        <div className="flex items-center justify-between w-full h-14">
         <button
           onClick={() => setDrawerOpen(true)}
           className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-lg"
@@ -79,10 +85,11 @@ export function MobileHeader(): React.ReactElement {
         >
           {initial}
         </button>
+        </div>
       </header>
 
       {/* ── Spacer ─────────────────────────────────────────────────────── */}
-      <div className="h-14 md:hidden" />
+      <div className="md:hidden" style={{ height: 'calc(3.5rem + env(safe-area-inset-top))' }} />
 
       {/* ── Overlay ────────────────────────────────────────────────────── */}
       {drawerOpen && (
