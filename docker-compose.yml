@@ -53,13 +53,14 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT}
       JOW_SCRAPER_URL: ${JOW_SCRAPER_URL:-http://jow-scraper:8001}
       POPOTE_UPLOAD_DIR: ${POPOTE_UPLOAD_DIR:-/uploads/popote}
-      NEXT_PUBLIC_POPOTE_UPLOAD_BASE_URL: ${NEXT_PUBLIC_POPOTE_UPLOAD_BASE_URL:-/uploads/popote}
+      NEXT_PUBLIC_POPOTE_UPLOAD_BASE_URL: ${NEXT_PUBLIC_POPOTE_UPLOAD_BASE_URL:-/api/popote/images}
     ports:
       - "3010:3000"
+    volumes:
+      - uploads_popote:/uploads/popote
+      - uploads_cerveau:/uploads/cerveau
     networks:
       - internal
-    # Note : On ne met plus de volumes ici pour laisser Docker utiliser
-    # les fichiers compilés à l'intérieur de l'image.
     command: >
           sh -c "npx prisma migrate deploy &&
                 npm run prisma:seed &&
@@ -71,3 +72,5 @@ networks:
 
 volumes:
   db_data:
+  uploads_popote:
+  uploads_cerveau:

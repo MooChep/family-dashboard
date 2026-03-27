@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 PORT = int(os.environ.get("PORT", 8001))
-JOW_IMAGE_BASE = "https://images.jow.fr/"
+JOW_IMAGE_BASE = "https://static.jow.fr/"
 
 
 def _serialize_recipe(r: dict) -> dict:
