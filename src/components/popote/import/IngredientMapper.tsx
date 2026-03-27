@@ -127,6 +127,8 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
     onDone(resolutions)
   }
 
+  const matched = ingredients.filter(i => i.matchStatus.matched)
+
   if (unknown.length === 0) {
     handleValidate()
     return null
@@ -140,6 +142,35 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
           : 'Tous les ingrédients sont mappés ✓'}
       </p>
 
+      {/* Ingrédients déjà matchés automatiquement */}
+      {matched.length > 0 && (
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>
+            Reconnus automatiquement ({matched.length})
+          </p>
+          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+            {matched.map((ing, i) => (
+              <div
+                key={ing.jowIndex}
+                className="flex items-center justify-between px-3 py-2"
+                style={{ borderBottom: i < matched.length - 1 ? '1px solid var(--border)' : 'none', background: 'var(--surface2)' }}
+              >
+                <div>
+                  <p className="font-body text-sm" style={{ color: 'var(--muted)', textDecoration: 'line-through', fontSize: 11 }}>
+                    {ing.name}
+                  </p>
+                  <p className="font-body text-sm" style={{ color: 'var(--text)' }}>
+                    {ing.matchStatus.matched ? ing.matchStatus.referenceName : ''}
+                  </p>
+                </div>
+                <Check size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Ingrédients inconnus à mapper */}
       <div className="flex flex-col gap-3">
         {unknown.map(ing => {
           const st = states[ing.jowIndex]!
