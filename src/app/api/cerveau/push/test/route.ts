@@ -4,14 +4,21 @@ import { prisma } from '@/lib/prisma'
 import webpush from 'web-push'
 import type { ApiResponse } from '@/lib/cerveau/types'
 
-webpush.setVapidDetails(
-  'mailto:admin@family-dashboard.local',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-)
-
 // POST /api/cerveau/push/test — envoie une notification de test à l'appareil courant
 export async function POST(): Promise<Response> {
+  const vapidPublic  = process.env.VAPID_PUBLIC_KEY
+  const vapidPrivate = process.env.VAPID_PRIVATE_KEY
+  const vapidSubject = process.env.VAPID_SUBJECT ?? 'mailto:admin@famille.fr'
+
+  if (!vapidPublic || !vapidPrivate) {
+    return Response.json(
+      { success: false, error: 'VAPID non configuré sur le serveur' } satisfies ApiResponse<never>,
+      { status: 500 },
+    )
+  }
+
+  webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
+
   const session = await getServerSession(authOptions)
   if (!session) {
     return Response.json({ success: false, error: 'Non autorisé' } satisfies ApiResponse<never>, { status: 401 })

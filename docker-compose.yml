@@ -33,6 +33,11 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
+      REGISTRATION_SECRET: ${REGISTRATION_SECRET}
+      REDIS_URL: ${REDIS_URL}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
     ports:
       - "3010:3000"
     # Note : On ne met plus de volumes ici pour laisser Docker utiliser
