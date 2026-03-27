@@ -126,7 +126,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     imageLocal,
     preparationTime: body.preparationTime ?? null,
     cookingTime:     body.cookingTime ?? null,
-    basePortions:    body.coversCount ?? 4,
+    basePortions:    1,
     calories:        null,
     sourceUrl:       body.url,
     steps,

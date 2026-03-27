@@ -7,30 +7,40 @@ export type Conversion = {
 }
 
 /**
- * Formate une quantité pour l'affichage.
- * - Fractions standard (¼ ½ ¾) pour les valeurs < 1
- * - Conversion g→kg et ml→L au-delà de 1000
- * - Unité vide si non fournie (ingrédients en UNIT)
+ * Formate une quantité pour l'affichage dans la liste de courses et l'inventaire.
+ * Règles par unité de base :
+ * - Solides (g)  : < 1000g → "Xg"  / ≥ 1000g → "X.Xkg"
+ * - Liquides (ml): ≤ 200ml → "Xml" / > 200ml → "Xcl" / ≥ 1000ml → "XL"
+ * - Unités       : fractions ¼ ½ ¾, sinon valeur décimale
+ * - Autres unités: affichage brut avec fraction si applicable
  *
- * @example formatQuantity(0.5, 'kg') → "½ kg"
+ * @example formatQuantity(30, 'g')    → "30g"
  * @example formatQuantity(1500, 'g')  → "1.5kg"
- * @example formatQuantity(2, '')      → "2"
+ * @example formatQuantity(15, 'ml')   → "15ml"
+ * @example formatQuantity(250, 'ml')  → "25cl"
+ * @example formatQuantity(1500, 'ml') → "1.5L"
+ * @example formatQuantity(0.5, '')    → "½"
  */
 export function formatQuantity(value: number, unit: string): string {
-  const frac = displayFraction(value)
-  if (frac !== null) return unit ? `${frac} ${unit}` : frac
+  const u = unit.trim().toLowerCase()
 
-  if (unit === 'ml' && value >= 1000) {
-    const l = value / 1000
-    return `${_stripTrailingZero(l)}L`
+  if (u === 'g') {
+    if (value >= 1000) return `${_stripTrailingZero(value / 1000)}kg`
+    return `${_stripTrailingZero(value)}g`
   }
-  if (unit === 'g' && value >= 1000) {
-    const kg = value / 1000
-    return `${_stripTrailingZero(kg)}kg`
+
+  if (u === 'ml') {
+    if (value >= 1000) return `${_stripTrailingZero(value / 1000)}L`
+    if (value > 200)   return `${_stripTrailingZero(value / 10)}cl`
+    return `${_stripTrailingZero(value)}ml`
   }
+
+  // Unités ou unité inconnue — fractions pour les valeurs < 2
+  const frac = displayFraction(value)
+  if (frac !== null) return unit ? `${frac} ${unit}`.trim() : frac
 
   const display = _stripTrailingZero(value)
-  return unit ? `${display} ${unit}` : display
+  return unit ? `${display} ${unit}`.trim() : display
 }
 
 /**

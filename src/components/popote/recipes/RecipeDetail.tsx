@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { X, Pencil, ChefHat } from 'lucide-react'
-import { formatQuantity } from '@/lib/popote/units'
+import { X, Pencil, ChefHat, Minus, Plus } from 'lucide-react'
+import { displayFraction } from '@/lib/popote/fractions'
 import type { RecipeWithIngredients } from '@/lib/popote/types'
 
 const UPLOAD_BASE = process.env.NEXT_PUBLIC_POPOTE_UPLOAD_BASE_URL ?? '/uploads/popote'
@@ -19,13 +19,26 @@ interface RecipeDetailProps {
  * Fiche recette complète — bottom sheet plein écran.
  * Affiche image, métadonnées, liste d'ingrédients et actions principales.
  */
+/** Formate une quantité d'ingrédient pour la fiche recette (displayQuantity × mult). */
+function formatIngredientQty(displayQuantity: number, displayUnit: string, mult: number): string {
+  const qty = displayQuantity * mult
+  const frac = displayFraction(qty)
+  const formatted = frac ?? (Number.isInteger(qty) ? String(qty) : parseFloat(qty.toFixed(2)).toString())
+  return displayUnit ? `${formatted} ${displayUnit}` : formatted
+}
+
 export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeDetailProps) {
+  const [portions, setPortions] = useState(2)
+
   // Fermer avec Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
+
+  // Multiplicateur : portions sélectionnées / basePortions (= 1 pour Jow)
+  const mult = portions / (recipe.basePortions || 1)
 
   const totalTime = (recipe.preparationTime ?? 0) + (recipe.cookingTime ?? 0)
 
@@ -84,14 +97,33 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
                 🔥 {recipe.cookingTime} min
               </span>
             ) : null}
-            <span className="font-mono text-xs px-2 py-1 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
-              👥 {recipe.basePortions} portions
-            </span>
             {recipe.calories ? (
               <span className="font-mono text-xs px-2 py-1 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
-                🔥 {recipe.calories} kcal
+                {recipe.calories} kcal
               </span>
             ) : null}
+          </div>
+
+          {/* Stepper portions */}
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>Portions</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPortions(p => Math.max(1, p - 1))}
+                className="w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)' }}
+              >
+                <Minus size={12} />
+              </button>
+              <span className="font-mono text-sm w-5 text-center" style={{ color: 'var(--text)' }}>{portions}</span>
+              <button
+                onClick={() => setPortions(p => p + 1)}
+                className="w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)' }}
+              >
+                <Plus size={12} />
+              </button>
+            </div>
           </div>
 
           {/* Description */}
@@ -117,7 +149,7 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
                       )}
                     </span>
                     <span className="font-mono text-sm" style={{ color: 'var(--text2)' }}>
-                      {formatQuantity(ing.quantity, ing.displayUnit)}
+                      {formatIngredientQty(ing.displayQuantity, ing.displayUnit, mult)}
                     </span>
                   </div>
                 ))}

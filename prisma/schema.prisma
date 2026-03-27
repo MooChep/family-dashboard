@@ -455,10 +455,11 @@ model RecipeIngredient {
   recipe      Recipe              @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   referenceId String
   reference   IngredientReference @relation(fields: [referenceId], references: [id])
-  quantity    Float
-  displayUnit String
-  isOptional  Boolean             @default(false)
-  isStaple    Boolean             @default(false)
+  quantity        Float
+  displayQuantity Float           @default(0)
+  displayUnit     String
+  isOptional      Boolean         @default(false)
+  isStaple        Boolean         @default(false)
 
   @@index([recipeId])
   @@index([referenceId])

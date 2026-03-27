@@ -7,8 +7,8 @@ import type { ApiResponse } from '@/lib/popote/types'
 import type { BaseUnit } from '@prisma/client'
 import type { IngredientWithAisle } from '@/app/api/popote/ingredients/route'
 
-/** Résolution finale : jowIndex → referenceId */
-export type Resolution = Record<number, string>
+/** Résolution finale : jowIndex → { referenceId, referenceName } */
+export type Resolution = Record<number, { referenceId: string; referenceName: string }>
 
 interface IngredientMapperProps {
   ingredients: ImportIngredient[]
@@ -110,16 +110,19 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
   const allDone  = resolved === total
 
   function handleValidate() {
-    // Partir des correspondances automatiques
     const resolutions: Resolution = {}
     for (const ing of ingredients) {
       if (ing.matchStatus.matched) {
-        resolutions[ing.jowIndex] = ing.matchStatus.referenceId
+        resolutions[ing.jowIndex] = {
+          referenceId:   ing.matchStatus.referenceId,
+          referenceName: ing.matchStatus.referenceName,
+        }
       }
     }
-    // Ajouter les résolutions manuelles
     for (const [idxStr, st] of Object.entries(states)) {
-      if (st.referenceId) resolutions[Number(idxStr)] = st.referenceId
+      if (st.referenceId && st.refName) {
+        resolutions[Number(idxStr)] = { referenceId: st.referenceId, referenceName: st.refName }
+      }
     }
     onDone(resolutions)
   }

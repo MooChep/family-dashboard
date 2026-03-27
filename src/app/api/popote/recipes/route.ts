@@ -87,7 +87,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         imageLocal:      body.imageLocal ?? '',
         preparationTime: body.preparationTime,
         cookingTime:     body.cookingTime,
-        basePortions:    body.basePortions ?? 4,
+        basePortions:    body.jowId ? 1 : (body.basePortions ?? 4),
         calories:        body.calories,
         utensils:        body.utensils,
         steps:           body.steps ?? [],
@@ -96,11 +96,12 @@ export async function POST(request: NextRequest): Promise<Response> {
         ingredients: body.ingredients?.length
           ? {
               create: body.ingredients.map(ing => ({
-                referenceId: ing.referenceId,
-                quantity:    ing.quantity,
-                displayUnit: ing.displayUnit,
-                isOptional:  ing.isOptional ?? false,
-                isStaple:    ing.isStaple ?? false,
+                referenceId:     ing.referenceId,
+                quantity:        ing.quantity,
+                displayQuantity: ing.displayQuantity,
+                displayUnit:     ing.displayUnit,
+                isOptional:      ing.isOptional ?? false,
+                isStaple:        ing.isStaple ?? false,
               })),
             }
           : undefined,

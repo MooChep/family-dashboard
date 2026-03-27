@@ -73,12 +73,13 @@ export async function PATCH(
         if (body.ingredients.length > 0) {
           await tx.recipeIngredient.createMany({
             data: body.ingredients.map(ing => ({
-              recipeId:    params.id,
-              referenceId: ing.referenceId,
-              quantity:    ing.quantity,
-              displayUnit: ing.displayUnit,
-              isOptional:  ing.isOptional ?? false,
-              isStaple:    ing.isStaple ?? false,
+              recipeId:        params.id,
+              referenceId:     ing.referenceId,
+              quantity:        ing.quantity,
+              displayQuantity: ing.displayQuantity,
+              displayUnit:     ing.displayUnit,
+              isOptional:      ing.isOptional ?? false,
+              isStaple:        ing.isStaple ?? false,
             })),
           })
         }

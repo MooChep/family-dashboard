@@ -44,11 +44,12 @@ export type CreateRecipePayload = {
 }
 
 export type CreateRecipeIngredientPayload = {
-  referenceId: string
-  quantity:    number
-  displayUnit: string
-  isOptional?: boolean
-  isStaple?:   boolean
+  referenceId:     string
+  quantity:        number
+  displayQuantity: number
+  displayUnit:     string
+  isOptional?:     boolean
+  isStaple?:       boolean
 }
 
 // ─── Payload mise à jour recette ──────────────────────────────────────────

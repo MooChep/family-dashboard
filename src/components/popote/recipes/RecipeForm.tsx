@@ -38,22 +38,25 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
   const resolvedIngredients = prefill
     ? prefill.ingredients
         .filter(ing => {
-          const refId = ing.matchStatus.matched
+          const res = ing.matchStatus.matched
             ? ing.matchStatus.referenceId
-            : resolutions?.[ing.jowIndex]
-          return Boolean(refId)
+            : resolutions?.[ing.jowIndex]?.referenceId
+          return Boolean(res)
         })
-        .map(ing => ({
-          referenceId: ing.matchStatus.matched
-            ? ing.matchStatus.referenceId
-            : resolutions![ing.jowIndex]!,
-          quantity:    ing.quantity ?? 0,
-          displayUnit: ing.unit ?? '',
-          isOptional:  ing.isOptional ?? false,
-          isStaple:    false,
-          // Label pour l'affichage uniquement
-          label:       ing.name,
-        }))
+        .map(ing => {
+          const resolution = ing.matchStatus.matched
+            ? { referenceId: ing.matchStatus.referenceId, referenceName: ing.matchStatus.referenceName }
+            : resolutions![ing.jowIndex]!
+          return {
+            referenceId:     resolution.referenceId,
+            displayQuantity: ing.quantity ?? 0,
+            quantity:        ing.quantity ?? 0,
+            displayUnit:     ing.unit ?? '',
+            isOptional:      ing.isOptional ?? false,
+            isStaple:        false,
+            label:           resolution.referenceName,
+          }
+        })
     : []
 
   // ── Gestion des étapes ────────────────────────────────────────────────────
@@ -201,7 +204,7 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
               >
                 <span className="font-body text-sm" style={{ color: 'var(--text)' }}>{ing.label}</span>
                 <span className="font-mono text-xs" style={{ color: 'var(--muted)' }}>
-                  {ing.quantity > 0 ? `${ing.quantity} ${ing.displayUnit}` : '—'}
+                  {ing.displayQuantity > 0 ? `${ing.displayQuantity} ${ing.displayUnit}`.trim() : '—'}
                 </span>
               </div>
             ))}
