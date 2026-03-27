@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "prisma": {
-    "seed": "tsx prisma/seed/themes.ts"
+    "seed": "tsx prisma/seed/index.ts"
   },
   "scripts": {
     "dev": "next dev",

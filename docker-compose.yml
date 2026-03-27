@@ -18,6 +18,15 @@ services:
       timeout: 5s
       retries: 5
 
+  jow-scraper:
+    build: ./services/jow-scraper
+    container_name: family-dashboard-jow-scraper
+    restart: unless-stopped
+    environment:
+      - PORT=8001
+    networks:
+      - internal
+
   app:
     build:
       context: .
@@ -38,13 +47,23 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT}
+      JOW_SCRAPER_URL: ${JOW_SCRAPER_URL:-http://jow-scraper:8001}
+      POPOTE_UPLOAD_DIR: ${POPOTE_UPLOAD_DIR:-/uploads/popote}
+      NEXT_PUBLIC_POPOTE_UPLOAD_BASE_URL: ${NEXT_PUBLIC_POPOTE_UPLOAD_BASE_URL:-/uploads/popote}
     ports:
       - "3010:3000"
+    networks:
+      - internal
     # Note : On ne met plus de volumes ici pour laisser Docker utiliser
     # les fichiers compilés à l'intérieur de l'image.
     command: >
-          sh -c "npx prisma migrate deploy && 
-                npm run prisma:seed && 
+          sh -c "npx prisma migrate deploy &&
+                npm run prisma:seed &&
                 node server.js"
+
+networks:
+  internal:
+    driver: bridge
+
 volumes:
   db_data:

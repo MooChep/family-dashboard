@@ -386,3 +386,129 @@ enum EntryStatus {
   ARCHIVED
   SNOOZED
 }
+
+// ── Popote ─────────────────────────────────────────────────────────────────────
+
+enum BaseUnit {
+  GRAM
+  MILLILITER
+  UNIT
+}
+
+enum SlotType {
+  DATED
+  FLOATING
+}
+
+enum Period {
+  LUNCH
+  DINNER
+}
+
+model Aisle {
+  id          String                @id @default(cuid())
+  name        String
+  emoji       String?
+  order       Int
+  ingredients IngredientReference[]
+}
+
+model IngredientReference {
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  baseUnit           BaseUnit
+  aisleId            String
+  aisle              Aisle    @relation(fields: [aisleId], references: [id])
+  defaultQuantity    Float?
+  conversions        Json?
+  quickBuyQuantities Json?
+  imageUrl           String?
+
+  recipeIngredients  RecipeIngredient[]
+  shoppingListItems  ShoppingListItem[]
+  inventory          Inventory?
+
+  @@index([aisleId])
+}
+
+model Recipe {
+  id              String             @id @default(cuid())
+  title           String
+  description     String?            @db.Text
+  imageLocal      String
+  preparationTime Int?
+  cookingTime     Int?
+  basePortions    Int                @default(4)
+  calories        Int?
+  utensils        String?            @db.Text
+  steps           Json
+  sourceUrl       String?
+  jowId           String?            @unique
+  createdAt       DateTime           @default(now())
+  ingredients     RecipeIngredient[]
+  planningSlots   PlanningSlot[]
+}
+
+model RecipeIngredient {
+  id          String              @id @default(cuid())
+  recipeId    String
+  recipe      Recipe              @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  referenceId String
+  reference   IngredientReference @relation(fields: [referenceId], references: [id])
+  quantity    Float
+  displayUnit String
+  isOptional  Boolean             @default(false)
+  isStaple    Boolean             @default(false)
+
+  @@index([recipeId])
+  @@index([referenceId])
+}
+
+model PlanningSlot {
+  id               String    @id @default(cuid())
+  recipeId         String
+  recipe           Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  type             SlotType
+  scheduledDate    DateTime?
+  period           Period?
+  portions         Int
+  portionsConsumed Int       @default(0)
+  addedAt          DateTime  @default(now())
+
+  @@index([recipeId])
+  @@index([scheduledDate])
+}
+
+model ShoppingList {
+  id          String             @id @default(cuid())
+  generatedAt DateTime           @default(now())
+  weekStart   DateTime
+  items       ShoppingListItem[]
+}
+
+model ShoppingListItem {
+  id               String        @id @default(cuid())
+  shoppingListId   String
+  shoppingList     ShoppingList  @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  referenceId      String?
+  reference        IngredientReference? @relation(fields: [referenceId], references: [id])
+  label            String
+  quantity         Float?
+  displayUnit      String?
+  plannedQuantity  Float?
+  skipped          Boolean       @default(false)
+  purchased        Boolean       @default(false)
+  purchasedQuantity Float?
+  isManual         Boolean       @default(false)
+
+  @@index([shoppingListId])
+  @@index([referenceId])
+}
+
+model Inventory {
+  id          String              @id @default(cuid())
+  referenceId String              @unique
+  reference   IngredientReference @relation(fields: [referenceId], references: [id])
+  quantity    Float
+  updatedAt   DateTime            @updatedAt
+}

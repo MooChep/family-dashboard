@@ -1,13 +1,11 @@
 import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
-
 /**
  * Seed des thèmes système.
  * `light` est le seul thème système (fallback universel), isDefault = true.
  * Les thèmes custom sont créés par les utilisateurs via l'UI.
  */
-async function main(): Promise<void> {
+export async function seedThemes(prisma: PrismaClient): Promise<void> {
   console.log('🚀 Seeding system theme...')
 
   // ── Thème Light — fallback système ───────────────────────────────────────────
@@ -37,7 +35,7 @@ async function main(): Promise<void> {
       label: 'Clair',
       isDefault: true,
       cssVars: JSON.stringify(lightVars),
-      createdBy: null, // thème système
+      createdBy: null,
     },
     create: {
       name: 'light',
@@ -51,12 +49,3 @@ async function main(): Promise<void> {
   console.log('✅ Thème système "light" seeded avec succès')
   console.log('ℹ️  Le thème "dark" n\'est plus un thème système — les users peuvent créer leurs thèmes sombres custom.')
 }
-
-main()
-  .catch((e) => {
-    console.error('❌ Erreur lors du seeding:', e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
