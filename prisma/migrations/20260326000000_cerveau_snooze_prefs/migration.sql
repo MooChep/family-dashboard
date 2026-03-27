@@ -23,10 +23,6 @@ CREATE TABLE IF NOT EXISTS `PushSubscription` (
   INDEX `PushSubscription_userId_idx` (`userId`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-ALTER TABLE `PushSubscription`
-  ADD CONSTRAINT IF NOT EXISTS `PushSubscription_userId_fkey`
-  FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
 -- ── CerveauPreferences ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS `CerveauPreferences` (
   `id`                 VARCHAR(191) NOT NULL,
@@ -53,10 +49,6 @@ CREATE TABLE IF NOT EXISTS `CerveauPreferences` (
   UNIQUE INDEX `CerveauPreferences_userId_key` (`userId`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-ALTER TABLE `CerveauPreferences`
-  ADD CONSTRAINT IF NOT EXISTS `CerveauPreferences_userId_fkey`
-  FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
 -- ── CerveauTemplate ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS `CerveauTemplate` (
   `id`           VARCHAR(191) NOT NULL,
@@ -80,14 +72,6 @@ CREATE TABLE IF NOT EXISTS `CerveauTemplate` (
   INDEX `CerveauTemplate_parentId_idx`   (`parentId`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-ALTER TABLE `CerveauTemplate`
-  ADD CONSTRAINT IF NOT EXISTS `CerveauTemplate_createdById_fkey`
-  FOREIGN KEY (`createdById`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
-ALTER TABLE `CerveauTemplate`
-  ADD CONSTRAINT IF NOT EXISTS `CerveauTemplate_parentId_fkey`
-  FOREIGN KEY (`parentId`) REFERENCES `CerveauTemplate`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
 -- ── CerveauTemplateItem ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS `CerveauTemplateItem` (
   `id`         VARCHAR(191) NOT NULL,
@@ -98,7 +82,3 @@ CREATE TABLE IF NOT EXISTS `CerveauTemplateItem` (
   PRIMARY KEY (`id`),
   INDEX `CerveauTemplateItem_templateId_idx` (`templateId`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-ALTER TABLE `CerveauTemplateItem`
-  ADD CONSTRAINT IF NOT EXISTS `CerveauTemplateItem_templateId_fkey`
-  FOREIGN KEY (`templateId`) REFERENCES `CerveauTemplate`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

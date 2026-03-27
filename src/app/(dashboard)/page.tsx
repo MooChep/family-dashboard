@@ -31,7 +31,7 @@ const MODULES = [
     href: '/popote',    
     icon: <ChefHat size={20} strokeWidth={1.5} />, 
     description: 'Gestion des recettes et planification des repas', 
-    soon: true 
+    soon: false 
   },
   { 
     label: 'Calendrier', 
