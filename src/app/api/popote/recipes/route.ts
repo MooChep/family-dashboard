@@ -112,6 +112,12 @@ export async function POST(request: NextRequest): Promise<Response> {
     const data = { ...recipe, steps: parseSteps(recipe) }
     return Response.json({ success: true, data } satisfies ApiResponse<RecipeWithIngredients>, { status: 201 })
   } catch (error) {
+    const isPrismaUniqueError = (e: unknown) =>
+      typeof e === 'object' && e !== null && 'code' in e && (e as { code: string }).code === 'P2002'
+
+    if (isPrismaUniqueError(error)) {
+      return Response.json({ success: false, error: 'Cette recette Jow est déjà dans ta bibliothèque.' } satisfies ApiResponse<never>, { status: 409 })
+    }
     console.error('[popote/recipes POST]', error)
     return Response.json({ success: false, error: 'Erreur serveur' } satisfies ApiResponse<never>, { status: 500 })
   }
