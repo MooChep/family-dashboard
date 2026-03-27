@@ -1,4 +1,6 @@
-import type { Recipe, RecipeIngredient, IngredientReference, Aisle } from '@prisma/client'
+import type { Recipe, RecipeIngredient, IngredientReference, Aisle, PlanningSlot, SlotType, Period } from '@prisma/client'
+
+export type { SlotType, Period }
 
 // ─── Réponse API générique ─────────────────────────────────────────────────
 export type ApiResponse<T> = {
@@ -53,6 +55,26 @@ export type CreateRecipeIngredientPayload = {
 export type UpdateRecipePayload = Partial<CreateRecipePayload> & {
   // Remplacement complet des ingrédients si fourni
   ingredients?: CreateRecipeIngredientPayload[]
+}
+
+// ─── Planning slot enrichi avec la recette ────────────────────────────────
+export type PlanningSlotWithRecipe = PlanningSlot & {
+  recipe: Pick<Recipe, 'id' | 'title' | 'imageLocal' | 'basePortions' | 'preparationTime' | 'cookingTime'>
+}
+
+// ─── Payload création slot ─────────────────────────────────────────────────
+export type CreateSlotPayload = {
+  recipeId:      string
+  portions?:     number
+  scheduledDate?: string   // ISO date string — null → FLOATING
+  period?:       Period
+}
+
+// ─── Payload mise à jour slot ──────────────────────────────────────────────
+export type UpdateSlotPayload = {
+  portions?:     number
+  scheduledDate?: string | null   // null → passe en FLOATING
+  period?:       Period | null
 }
 
 // ─── Pagination ────────────────────────────────────────────────────────────
