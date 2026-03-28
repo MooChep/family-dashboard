@@ -104,7 +104,7 @@ export function CheckPlacard({ items, onToggleSkip, onDone }: CheckPlacardProps)
                 }}
               >
                 {item.skipped && (
-                  <span className="text-white text-xs font-bold leading-none">✓</span>
+                  <span className="text-xs font-bold leading-none" style={{ color: '#fff' }}>✓</span>
                 )}
               </div>
 

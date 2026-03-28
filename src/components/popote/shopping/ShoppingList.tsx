@@ -239,7 +239,7 @@ function ItemRow({ item }: { item: ShoppingItem }) {
         }}
       >
         {item.purchased && (
-          <span className="text-white text-xs font-bold leading-none">✓</span>
+          <span className="text-xs font-bold leading-none" style={{ color: '#fff' }}>✓</span>
         )}
       </div>
 

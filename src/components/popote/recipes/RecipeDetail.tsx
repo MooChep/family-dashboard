@@ -145,14 +145,14 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
             </p>
           )}
 
-          {/* Ingrédients — grille 3 colonnes */}
-          {recipe.ingredients.length > 0 && (
+          {/* Ingrédients — grille 3 colonnes (isIgnored exclus) */}
+          {recipe.ingredients.filter(i => !i.isIgnored).length > 0 && (
             <div>
               <p className="font-mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--muted)' }}>
                 Ingrédients
               </p>
               <div className="grid grid-cols-3 gap-2">
-                {recipe.ingredients.map(ing => (
+                {recipe.ingredients.filter(i => !i.isIgnored).map(ing => (
                   <div
                     key={ing.id}
                     className="flex flex-col items-center text-center gap-1 p-2 rounded-xl"
