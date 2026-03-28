@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { CheckPlacard } from '@/components/popote/shopping/CheckPlacard'
+import { ShoppingList }  from '@/components/popote/shopping/ShoppingList'
 import type { ShoppingItem } from '@/components/popote/shopping/CheckPlacard'
 
-type ShoppingList = {
+type ShoppingListData = {
   id:          string
   generatedAt: string
   items:       ShoppingItem[]
@@ -13,26 +14,39 @@ type ShoppingList = {
 
 type View = 'check-placard' | 'shopping-list'
 
+const POLL_INTERVAL = 5_000
+
 /**
  * Page principale des courses.
  * Enchaîne : génération → check placard → liste finale (S18).
  */
 export default function CoursesPage() {
-  const [list,        setList]        = useState<ShoppingList | null>(null)
+  const [list,        setList]        = useState<ShoppingListData | null>(null)
   const [loading,     setLoading]     = useState(true)
   const [generating,  setGenerating]  = useState(false)
   const [view,        setView]        = useState<View>('check-placard')
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => { void loadCurrent() }, [])
 
-  async function loadCurrent() {
-    setLoading(true)
+  // Polling temps réel quand la liste est ouverte (shopping-list view)
+  useEffect(() => {
+    if (view === 'shopping-list' && list) {
+      pollRef.current = setInterval(() => { void loadCurrent(/* silent */ true) }, POLL_INTERVAL)
+    }
+    return () => {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+    }
+  }, [view, list?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadCurrent(silent = false) {
+    if (!silent) setLoading(true)
     try {
       const res  = await fetch('/api/popote/shopping/current')
-      const data = await res.json() as ShoppingList | null
+      const data = await res.json() as ShoppingListData | null
       setList(data)
     } catch { /* ignore */ } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -40,12 +54,43 @@ export default function CoursesPage() {
     setGenerating(true)
     try {
       const res  = await fetch('/api/popote/shopping/generate', { method: 'POST' })
-      const data = await res.json() as ShoppingList
+      const data = await res.json() as ShoppingListData
       setList(data)
       setView('check-placard')
     } catch { /* ignore */ } finally {
       setGenerating(false)
     }
+  }
+
+  async function handlePurchase(id: string, quantity: number, unit: string) {
+    if (!list) return
+    // Optimiste
+    setList(prev => prev ? {
+      ...prev,
+      items: prev.items.map(i => i.id === id ? { ...i, purchased: true } : i),
+    } : null)
+    try {
+      await fetch(`/api/popote/shopping/items/${id}/purchase`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ quantity, unit }),
+      })
+    } catch {
+      await loadCurrent()  // rollback
+    }
+  }
+
+  async function handleAddManual(label: string) {
+    if (!list) return
+    try {
+      const res  = await fetch('/api/popote/shopping/items', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ label }),
+      })
+      const item = await res.json() as ShoppingItem
+      setList(prev => prev ? { ...prev, items: [...prev.items, item] } : null)
+    } catch { /* ignore */ }
   }
 
   async function handleToggleSkip(id: string) {
@@ -108,10 +153,10 @@ export default function CoursesPage() {
             onDone={() => setView('shopping-list')}
           />
         ) : (
-          <ShoppingListView
+          <ShoppingList
             items={list.items.filter(i => !i.skipped)}
-            onGenerate={handleGenerate}
-            generating={generating}
+            onPurchase={handlePurchase}
+            onAddManual={handleAddManual}
           />
         )}
       </div>
@@ -145,75 +190,3 @@ function Header({ onGenerate, generating, hasList }: { onGenerate: () => void; g
   )
 }
 
-/** Vue liste finale — placeholder simple, remplacé par SmartSwipe en S18. */
-function ShoppingListView({
-  items,
-  onGenerate,
-  generating,
-}: {
-  items:      ShoppingItem[]
-  onGenerate: () => void
-  generating: boolean
-}) {
-  const purchased = items.filter(i => i.purchased).length
-  const total     = items.length
-
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 px-8 text-center">
-        <span className="text-3xl">✓</span>
-        <p className="font-display text-base font-semibold" style={{ color: 'var(--text)' }}>
-          Liste vide
-        </p>
-        <p className="font-body text-sm" style={{ color: 'var(--muted)' }}>
-          Tout est coché ou le stock couvre les besoins.
-        </p>
-        <button
-          onClick={onGenerate}
-          disabled={generating}
-          className="mt-2 px-4 py-2 rounded-xl font-mono text-xs disabled:opacity-40"
-          style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}
-        >
-          Regénérer
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex flex-col pb-4">
-      <div className="flex items-center justify-between px-4 py-2">
-        <span className="font-mono text-xs" style={{ color: 'var(--muted)' }}>{total} articles</span>
-        {purchased > 0 && (
-          <span className="font-mono text-xs" style={{ color: 'var(--success)' }}>{purchased} achetés ✓</span>
-        )}
-      </div>
-      {items.map(item => (
-        <div
-          key={item.id}
-          className="flex items-center gap-3 px-4 py-3"
-          style={{ borderBottom: '1px solid var(--border)', opacity: item.purchased ? 0.5 : 1 }}
-        >
-          <div
-            className="shrink-0 w-5 h-5 rounded"
-            style={{
-              border:     `1.5px solid ${item.purchased ? 'var(--success)' : 'var(--border2)'}`,
-              background:  item.purchased ? 'var(--success)' : 'transparent',
-            }}
-          />
-          <span className="flex-1 font-body text-sm" style={{
-            color:          item.purchased ? 'var(--muted)' : 'var(--text)',
-            textDecoration: item.purchased ? 'line-through' : 'none',
-          }}>
-            {item.label}
-          </span>
-          {item.quantity !== null && (
-            <span className="font-mono text-xs" style={{ color: 'var(--text2)' }}>
-              {item.quantity}{item.displayUnit ? ` ${item.displayUnit}` : ''}
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
