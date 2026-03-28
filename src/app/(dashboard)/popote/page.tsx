@@ -15,14 +15,17 @@ export default async function PopotePage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/auth/login')
 
-  const [recipeCount, slotCount, shoppingList] = await Promise.all([
+  const [recipeCount, allSlots, shoppingList] = await Promise.all([
     prisma.recipe.count(),
-    prisma.planningSlot.count({ where: { portionsConsumed: { lt: prisma.planningSlot.fields.portions } } }),
+    // Prisma ne supporte pas la comparaison de deux colonnes dans where —
+    // on filtre côté JS (nb de slots faible en pratique).
+    prisma.planningSlot.findMany({ select: { portions: true, portionsConsumed: true } }),
     prisma.shoppingList.findFirst({
       orderBy: { generatedAt: 'desc' },
       include: { _count: { select: { items: { where: { purchased: false, skipped: false } } } } },
     }),
   ])
+  const slotCount = allSlots.filter(s => s.portionsConsumed < s.portions).length
 
   const pendingItems = shoppingList?._count.items ?? 0
 
