@@ -6,7 +6,7 @@ import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 import type { CreateRecipePayload, RecipeStep, ApiResponse, RecipeWithIngredients, RecipeCategory } from '@/lib/popote/types'
 import type { ImportFetchResult } from '@/app/api/popote/import/fetch/route'
 import type { Resolution } from '@/components/popote/import/IngredientMapper'
-// ResolutionEntry.referenceId peut être null (ignoré) — filtré ci-dessous
+import type { IngredientWithAisle } from '@/app/api/popote/ingredients/route'
 
 interface RecipeFormProps {
   /** Données pré-remplies depuis l'import Jow, ou undefined pour saisie manuelle. */
@@ -14,9 +14,20 @@ interface RecipeFormProps {
   resolutions?: Resolution
 }
 
+type IngredientRow = {
+  referenceId:     string
+  label:           string
+  displayQuantity: number
+  displayUnit:     string
+  quantity:        number
+  isOptional:      boolean
+  isIgnored:       boolean
+  isStaple:        boolean
+}
+
 /**
  * Formulaire d'édition recette — utilisé après import Jow et en saisie manuelle.
- * Règle fondamentale : toujours passer par ce formulaire avant enregistrement.
+ * Les ingrédients sont éditables (quantité, unité, ajout, suppression).
  */
 export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
   const router = useRouter()
@@ -35,31 +46,62 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
 
   const scrapeError = prefill?.scrapeError ?? false
 
-  // ── Ingrédients résolus ───────────────────────────────────────────────────
+  // ── Ingrédients éditables ─────────────────────────────────────────────────
   // Priorité : resolutions (du mapper) > matchStatus (fallback si mapper non affiché)
-  const resolvedIngredients = prefill
-    ? prefill.ingredients
-        .flatMap(ing => {
-          const base = {
-            displayQuantity: ing.quantity ?? 0,
-            quantity:        ing.quantity ?? 0,
-            displayUnit:     ing.unit ?? '',
-            isOptional:      ing.isOptional ?? false,
-            isIgnored:       false,
-          }
-          // Résolution manuelle (couvre aussi les auto-matchés édités dans le mapper)
-          const res = resolutions?.[ing.jowIndex]
-          if (res) {
-            if (res.referenceId === null) return []   // ignoré
-            return [{ ...base, referenceId: res.referenceId, isStaple: false, label: res.referenceName }]
-          }
-          // Fallback : auto-match (mapper non affiché, resolutions = {})
-          if (ing.matchStatus.matched) {
-            return [{ ...base, referenceId: ing.matchStatus.referenceId, isStaple: false, label: ing.matchStatus.referenceName }]
-          }
-          return []
-        })
-    : []
+  const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>(() => {
+    if (!prefill) return []
+    return prefill.ingredients.flatMap(ing => {
+      const base = {
+        displayQuantity: ing.quantity ?? 0,
+        quantity:        ing.quantity ?? 0,
+        displayUnit:     ing.unit ?? '',
+        isOptional:      ing.isOptional ?? false,
+        isIgnored:       false,
+        isStaple:        false,
+      }
+      const res = resolutions?.[ing.jowIndex]
+      if (res) {
+        if (res.referenceId === null) return []
+        return [{ ...base, referenceId: res.referenceId, label: res.referenceName }]
+      }
+      if (ing.matchStatus.matched) {
+        return [{ ...base, referenceId: ing.matchStatus.referenceId, label: ing.matchStatus.referenceName }]
+      }
+      return []
+    })
+  })
+
+  // ── Ajout d'ingrédient via autocomplete ───────────────────────────────────
+  const [addQuery,   setAddQuery]   = useState('')
+  const [addResults, setAddResults] = useState<IngredientWithAisle[]>([])
+
+  async function searchIngredient(q: string) {
+    setAddQuery(q)
+    if (!q.trim()) { setAddResults([]); return }
+    try {
+      const res  = await fetch(`/api/popote/ingredients?search=${encodeURIComponent(q)}`)
+      const json = await res.json() as ApiResponse<IngredientWithAisle[]>
+      if (json.success) setAddResults(json.data ?? [])
+    } catch { /* ignore */ }
+  }
+
+  function addRow(ref: IngredientWithAisle) {
+    setIngredientRows(prev => [...prev, {
+      referenceId: ref.id, label: ref.name,
+      displayQuantity: 0, quantity: 0, displayUnit: '',
+      isOptional: false, isIgnored: false, isStaple: false,
+    }])
+    setAddQuery('')
+    setAddResults([])
+  }
+
+  function updateRow(idx: number, patch: Partial<IngredientRow>) {
+    setIngredientRows(prev => prev.map((r, i) => i === idx ? { ...r, ...patch } : r))
+  }
+
+  function removeRow(idx: number) {
+    setIngredientRows(prev => prev.filter((_, i) => i !== idx))
+  }
 
   // ── Gestion des étapes ────────────────────────────────────────────────────
   function updateStep(idx: number, text: string) {
@@ -93,7 +135,7 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
       steps:           steps.filter(s => s.text.trim()),
       sourceUrl:       prefill?.sourceUrl,
       jowId:           prefill?.jowId,
-      ingredients:     resolvedIngredients.map(({ label: _label, ...rest }) => rest as import('@/lib/popote/types').CreateRecipeIngredientPayload),
+      ingredients:     ingredientRows.map(({ label: _l, ...rest }) => rest as import('@/lib/popote/types').CreateRecipeIngredientPayload),
     }
 
     try {
@@ -208,28 +250,79 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
         </div>
       </div>
 
-      {/* Ingrédients (lecture seule — résultats du mapping) */}
-      {resolvedIngredients.length > 0 && (
-        <div>
-          <p className={labelClass} style={{ color: 'var(--muted)' }}>
-            Ingrédients <span style={{ color: 'var(--success)' }}>✓ {resolvedIngredients.length} mappés</span>
-          </p>
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-            {resolvedIngredients.map((ing, i) => (
+      {/* Ingrédients éditables */}
+      <div>
+        <p className={labelClass} style={{ color: 'var(--muted)' }}>
+          Ingrédients
+          {ingredientRows.length > 0 && (
+            <span className="ml-1.5" style={{ color: 'var(--success)' }}>✓ {ingredientRows.length}</span>
+          )}
+        </p>
+
+        {/* Lignes existantes */}
+        {ingredientRows.length > 0 && (
+          <div className="rounded-xl overflow-hidden mb-2" style={{ border: '1px solid var(--border)' }}>
+            {ingredientRows.map((row, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between px-3 py-2"
-                style={{ borderBottom: i < resolvedIngredients.length - 1 ? '1px solid var(--border)' : 'none', background: 'var(--surface2)' }}
+                className="flex items-center gap-2 px-3 py-2"
+                style={{ borderBottom: i < ingredientRows.length - 1 ? '1px solid var(--border)' : 'none', background: 'var(--surface2)' }}
               >
-                <span className="font-body text-sm" style={{ color: 'var(--text)' }}>{ing.label}</span>
-                <span className="font-mono text-xs" style={{ color: 'var(--muted)' }}>
-                  {ing.displayQuantity > 0 ? `${ing.displayQuantity} ${ing.displayUnit}`.trim() : '—'}
-                </span>
+                <span className="flex-1 font-body text-sm truncate" style={{ color: 'var(--text)' }}>{row.label}</span>
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={row.displayQuantity || ''}
+                  onChange={e => updateRow(i, { displayQuantity: Number(e.target.value), quantity: Number(e.target.value) })}
+                  placeholder="Qté"
+                  className="font-mono text-xs text-right outline-none rounded-lg px-2 py-1"
+                  style={{ width: 56, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+                <input
+                  value={row.displayUnit}
+                  onChange={e => updateRow(i, { displayUnit: e.target.value })}
+                  placeholder="unité"
+                  className="font-mono text-xs outline-none rounded-lg px-2 py-1"
+                  style={{ width: 52, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+                <button onClick={() => removeRow(i)} style={{ color: 'var(--danger)', flexShrink: 0 }}>
+                  <Trash2 size={13} />
+                </button>
               </div>
             ))}
           </div>
+        )}
+
+        {/* Ajout via autocomplete */}
+        <div className="relative">
+          <input
+            className="w-full px-3 py-2 rounded-xl font-body text-sm outline-none"
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+            placeholder="+ Ajouter un ingrédient…"
+            value={addQuery}
+            onChange={e => void searchIngredient(e.target.value)}
+          />
+          {addResults.length > 0 && (
+            <div
+              className="absolute left-0 right-0 top-full mt-1 rounded-xl overflow-hidden z-10"
+              style={{ border: '1px solid var(--border)', background: 'var(--surface2)' }}
+            >
+              {addResults.slice(0, 6).map(ref => (
+                <button
+                  key={ref.id}
+                  onClick={() => addRow(ref)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 text-left"
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                >
+                  <span className="font-body text-sm" style={{ color: 'var(--text)' }}>{ref.name}</span>
+                  <span className="font-mono text-[10px]" style={{ color: 'var(--muted)' }}>{ref.aisle.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Étapes */}
       <div>
