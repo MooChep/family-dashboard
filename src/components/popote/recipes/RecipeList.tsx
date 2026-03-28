@@ -144,14 +144,16 @@ export function RecipeList() {
           </div>
         ) : (
           <>
-            {displayed.map(recipe => (
-              <RecipeCard
-                key={recipe.id}
-                recipe={recipe}
-                isInMenu={activeIds.has(recipe.id)}
-                onOpen={setSelected}
-              />
-            ))}
+            <div className="grid grid-cols-2 gap-4 px-4 pt-2 pb-4">
+              {displayed.map(recipe => (
+                <RecipeCard
+                  key={recipe.id}
+                  recipe={recipe}
+                  isInMenu={activeIds.has(recipe.id)}
+                  onOpen={setSelected}
+                />
+              ))}
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (

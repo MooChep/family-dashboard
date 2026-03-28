@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { X, Pencil, ChefHat, Minus, Plus } from 'lucide-react'
 import { displayFraction } from '@/lib/popote/fractions'
@@ -15,10 +15,6 @@ interface RecipeDetailProps {
   onAddToMenu:  (recipe: RecipeWithIngredients) => void
 }
 
-/**
- * Fiche recette complète — bottom sheet plein écran.
- * Affiche image, métadonnées, liste d'ingrédients et actions principales.
- */
 /** Formate une quantité d'ingrédient pour la fiche recette (displayQuantity × mult). */
 function formatIngredientQty(displayQuantity: number, displayUnit: string, mult: number): string {
   const qty = displayQuantity * mult
@@ -27,20 +23,33 @@ function formatIngredientQty(displayQuantity: number, displayUnit: string, mult:
   return displayUnit ? `${formatted} ${displayUnit}` : formatted
 }
 
+/**
+ * Fiche recette complète — bottom sheet plein écran.
+ * Image circulaire, grille ingrédients 3 colonnes, étapes numérotées, footer sticky.
+ */
 export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeDetailProps) {
-  const [portions, setPortions] = useState(2)
+  const [portions,     setPortions]     = useState(2)
+  const [headerTitle,  setHeaderTitle]  = useState(false)
+  const imageRef = useRef<HTMLDivElement>(null)
 
-  // Fermer avec Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
 
-  // Multiplicateur : portions sélectionnées / basePortions (= 1 pour Jow)
-  const mult = portions / (recipe.basePortions || 1)
+  useEffect(() => {
+    const el = imageRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => setHeaderTitle(!entry.isIntersecting),
+      { threshold: 0 },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
 
-  const totalTime = (recipe.preparationTime ?? 0) + (recipe.cookingTime ?? 0)
+  const mult = portions / (recipe.basePortions || 1)
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'var(--bg)' }}>
@@ -52,7 +61,10 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
         <button onClick={onClose} className="p-1 rounded-lg" style={{ color: 'var(--muted)' }}>
           <X size={20} />
         </button>
-        <h1 className="flex-1 font-display text-base font-semibold truncate" style={{ color: 'var(--text)' }}>
+        <h1
+          className="flex-1 font-display text-base font-semibold truncate transition-opacity"
+          style={{ color: 'var(--text)', opacity: headerTitle ? 1 : 0 }}
+        >
           {recipe.title}
         </h1>
         <Link
@@ -66,27 +78,25 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
 
       {/* Contenu scrollable */}
       <div className="flex-1 overflow-y-auto">
-        {/* Image */}
-        <div
-          className="w-full flex items-center justify-center"
-          style={{ height: 180, background: 'var(--surface2)' }}
-        >
-          {recipe.imageLocal ? (
-            <img
-              src={`${UPLOAD_BASE}/${recipe.imageLocal}`}
-              alt={recipe.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <span className="font-display text-6xl" style={{ color: 'var(--muted2)' }}>
-              {recipe.title.charAt(0).toUpperCase()}
-            </span>
-          )}
-        </div>
-
-        <div className="px-4 py-4 flex flex-col gap-5">
-          {/* Métadonnées */}
-          <div className="flex flex-wrap gap-2">
+        {/* Image circulaire + titre */}
+        <div ref={imageRef} className="flex flex-col items-center px-4 pt-6 pb-4 gap-3">
+          <div
+            className="rounded-full overflow-hidden flex items-center justify-center"
+            style={{ width: 120, height: 120, background: 'var(--surface2)', border: '2px solid var(--border)', flexShrink: 0 }}
+          >
+            {recipe.imageLocal ? (
+              <img src={`${UPLOAD_BASE}/${recipe.imageLocal}`} alt={recipe.title} className="w-full h-full object-cover" />
+            ) : (
+              <span className="font-display text-5xl font-bold" style={{ color: 'var(--muted)' }}>
+                {recipe.title.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <h2 className="font-display text-xl font-semibold text-center leading-snug" style={{ color: 'var(--text)' }}>
+            {recipe.title}
+          </h2>
+          {/* Meta badges */}
+          <div className="flex flex-wrap justify-center gap-2">
             {recipe.preparationTime ? (
               <span className="font-mono text-xs px-2 py-1 rounded-full" style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
                 ⏱ {recipe.preparationTime} min prép.
@@ -103,9 +113,11 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
               </span>
             ) : null}
           </div>
+        </div>
 
+        <div className="px-4 pb-6 flex flex-col gap-5">
           {/* Stepper portions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>Portions</span>
             <div className="flex items-center gap-2">
               <button
@@ -133,24 +145,53 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
             </p>
           )}
 
-          {/* Ingrédients */}
+          {/* Ingrédients — grille 3 colonnes */}
           {recipe.ingredients.length > 0 && (
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>
+              <p className="font-mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--muted)' }}>
                 Ingrédients
               </p>
-              <div className="flex flex-col gap-1">
+              <div className="grid grid-cols-3 gap-2">
                 {recipe.ingredients.map(ing => (
-                  <div key={ing.id} className="flex items-center justify-between py-1" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <span className="font-body text-sm" style={{ color: ing.isStaple ? 'var(--muted)' : 'var(--text)' }}>
+                  <div
+                    key={ing.id}
+                    className="flex flex-col items-center text-center gap-1 p-2 rounded-xl"
+                    style={{
+                      background: 'var(--surface2)',
+                      border:     '1px solid var(--border)',
+                      opacity:    ing.isStaple ? 0.5 : 1,
+                    }}
+                  >
+                    <span className="font-body text-xs leading-snug line-clamp-2" style={{ color: 'var(--text)' }}>
                       {ing.reference.name}
-                      {ing.isOptional && (
-                        <span className="font-mono text-[10px] ml-1" style={{ color: 'var(--muted)' }}>(optionnel)</span>
-                      )}
                     </span>
-                    <span className="font-mono text-sm" style={{ color: 'var(--text2)' }}>
+                    <span className="font-mono text-[10px]" style={{ color: 'var(--muted)' }}>
                       {formatIngredientQty(ing.displayQuantity, ing.displayUnit, mult)}
                     </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Étapes */}
+          {recipe.steps.length > 0 && (
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--muted)' }}>
+                Préparation
+              </p>
+              <div className="flex flex-col gap-3">
+                {recipe.steps.map(step => (
+                  <div key={step.order} className="flex gap-3">
+                    <span
+                      className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs mt-0.5"
+                      style={{ background: 'var(--accent)', color: '#fff' }}
+                    >
+                      {step.order}
+                    </span>
+                    <p className="font-body text-sm leading-relaxed" style={{ color: 'var(--text2)' }}>
+                      {step.text}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -171,7 +212,7 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
         </div>
       </div>
 
-      {/* Actions fixées en bas */}
+      {/* Footer sticky */}
       <div
         className="shrink-0 px-4 py-4 flex gap-3"
         style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}

@@ -28,7 +28,7 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
   const [cookingTime,     setCookingTime]     = useState(String(prefill?.cookingTime ?? ''))
   const [basePortions,    setBasePortions]    = useState(String(prefill?.basePortions ?? 4))
   const [utensils,        setUtensils]        = useState('')
-  const [category,        setCategory]        = useState<RecipeCategory>('OTHER')
+  const [category,        setCategory]        = useState<RecipeCategory>(prefill ? 'MAIN' : 'OTHER')
   const [steps,           setSteps]           = useState<RecipeStep[]>(prefill?.steps ?? [])
   const [saving,          setSaving]          = useState(false)
   const [error,           setError]           = useState('')
@@ -36,34 +36,28 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
   const scrapeError = prefill?.scrapeError ?? false
 
   // ── Ingrédients résolus ───────────────────────────────────────────────────
-  // On construit la liste depuis les ingrédients Jow + les résolutions manuelles
+  // Priorité : resolutions (du mapper) > matchStatus (fallback si mapper non affiché)
   const resolvedIngredients = prefill
     ? prefill.ingredients
         .flatMap(ing => {
-          if (ing.matchStatus.matched) {
-            return [{
-              referenceId:     ing.matchStatus.referenceId,
-              displayQuantity: ing.quantity ?? 0,
-              quantity:        ing.quantity ?? 0,
-              displayUnit:     ing.unit ?? '',
-              isOptional:      ing.isOptional ?? false,
-              isStaple:        false,
-              isIgnored:       false,
-              label:           ing.matchStatus.referenceName,
-            }]
-          }
-          const res = resolutions?.[ing.jowIndex]
-          if (!res || res.referenceId === null) return []   // ignoré ou non résolu
-          return [{
-            referenceId:     res.referenceId,
+          const base = {
             displayQuantity: ing.quantity ?? 0,
             quantity:        ing.quantity ?? 0,
             displayUnit:     ing.unit ?? '',
             isOptional:      ing.isOptional ?? false,
-            isStaple:        res.isStaple,
             isIgnored:       false,
-            label:           res.referenceName,
-          }]
+          }
+          // Résolution manuelle (couvre aussi les auto-matchés édités dans le mapper)
+          const res = resolutions?.[ing.jowIndex]
+          if (res) {
+            if (res.referenceId === null) return []   // ignoré
+            return [{ ...base, referenceId: res.referenceId, isStaple: false, label: res.referenceName }]
+          }
+          // Fallback : auto-match (mapper non affiché, resolutions = {})
+          if (ing.matchStatus.matched) {
+            return [{ ...base, referenceId: ing.matchStatus.referenceId, isStaple: false, label: ing.matchStatus.referenceName }]
+          }
+          return []
         })
     : []
 

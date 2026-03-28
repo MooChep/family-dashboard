@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Plus, ArrowLeftRight, EyeOff, Archive } from 'lucide-react'
+import { Check, Plus, ArrowLeftRight, EyeOff } from 'lucide-react'
 import type { ImportIngredient } from '@/app/api/popote/import/fetch/route'
 import type { ApiResponse } from '@/lib/popote/types'
 import type { BaseUnit } from '@prisma/client'
@@ -15,7 +15,7 @@ export type ResolutionEntry = {
   referenceId:   string | null
   referenceName: string
   isStaple:      boolean
-  permanent:     boolean   // créer une SubstitutionRule permanente
+  permanent:     boolean
 }
 export type Resolution = Record<number, ResolutionEntry>
 
@@ -24,22 +24,27 @@ interface IngredientMapperProps {
   onDone:      (resolutions: Resolution) => void
 }
 
-type Mode = 'idle' | 'create' | 'substitute'
+type Mode = 'idle' | 'create' | 'substitute' | 'confirm'
 
 type ItemState = {
-  mode:        Mode
-  referenceId: string | null
-  refName:     string
-  isIgnored:   boolean
-  isStaple:    boolean
-  permanent:   boolean   // substitution permanente
+  mode:           Mode
+  referenceId:    string | null
+  refName:        string
+  isIgnored:      boolean
+  permanent:      boolean
   // create form
-  newName:     string
-  newUnit:     BaseUnit
-  newAisleId:  string
+  newName:        string
+  newUnit:        BaseUnit
+  newAisleId:     string
   // substitute search
-  subQuery:    string
-  subResults:  IngredientWithAisle[]
+  subQuery:       string
+  subResults:     IngredientWithAisle[]
+  // confirm step
+  pendingRefId:   string
+  pendingRefName: string
+  // metadata
+  wasMatched:   boolean
+  matchedVia:   'dict' | 'sub' | null
 }
 
 const BASE_UNITS: { value: BaseUnit; label: string }[] = [
@@ -49,19 +54,27 @@ const BASE_UNITS: { value: BaseUnit; label: string }[] = [
 ]
 
 /**
- * Étape 2 — Mapper les ingrédients inconnus.
- * Actions disponibles : Créer · Substituer · Ignorer · Placard
- * Cascade : dict exact → SubstitutionRule → inconnu
+ * Étape 2 — Mapper les ingrédients.
+ * Tous les ingrédients sont éditables (y compris les auto-matchés).
+ * Substitution : recherche → confirmation (avec option lien permanent) → résolu.
  */
 export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps) {
-  const matched = ingredients.filter(i =>  i.matchStatus.matched)
-  const unknown = ingredients.filter(i => !i.matchStatus.matched)
-
   const [states, setStates] = useState<Record<number, ItemState>>(() =>
-    Object.fromEntries(unknown.map(ing => [ing.jowIndex, {
-      mode: 'idle', referenceId: null, refName: '', isIgnored: false, isStaple: false, permanent: false,
-      newName: ing.name, newUnit: 'GRAM', newAisleId: '',
-      subQuery: '', subResults: [],
+    Object.fromEntries(ingredients.map(ing => [ing.jowIndex, {
+      mode:           'idle',
+      referenceId:    ing.matchStatus.matched ? ing.matchStatus.referenceId : null,
+      refName:        ing.matchStatus.matched ? ing.matchStatus.referenceName : '',
+      isIgnored:      false,
+      permanent:      false,
+      newName:        ing.name,
+      newUnit:        'GRAM' as BaseUnit,
+      newAisleId:     '',
+      subQuery:       '',
+      subResults:     [],
+      pendingRefId:   '',
+      pendingRefName: '',
+      wasMatched:     ing.matchStatus.matched,
+      matchedVia:     ing.matchStatus.matched ? ing.matchStatus.via : null,
     }]))
   )
   const [aisles,       setAisles]       = useState<IngredientWithAisle[]>([])
@@ -72,7 +85,7 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
   }
 
   function isResolved(st: ItemState): boolean {
-    return st.referenceId !== null || st.isIgnored || st.isStaple
+    return st.referenceId !== null || st.isIgnored
   }
 
   async function loadAisles() {
@@ -120,41 +133,25 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
   }
 
   const resolved = Object.values(states).filter(isResolved).length
-  const total    = unknown.length
+  const total    = ingredients.length
   const allDone  = resolved === total
 
   async function handleValidate() {
     const resolutions: Resolution = {}
+    const permanentRules: { jowName: string; referenceId: string }[] = []
 
-    // Ingrédients auto-matchés (dict ou sub permanente)
     for (const ing of ingredients) {
-      if (ing.matchStatus.matched) {
-        resolutions[ing.jowIndex] = {
-          referenceId:   ing.matchStatus.referenceId,
-          referenceName: ing.matchStatus.referenceName,
-          isStaple:      false,
-          permanent:     false,
+      const st = states[ing.jowIndex]!
+      if (st.isIgnored) {
+        resolutions[ing.jowIndex] = { referenceId: null, referenceName: '', isStaple: false, permanent: false }
+      } else if (st.referenceId) {
+        resolutions[ing.jowIndex] = { referenceId: st.referenceId, referenceName: st.refName, isStaple: false, permanent: st.permanent }
+        if (st.permanent && !st.wasMatched) {
+          permanentRules.push({ jowName: ing.name, referenceId: st.referenceId })
         }
       }
     }
 
-    // Résolutions manuelles
-    const permanentRules: { jowName: string; referenceId: string }[] = []
-    for (const [idxStr, st] of Object.entries(states)) {
-      const idx = Number(idxStr)
-      const ing = unknown.find(i => i.jowIndex === idx)!
-
-      if (st.isIgnored) {
-        resolutions[idx] = { referenceId: null, referenceName: '', isStaple: false, permanent: false }
-      } else if (st.isStaple && st.referenceId) {
-        resolutions[idx] = { referenceId: st.referenceId, referenceName: st.refName, isStaple: true, permanent: false }
-      } else if (st.referenceId) {
-        resolutions[idx] = { referenceId: st.referenceId, referenceName: st.refName, isStaple: false, permanent: st.permanent }
-        if (st.permanent) permanentRules.push({ jowName: ing.name, referenceId: st.referenceId })
-      }
-    }
-
-    // Créer les substitutions permanentes
     await Promise.allSettled(permanentRules.map(rule =>
       fetch('/api/popote/substitutions', {
         method:  'POST',
@@ -164,11 +161,6 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
     ))
 
     onDone(resolutions)
-  }
-
-  if (unknown.length === 0) {
-    void handleValidate()
-    return null
   }
 
   const btnBase  = 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg font-mono text-xs'
@@ -183,39 +175,9 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
           : 'Tous les ingrédients sont mappés ✓'}
       </p>
 
-      {/* Ingrédients auto-matchés */}
-      {matched.length > 0 && (
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>
-            Reconnus automatiquement ({matched.length})
-          </p>
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-            {matched.map((ing, i) => (
-              <div
-                key={ing.jowIndex}
-                className="flex items-center justify-between px-3 py-2"
-                style={{ borderBottom: i < matched.length - 1 ? '1px solid var(--border)' : 'none', background: 'var(--surface2)' }}
-              >
-                <div>
-                  <p className="font-body text-xs" style={{ color: 'var(--muted)', textDecoration: 'line-through' }}>{ing.name}</p>
-                  <p className="font-body text-sm" style={{ color: 'var(--text)' }}>
-                    {ing.matchStatus.matched ? ing.matchStatus.referenceName : ''}
-                    {ing.matchStatus.matched && ing.matchStatus.via === 'sub' && (
-                      <span className="font-mono text-[10px] ml-1.5" style={{ color: 'var(--accent)' }}>sub. permanente</span>
-                    )}
-                  </p>
-                </div>
-                <Check size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Ingrédients inconnus */}
       <div className="flex flex-col gap-3">
-        {unknown.map(ing => {
-          const st = states[ing.jowIndex]!
+        {ingredients.map(ing => {
+          const st   = states[ing.jowIndex]!
           const done = isResolved(st)
 
           return (
@@ -239,18 +201,23 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
                   <div className="flex items-center gap-1.5">
                     {st.isIgnored ? (
                       <span className="font-mono text-xs" style={{ color: 'var(--muted)' }}>Ignoré</span>
-                    ) : st.isStaple ? (
-                      <span className="font-mono text-xs" style={{ color: 'var(--accent)' }}>Placard · {st.refName}</span>
                     ) : (
                       <>
                         <Check size={14} style={{ color: 'var(--success)' }} />
                         <span className="font-mono text-xs" style={{ color: 'var(--success)' }}>
-                          {st.refName}{st.permanent && <span style={{ color: 'var(--accent)' }}> ★</span>}
+                          {st.refName}
+                          {st.wasMatched && st.matchedVia === 'sub' && !st.permanent && (
+                            <span className="ml-1 font-mono text-[10px]" style={{ color: 'var(--accent)' }}>★</span>
+                          )}
+                          {st.permanent && <span style={{ color: 'var(--accent)' }}> ★</span>}
                         </span>
                       </>
                     )}
                     <button
-                      onClick={() => update(ing.jowIndex, { referenceId: null, refName: '', isIgnored: false, isStaple: false, permanent: false, mode: 'idle' })}
+                      onClick={() => update(ing.jowIndex, {
+                        referenceId: null, refName: '', isIgnored: false, permanent: false,
+                        mode: 'idle', subQuery: '', subResults: [],
+                      })}
                       className="font-mono text-[10px] ml-1"
                       style={{ color: 'var(--muted)' }}
                     >
@@ -260,9 +227,9 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
                 )}
               </div>
 
-              {/* Actions si non résolu */}
+              {/* Actions si non résolu — mode idle */}
               {!done && st.mode === 'idle' && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex gap-2">
                   <button
                     onClick={() => { void loadAisles(); update(ing.jowIndex, { mode: 'create' }) }}
                     className={btnBase}
@@ -283,13 +250,6 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
                     style={{ background: 'var(--surface)', color: 'var(--muted)', border: '1px solid var(--border)' }}
                   >
                     <EyeOff size={12} /> Ignorer
-                  </button>
-                  <button
-                    onClick={() => update(ing.jowIndex, { mode: 'substitute', isStaple: true })}
-                    className={btnBase}
-                    style={{ background: 'var(--surface)', color: 'var(--text2)', border: '1px solid var(--border)' }}
-                  >
-                    <Archive size={12} /> Placard
                   </button>
                 </div>
               )}
@@ -328,12 +288,13 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
               {!done && st.mode === 'substitute' && (
                 <div className="flex flex-col gap-2">
                   <input className={inputCls} style={inputSty} placeholder="Chercher un ingrédient…"
-                    value={st.subQuery} onChange={e => void searchSubstitute(ing.jowIndex, e.target.value)} />
+                    value={st.subQuery} onChange={e => void searchSubstitute(ing.jowIndex, e.target.value)}
+                    autoFocus />
                   {st.subResults.length > 0 && (
                     <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
                       {st.subResults.slice(0, 6).map(ref => (
                         <button key={ref.id}
-                          onClick={() => update(ing.jowIndex, { mode: 'idle', referenceId: ref.id, refName: ref.name })}
+                          onClick={() => update(ing.jowIndex, { mode: 'confirm', pendingRefId: ref.id, pendingRefName: ref.name })}
                           className="w-full flex items-center justify-between px-3 py-2 text-left"
                           style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
                           <span className="font-body text-sm" style={{ color: 'var(--text)' }}>{ref.name}</span>
@@ -342,22 +303,47 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
                       ))}
                     </div>
                   )}
-                  {/* Toggle permanent */}
-                  {!st.isStaple && (
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={st.permanent}
-                        onChange={e => update(ing.jowIndex, { permanent: e.target.checked })}
-                        className="rounded" />
-                      <span className="font-mono text-xs" style={{ color: 'var(--text2)' }}>
-                        Créer un lien permanent <span style={{ color: 'var(--accent)' }}>★</span>
-                      </span>
-                    </label>
-                  )}
-                  <button onClick={() => update(ing.jowIndex, { mode: 'idle', isStaple: false })}
+                  <button onClick={() => update(ing.jowIndex, { mode: 'idle', subQuery: '', subResults: [] })}
                     className="py-2 rounded-lg font-mono text-xs"
                     style={{ background: 'var(--surface)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
                     Annuler
                   </button>
+                </div>
+              )}
+
+              {/* Confirmation substitution */}
+              {!done && st.mode === 'confirm' && (
+                <div className="flex flex-col gap-3">
+                  <div
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                  >
+                    <ArrowLeftRight size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    <span className="font-body text-sm font-medium" style={{ color: 'var(--text)' }}>
+                      {st.pendingRefName}
+                    </span>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer px-1">
+                    <input type="checkbox" checked={st.permanent}
+                      onChange={e => update(ing.jowIndex, { permanent: e.target.checked })} />
+                    <span className="font-mono text-xs" style={{ color: 'var(--text2)' }}>
+                      Lien permanent <span style={{ color: 'var(--accent)' }}>★</span>
+                    </span>
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => update(ing.jowIndex, { mode: 'substitute', pendingRefId: '', pendingRefName: '' })}
+                      className="py-2 px-3 rounded-lg font-mono text-xs"
+                      style={{ background: 'var(--surface)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
+                      ← Retour
+                    </button>
+                    <button
+                      onClick={() => update(ing.jowIndex, { mode: 'idle', referenceId: st.pendingRefId, refName: st.pendingRefName })}
+                      className="flex-1 py-2 rounded-lg font-mono text-xs"
+                      style={{ background: 'var(--accent)', color: '#fff' }}>
+                      Valider
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

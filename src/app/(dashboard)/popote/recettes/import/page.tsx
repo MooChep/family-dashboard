@@ -1,15 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
-import { JowSearch } from '@/components/popote/import/JowSearch'
+import { RecipeSearchGrid } from '@/components/popote/recipes/RecipeSearchGrid'
 import { IngredientMapper } from '@/components/popote/import/IngredientMapper'
 import { RecipeForm } from '@/components/popote/recipes/RecipeForm'
 import type { JowSearchResult } from '@/app/api/popote/import/search/route'
 import type { ImportFetchResult } from '@/app/api/popote/import/fetch/route'
 import type { Resolution } from '@/components/popote/import/IngredientMapper'
-import type { ApiResponse } from '@/lib/popote/types'
+import type { ApiResponse, RecipeCardData } from '@/lib/popote/types'
 
 type Step =
   | { kind: 'search' }
@@ -24,7 +24,7 @@ const STEP_LABELS: Record<Step['kind'], string> = {
 
 /**
  * Page d'import Jow en 3 étapes :
- * 1. Recherche → sélection d'une recette Jow
+ * 1. Recherche → sélection d'une recette Jow (via RecipeSearchGrid)
  * 2. Mapping des ingrédients inconnus (si nécessaire)
  * 3. Formulaire d'édition pré-rempli → enregistrement
  */
@@ -34,14 +34,49 @@ export default function ImportPage() {
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
 
-  async function handleSelect(recipe: JowSearchResult) {
+  // Carte id → JowSearchResult pour retrouver les données complètes depuis RecipeCardData
+  const jowResultsRef = useRef<Map<string, JowSearchResult>>(new Map())
+
+  /** Recherche Jow — appelé par RecipeSearchGrid via onFetch */
+  async function fetchJowRecipes(query: string): Promise<RecipeCardData[]> {
+    const q = query.trim()
+    if (!q) return []
+    const res = await fetch('/api/popote/import/search', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ q, limit: 20 }),
+    })
+    const json = await res.json() as ApiResponse<JowSearchResult[]>
+    if (!json.success || !json.data) return []
+
+    // Stocker les résultats complets pour lookup ultérieur
+    for (const r of json.data) jowResultsRef.current.set(r.id, r)
+
+    // Mapper vers RecipeCardData
+    return json.data.map(r => ({
+      id:              r.id,
+      title:           r.name,
+      imageUrl:        r.imageUrl,
+      imageLocal:      null,
+      preparationTime: r.preparationTime,
+      cookingTime:     r.cookingTime,
+      category:        null,
+      description:     r.description,
+    }))
+  }
+
+  /** Sélection d'une recette Jow → fetch détails + ingrédients */
+  async function handleSelect(card: RecipeCardData) {
+    const jowRecipe = jowResultsRef.current.get(card.id)
+    if (!jowRecipe) return
+
     setLoading(true)
     setError('')
     try {
       const res = await fetch('/api/popote/import/fetch', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(recipe),
+        body:    JSON.stringify(jowRecipe),
       })
       const json = await res.json() as ApiResponse<ImportFetchResult>
       if (json.success && json.data) {
@@ -84,20 +119,15 @@ export default function ImportPage() {
         </h1>
         {/* Indicateur d'étape */}
         <div className="flex items-center gap-1.5">
-          {(['search', 'mapping', 'form'] as Step['kind'][]).map((k, i) => (
-            <div
-              key={k}
-              className="flex items-center gap-1"
-            >
-              <div
-                className="rounded-full"
-                style={{
-                  width:      8,
-                  height:     8,
-                  background: k === stepKind ? 'var(--accent)' : 'var(--border2)',
-                }}
-              />
-            </div>
+          {(['search', 'mapping', 'form'] as Step['kind'][]).map(k => (
+            <div key={k}
+              className="rounded-full"
+              style={{
+                width:      8,
+                height:     8,
+                background: k === stepKind ? 'var(--accent)' : 'var(--border2)',
+              }}
+            />
           ))}
           <span className="font-mono text-[10px] ml-1" style={{ color: 'var(--muted)' }}>
             {STEP_LABELS[stepKind]}
@@ -106,29 +136,41 @@ export default function ImportPage() {
       </div>
 
       {/* Contenu */}
-      <div className="flex-1 px-4 py-5 overflow-y-auto">
-        {error && (
-          <p className="font-mono text-xs mb-4" style={{ color: 'var(--danger)' }}>{error}</p>
-        )}
+      {error && (
+        <p className="font-mono text-xs px-4 pt-3" style={{ color: 'var(--danger)' }}>{error}</p>
+      )}
 
-        {step.kind === 'search' && (
-          <JowSearch onSelect={handleSelect} loading={loading} />
-        )}
+      {step.kind === 'search' && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {loading && (
+            <p className="font-mono text-xs px-4 pt-2" style={{ color: 'var(--muted)' }}>Chargement…</p>
+          )}
+          <RecipeSearchGrid
+            title=""
+            mode="import"
+            onFetch={fetchJowRecipes}
+            onSelect={handleSelect}
+          />
+        </div>
+      )}
 
-        {step.kind === 'mapping' && (
+      {step.kind === 'mapping' && (
+        <div className="flex-1 px-4 py-5 overflow-y-auto">
           <IngredientMapper
             ingredients={step.fetchResult.ingredients}
             onDone={handleMappingDone}
           />
-        )}
+        </div>
+      )}
 
-        {step.kind === 'form' && (
+      {step.kind === 'form' && (
+        <div className="flex-1 px-4 py-5 overflow-y-auto">
           <RecipeForm
             prefill={step.fetchResult}
             resolutions={step.resolutions}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
