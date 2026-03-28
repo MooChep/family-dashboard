@@ -8,6 +8,7 @@ const UPLOAD_BASE = process.env.NEXT_PUBLIC_POPOTE_UPLOAD_BASE_URL ?? '/uploads/
 interface BasketViewProps {
   slots:    PlanningSlotWithRecipe[]
   onRemove: (id: string) => void
+  onSelect: (slot: PlanningSlotWithRecipe) => void
 }
 
 function isLate(slot: PlanningSlotWithRecipe): boolean {
@@ -36,14 +37,15 @@ function RecipeThumb({ title, imageLocal }: { title: string; imageLocal: string 
   )
 }
 
-function SlotRow({ slot, onRemove }: { slot: PlanningSlotWithRecipe; onRemove: (id: string) => void }) {
+function SlotRow({ slot, onRemove, onSelect }: { slot: PlanningSlotWithRecipe; onRemove: (id: string) => void; onSelect: (s: PlanningSlotWithRecipe) => void }) {
   const remaining = slot.portions - slot.portionsConsumed
   const late      = isLate(slot)
   const floating  = slot.type === 'FLOATING'
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3"
+      onClick={() => onSelect(slot)}
+      className="flex items-center gap-3 px-4 py-3 cursor-pointer"
       style={{
         borderBottom:  '1px solid var(--border)',
         background:    floating ? 'var(--accent-dim)' : 'var(--bg)',
@@ -95,7 +97,7 @@ function SlotRow({ slot, onRemove }: { slot: PlanningSlotWithRecipe; onRemove: (
  * Vue panier : liste les slots actifs regroupés en "Sur le calendrier" et "À cuisiner".
  * Slots "En retard" marqués visuellement (scheduledDate passée, portions restantes > 0).
  */
-export function BasketView({ slots, onRemove }: BasketViewProps) {
+export function BasketView({ slots, onRemove, onSelect }: BasketViewProps) {
   const dated    = slots.filter(s => s.type === 'DATED').sort((a, b) =>
     new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime()
   )
@@ -124,7 +126,7 @@ export function BasketView({ slots, onRemove }: BasketViewProps) {
             Sur le calendrier ({dated.length})
           </p>
           {dated.map(slot => (
-            <SlotRow key={slot.id} slot={slot} onRemove={onRemove} />
+            <SlotRow key={slot.id} slot={slot} onRemove={onRemove} onSelect={onSelect} />
           ))}
         </>
       )}
@@ -138,7 +140,7 @@ export function BasketView({ slots, onRemove }: BasketViewProps) {
             À cuisiner ({floating.length})
           </p>
           {floating.map(slot => (
-            <SlotRow key={slot.id} slot={slot} onRemove={onRemove} />
+            <SlotRow key={slot.id} slot={slot} onRemove={onRemove} onSelect={onSelect} />
           ))}
         </>
       )}

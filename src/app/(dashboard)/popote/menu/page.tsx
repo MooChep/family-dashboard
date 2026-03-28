@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import { Plus, X } from 'lucide-react'
 import { BasketView } from '@/components/popote/planning/BasketView'
+import { CalendarView } from '@/components/popote/planning/CalendarView'
 import { AddToMenuSheet } from '@/components/popote/planning/AddToMenuSheet'
+import { ConsumeSheet } from '@/components/popote/planning/ConsumeSheet'
 import { RecipeSearchGrid } from '@/components/popote/recipes/RecipeSearchGrid'
 import type {
   PlanningSlotWithRecipe,
@@ -14,15 +16,21 @@ import type {
   RecipeCategory,
 } from '@/lib/popote/types'
 
+type Tab = 'basket' | 'calendar'
+
 /**
- * Page principale du menu — Vue panier + ajout de recettes.
- * Parcours : + Ajouter → RecipeSearchGrid → AddToMenuSheet → slot créé.
+ * Page principale du menu.
+ * Onglets Panier / Calendrier + parcours ajout + consommation de portions.
  */
 export default function MenuPage() {
+  const [tab,            setTab]            = useState<Tab>('basket')
   const [slots,          setSlots]          = useState<PlanningSlotWithRecipe[]>([])
   const [loading,        setLoading]        = useState(true)
   const [showPicker,     setShowPicker]     = useState(false)
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCardData | null>(null)
+  const [consumeSlot,    setConsumeSlot]    = useState<PlanningSlotWithRecipe | null>(null)
+  // Incrémenter pour forcer CalendarView à se recharger après une action
+  const [calendarKey,    setCalendarKey]    = useState(0)
 
   useEffect(() => { void loadSlots() }, [])
 
@@ -68,13 +76,26 @@ export default function MenuPage() {
   function handleSlotAdded(slot: PlanningSlotWithRecipe) {
     setSlots(prev => [slot, ...prev])
     setSelectedRecipe(null)
+    setCalendarKey(k => k + 1)
   }
 
   async function handleRemove(id: string) {
     try {
       await fetch(`/api/popote/planning/slots/${id}`, { method: 'DELETE' })
       setSlots(prev => prev.filter(s => s.id !== id))
+      setCalendarKey(k => k + 1)
     } catch { /* ignore */ }
+  }
+
+  function handleConsumed(updated: PlanningSlotWithRecipe) {
+    const isNowEmpty = updated.portionsConsumed >= updated.portions
+    setSlots(prev =>
+      isNowEmpty
+        ? prev.filter(s => s.id !== updated.id)
+        : prev.map(s => s.id === updated.id ? updated : s)
+    )
+    setConsumeSlot(null)
+    setCalendarKey(k => k + 1)
   }
 
   return (
@@ -96,14 +117,43 @@ export default function MenuPage() {
         </button>
       </div>
 
+      {/* Onglets */}
+      <div className="flex shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+        {(['basket', 'calendar'] as Tab[]).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className="flex-1 py-2.5 font-mono text-xs transition-colors"
+            style={{
+              color:        tab === t ? 'var(--accent)' : 'var(--muted)',
+              borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+            }}
+          >
+            {t === 'basket' ? 'Panier' : 'Calendrier'}
+          </button>
+        ))}
+      </div>
+
       {/* Contenu */}
-      {loading ? (
-        <p className="font-mono text-xs p-4" style={{ color: 'var(--muted)' }}>Chargement…</p>
-      ) : (
-        <div className="flex-1 overflow-y-auto">
-          <BasketView slots={slots} onRemove={id => void handleRemove(id)} />
-        </div>
-      )}
+      <div className="flex-1 overflow-y-auto">
+        {tab === 'basket' && (
+          loading ? (
+            <p className="font-mono text-xs p-4" style={{ color: 'var(--muted)' }}>Chargement…</p>
+          ) : (
+            <BasketView
+              slots={slots}
+              onRemove={id => void handleRemove(id)}
+              onSelect={setConsumeSlot}
+            />
+          )
+        )}
+        {tab === 'calendar' && (
+          <CalendarView
+            refreshKey={calendarKey}
+            onSelect={setConsumeSlot}
+          />
+        )}
+      </div>
 
       {/* Picker recettes — overlay plein écran */}
       {showPicker && (
@@ -136,6 +186,15 @@ export default function MenuPage() {
           recipe={selectedRecipe}
           onConfirm={handleSlotAdded}
           onClose={() => setSelectedRecipe(null)}
+        />
+      )}
+
+      {/* Sheet de consommation */}
+      {consumeSlot && (
+        <ConsumeSheet
+          slot={consumeSlot}
+          onDone={handleConsumed}
+          onClose={() => setConsumeSlot(null)}
         />
       )}
     </div>
