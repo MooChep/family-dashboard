@@ -10,7 +10,7 @@ const JOW_SCRAPER_URL = process.env.JOW_SCRAPER_URL ?? 'http://jow-scraper:8001'
 
 /** Statut de correspondance d'un ingrédient Jow avec le dictionnaire. */
 export type IngredientMatchStatus =
-  | { matched: true;  referenceId: string; referenceName: string }
+  | { matched: true;  referenceId: string; referenceName: string; via: 'dict' | 'sub' }
   | { matched: false }
 
 /** Ingrédient Jow enrichi avec son statut de matching dictionnaire. */
@@ -91,31 +91,39 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
   }
 
-  // ── 3. Matching des ingrédients avec le dictionnaire ─────────────────────
-  // Recherche case-insensitive + trim, correspondance stricte sur le nom.
-  const names = body.ingredients.map(ing => ing.name.trim().toLowerCase())
+  // ── 3. Matching des ingrédients — cascade de résolution ──────────────────
+  // 1. Correspondance exacte dictionnaire (case-insensitive)
+  // 2. SubstitutionRule existante
+  // 3. Inconnu → remonte dans l'interface
+  const ingNames = body.ingredients.map(ing => ing.name.trim())
+  const ingNamesLower = ingNames.map(n => n.toLowerCase())
 
-  const references = await prisma.ingredientReference.findMany({
-    where: {
-      name: { in: body.ingredients.map(ing => ing.name.trim()) },
-    },
-    select: { id: true, name: true },
-  })
+  const [references, subRules] = await Promise.all([
+    prisma.ingredientReference.findMany({
+      where: { name: { in: ingNames } },
+      select: { id: true, name: true },
+    }),
+    prisma.substitutionRule.findMany({
+      where: { jowName: { in: ingNames } },
+      select: { jowName: true, referenceId: true, reference: { select: { name: true } } },
+    }),
+  ])
 
-  // Index par nom normalisé pour lookup O(1)
-  const refByName = new Map(references.map(r => [r.name.toLowerCase(), r]))
+  const refByName  = new Map(references.map(r => [r.name.toLowerCase(), r]))
+  const subByName  = new Map(subRules.map(s => [s.jowName.toLowerCase(), s]))
 
   const ingredients: ImportIngredient[] = body.ingredients.map((ing, index) => {
-    const key = names[index]
-    const ref = refByName.get(key ?? '')
+    const key = ingNamesLower[index] ?? ''
+    const ref = refByName.get(key)
+    const sub = subByName.get(key)
 
-    return {
-      ...ing,
-      jowIndex: index,
-      matchStatus: ref
-        ? { matched: true, referenceId: ref.id, referenceName: ref.name }
-        : { matched: false },
+    if (ref) {
+      return { ...ing, jowIndex: index, matchStatus: { matched: true, referenceId: ref.id, referenceName: ref.name, via: 'dict' as const } }
     }
+    if (sub) {
+      return { ...ing, jowIndex: index, matchStatus: { matched: true, referenceId: sub.referenceId, referenceName: sub.reference.name, via: 'sub' as const } }
+    }
+    return { ...ing, jowIndex: index, matchStatus: { matched: false } }
   })
 
   // ── 4. Construction du payload de pré-remplissage ─────────────────────────

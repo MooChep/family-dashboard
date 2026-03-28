@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { Search, X } from 'lucide-react'
 import { RecipeCard } from './RecipeCard'
 import { RecipeDetail } from './RecipeDetail'
-import type { RecipeWithIngredients, PaginatedResponse, ApiResponse } from '@/lib/popote/types'
+import type { RecipeWithIngredients, PaginatedResponse, ApiResponse, RecipeCategory } from '@/lib/popote/types'
 
-type Filter = 'all' | 'quick'
+type Filter = 'all' | 'quick' | RecipeCategory
 
 /**
  * Vue principale de la bibliothèque de recettes.
@@ -37,11 +37,14 @@ export function RecipeList() {
       .catch(() => undefined)
   }, [])
 
-  const fetchRecipes = useCallback(async (p: number, q: string) => {
+  const CATEGORIES: [RecipeCategory, string][] = [['STARTER', 'Entrées'], ['MAIN', 'Plats'], ['DESSERT', 'Desserts']]
+
+  const fetchRecipes = useCallback(async (p: number, q: string, f: Filter) => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ page: String(p), limit: String(LIMIT) })
       if (q) params.set('search', q)
+      if (f === 'STARTER' || f === 'MAIN' || f === 'DESSERT' || f === 'OTHER') params.set('category', f)
       const res = await fetch(`/api/popote/recipes?${params}`)
       const json = await res.json() as ApiResponse<PaginatedResponse<RecipeWithIngredients>>
       if (json.success && json.data) {
@@ -54,10 +57,10 @@ export function RecipeList() {
   }, [])
 
   useEffect(() => {
-    void fetchRecipes(page, search)
-  }, [fetchRecipes, page, search])
+    void fetchRecipes(page, search, filter)
+  }, [fetchRecipes, page, search, filter])
 
-  // Filtre "Rapides" côté client (≤ 30 min au total)
+  // Filtre "Rapides" côté client (≤ 30 min) — les autres filtres sont côté API
   const displayed = filter === 'quick'
     ? recipes.filter(r => (r.preparationTime ?? 0) + (r.cookingTime ?? 0) <= 30)
     : recipes
@@ -103,10 +106,14 @@ export function RecipeList() {
 
         {/* Filtres */}
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {([['all', 'Toutes'], ['quick', 'Rapides ≤ 30min']] as [Filter, string][]).map(([key, label]) => (
+          {([
+            ['all',   'Toutes'],
+            ...CATEGORIES,
+            ['quick', '≤ 30min'],
+          ] as [Filter, string][]).map(([key, label]) => (
             <button
               key={key}
-              onClick={() => setFilter(key)}
+              onClick={() => { setFilter(key); setPage(1) }}
               className="shrink-0 font-mono text-xs px-3 py-1 rounded-full transition-colors"
               style={{
                 background: filter === key ? 'var(--accent)' : 'var(--surface2)',

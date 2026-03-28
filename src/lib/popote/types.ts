@@ -1,6 +1,6 @@
-import type { Recipe, RecipeIngredient, IngredientReference, Aisle, PlanningSlot, SlotType, Period } from '@prisma/client'
+import type { Recipe, RecipeIngredient, IngredientReference, Aisle, PlanningSlot, SlotType, Period, RecipeCategory } from '@prisma/client'
 
-export type { SlotType, Period }
+export type { SlotType, Period, RecipeCategory }
 
 // ─── Réponse API générique ─────────────────────────────────────────────────
 export type ApiResponse<T> = {
@@ -29,18 +29,19 @@ export type RecipeWithIngredients = Omit<Recipe, 'steps'> & {
 
 // ─── Payload création recette ──────────────────────────────────────────────
 export type CreateRecipePayload = {
-  title:           string
-  description?:    string
-  imageLocal?:     string
+  title:            string
+  description?:     string
+  imageLocal?:      string
   preparationTime?: number
-  cookingTime?:    number
-  basePortions?:   number
-  calories?:       number
-  utensils?:       string
-  steps?:          RecipeStep[]
-  sourceUrl?:      string
-  jowId?:          string
-  ingredients?:    CreateRecipeIngredientPayload[]
+  cookingTime?:     number
+  basePortions?:    number
+  calories?:        number
+  utensils?:        string
+  steps?:           RecipeStep[]
+  sourceUrl?:       string
+  jowId?:           string
+  category?:        RecipeCategory
+  ingredients?:     CreateRecipeIngredientPayload[]
 }
 
 export type CreateRecipeIngredientPayload = {
@@ -50,6 +51,7 @@ export type CreateRecipeIngredientPayload = {
   displayUnit:     string
   isOptional?:     boolean
   isStaple?:       boolean
+  isIgnored?:      boolean
 }
 
 // ─── Payload mise à jour recette ──────────────────────────────────────────

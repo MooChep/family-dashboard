@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, AlertTriangle } from 'lucide-react'
-import type { CreateRecipePayload, RecipeStep, ApiResponse, RecipeWithIngredients } from '@/lib/popote/types'
+import type { CreateRecipePayload, RecipeStep, ApiResponse, RecipeWithIngredients, RecipeCategory } from '@/lib/popote/types'
 import type { ImportFetchResult } from '@/app/api/popote/import/fetch/route'
 import type { Resolution } from '@/components/popote/import/IngredientMapper'
+// ResolutionEntry.referenceId peut être null (ignoré) — filtré ci-dessous
 
 interface RecipeFormProps {
   /** Données pré-remplies depuis l'import Jow, ou undefined pour saisie manuelle. */
@@ -27,6 +28,7 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
   const [cookingTime,     setCookingTime]     = useState(String(prefill?.cookingTime ?? ''))
   const [basePortions,    setBasePortions]    = useState(String(prefill?.basePortions ?? 4))
   const [utensils,        setUtensils]        = useState('')
+  const [category,        setCategory]        = useState<RecipeCategory>('OTHER')
   const [steps,           setSteps]           = useState<RecipeStep[]>(prefill?.steps ?? [])
   const [saving,          setSaving]          = useState(false)
   const [error,           setError]           = useState('')
@@ -37,25 +39,31 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
   // On construit la liste depuis les ingrédients Jow + les résolutions manuelles
   const resolvedIngredients = prefill
     ? prefill.ingredients
-        .filter(ing => {
-          const res = ing.matchStatus.matched
-            ? ing.matchStatus.referenceId
-            : resolutions?.[ing.jowIndex]?.referenceId
-          return Boolean(res)
-        })
-        .map(ing => {
-          const resolution = ing.matchStatus.matched
-            ? { referenceId: ing.matchStatus.referenceId, referenceName: ing.matchStatus.referenceName }
-            : resolutions![ing.jowIndex]!
-          return {
-            referenceId:     resolution.referenceId,
+        .flatMap(ing => {
+          if (ing.matchStatus.matched) {
+            return [{
+              referenceId:     ing.matchStatus.referenceId,
+              displayQuantity: ing.quantity ?? 0,
+              quantity:        ing.quantity ?? 0,
+              displayUnit:     ing.unit ?? '',
+              isOptional:      ing.isOptional ?? false,
+              isStaple:        false,
+              isIgnored:       false,
+              label:           ing.matchStatus.referenceName,
+            }]
+          }
+          const res = resolutions?.[ing.jowIndex]
+          if (!res || res.referenceId === null) return []   // ignoré ou non résolu
+          return [{
+            referenceId:     res.referenceId,
             displayQuantity: ing.quantity ?? 0,
             quantity:        ing.quantity ?? 0,
             displayUnit:     ing.unit ?? '',
             isOptional:      ing.isOptional ?? false,
-            isStaple:        false,
-            label:           resolution.referenceName,
-          }
+            isStaple:        res.isStaple,
+            isIgnored:       false,
+            label:           res.referenceName,
+          }]
         })
     : []
 
@@ -87,10 +95,11 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
       cookingTime:     cookingTime      ? Number(cookingTime)     : undefined,
       basePortions:    Number(basePortions) || 4,
       utensils:        utensils.trim() || undefined,
+      category,
       steps:           steps.filter(s => s.text.trim()),
       sourceUrl:       prefill?.sourceUrl,
       jowId:           prefill?.jowId,
-      ingredients:     resolvedIngredients.map(({ label: _label, ...rest }) => rest),
+      ingredients:     resolvedIngredients.map(({ label: _label, ...rest }) => rest as import('@/lib/popote/types').CreateRecipeIngredientPayload),
     }
 
     try {
@@ -177,16 +186,32 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
         ))}
       </div>
 
-      {/* Ustensiles */}
-      <div>
-        <p className={labelClass} style={{ color: 'var(--muted)' }}>Ustensiles</p>
-        <input
-          className={inputClass}
-          style={inputStyle}
-          value={utensils}
-          onChange={e => setUtensils(e.target.value)}
-          placeholder="Casserole, poêle…"
-        />
+      {/* Catégorie + Ustensiles */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <p className={labelClass} style={{ color: 'var(--muted)' }}>Catégorie</p>
+          <select
+            className={inputClass}
+            style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
+            value={category}
+            onChange={e => setCategory(e.target.value as RecipeCategory)}
+          >
+            <option value="STARTER">Entrée</option>
+            <option value="MAIN">Plat</option>
+            <option value="DESSERT">Dessert</option>
+            <option value="OTHER">Autre</option>
+          </select>
+        </div>
+        <div>
+          <p className={labelClass} style={{ color: 'var(--muted)' }}>Ustensiles</p>
+          <input
+            className={inputClass}
+            style={inputStyle}
+            value={utensils}
+            onChange={e => setUtensils(e.target.value)}
+            placeholder="Casserole, poêle…"
+          />
+        </div>
       </div>
 
       {/* Ingrédients (lecture seule — résultats du mapping) */}

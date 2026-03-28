@@ -30,14 +30,16 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const { searchParams } = new URL(request.url)
-  const page  = Math.max(1, parseInt(searchParams.get('page')  ?? '1'))
-  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '20')))
-  const search = searchParams.get('search')?.trim() ?? ''
+  const page     = Math.max(1, parseInt(searchParams.get('page')  ?? '1'))
+  const limit    = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '20')))
+  const search   = searchParams.get('search')?.trim() ?? ''
+  const category = searchParams.get('category') ?? ''
 
   try {
-    const where = search
-      ? { title: { contains: search } }
-      : {}
+    const where = {
+      ...(search   ? { title:    { contains: search } } : {}),
+      ...(category ? { category: category as import('@prisma/client').RecipeCategory } : {}),
+    }
 
     const [recipes, total] = await Promise.all([
       prisma.recipe.findMany({
@@ -93,6 +95,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         steps:           body.steps ?? [],
         sourceUrl:       body.sourceUrl,
         jowId:           body.jowId,
+        category:        body.category ?? 'OTHER',
         ingredients: body.ingredients?.length
           ? {
               create: body.ingredients.map(ing => ({
@@ -100,8 +103,9 @@ export async function POST(request: NextRequest): Promise<Response> {
                 quantity:        ing.quantity,
                 displayQuantity: ing.displayQuantity,
                 displayUnit:     ing.displayUnit,
-                isOptional:      ing.isOptional ?? false,
-                isStaple:        ing.isStaple ?? false,
+                isOptional:      ing.isOptional  ?? false,
+                isStaple:        ing.isStaple    ?? false,
+                isIgnored:       ing.isIgnored   ?? false,
               })),
             }
           : undefined,

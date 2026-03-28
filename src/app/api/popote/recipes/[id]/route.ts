@@ -78,8 +78,9 @@ export async function PATCH(
               quantity:        ing.quantity,
               displayQuantity: ing.displayQuantity,
               displayUnit:     ing.displayUnit,
-              isOptional:      ing.isOptional ?? false,
-              isStaple:        ing.isStaple ?? false,
+              isOptional:      ing.isOptional  ?? false,
+              isStaple:        ing.isStaple    ?? false,
+              isIgnored:       ing.isIgnored   ?? false,
             })),
           })
         }
