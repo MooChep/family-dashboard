@@ -16,6 +16,7 @@ export function PopoteBottomNav(): React.ReactElement {
   const pathname = usePathname()
 
   if (!pathname.startsWith('/popote')) return <></>
+  if (pathname.startsWith('/popote/cuisine'))  return <></>
 
   return (
     <nav
