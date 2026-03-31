@@ -395,6 +395,12 @@ enum BaseUnit {
   UNIT
 }
 
+enum ShoppingListStatus {
+  DRAFT    // check placard en cours
+  ACTIVE   // liste finalisée, courses en cours
+  ARCHIVED // courses validées
+}
+
 enum SlotType {
   DATED
   FLOATING
@@ -456,6 +462,8 @@ model Recipe {
   createdAt       DateTime           @default(now())
   ingredients     RecipeIngredient[]
   planningSlots   PlanningSlot[]
+  like            RecipeLike?
+  shoppingListRecipes ShoppingListRecipe[]
 }
 
 model RecipeIngredient {
@@ -501,10 +509,13 @@ model PlanningSlot {
 }
 
 model ShoppingList {
-  id          String             @id @default(cuid())
-  generatedAt DateTime           @default(now())
+  id          String              @id @default(cuid())
+  generatedAt DateTime            @default(now())
   weekStart   DateTime
+  status      ShoppingListStatus  @default(DRAFT)
+  archivedAt  DateTime?
   items       ShoppingListItem[]
+  recipes     ShoppingListRecipe[]
 }
 
 model ShoppingListItem {
@@ -532,4 +543,25 @@ model Inventory {
   reference   IngredientReference @relation(fields: [referenceId], references: [id])
   quantity    Float
   updatedAt   DateTime            @updatedAt
+}
+
+// Un seul like global par recette (pas de distinction utilisateur en V1)
+model RecipeLike {
+  id        String   @id @default(cuid())
+  recipeId  String   @unique
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// Recettes sélectionnées pour une liste de courses
+model ShoppingListRecipe {
+  id             String       @id @default(cuid())
+  shoppingListId String
+  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  recipeId       String
+  recipe         Recipe       @relation(fields: [recipeId], references: [id])
+  portions       Int
+
+  @@unique([shoppingListId, recipeId])
+  @@index([shoppingListId])
 }

@@ -80,6 +80,18 @@ export type UpdateSlotPayload = {
   period?:       Period | null
 }
 
+// ─── Carte recette — type unifié pour RecipeSearchGrid ────────────────────
+export type RecipeCardData = {
+  id:              string
+  title:           string
+  imageUrl?:       string | null   // URL externe (Jow)
+  imageLocal?:     string | null   // fichier local WebP
+  preparationTime?: number | null
+  cookingTime?:    number | null
+  category?:       RecipeCategory | null
+  description?:    string | null
+}
+
 // ─── Pagination ────────────────────────────────────────────────────────────
 export type PaginatedResponse<T> = {
   data:    T[]
