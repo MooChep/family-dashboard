@@ -44,16 +44,15 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   try {
-    // Upsert par userId + endpoint (premier 255 chars)
+    // Upsert par endpoint exact — un enregistrement par appareil
     const existing = await prisma.pushSubscription.findFirst({
-      where: { userId: session.user.id },
+      where: { userId: session.user.id, endpoint: body.endpoint },
     })
 
     if (existing) {
       await prisma.pushSubscription.update({
         where: { id: existing.id },
         data: {
-          endpoint: body.endpoint,
           p256dh: body.keys.p256dh,
           auth: body.keys.auth,
           lastActiveAt: new Date(),

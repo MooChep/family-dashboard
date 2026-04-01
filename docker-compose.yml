@@ -52,12 +52,12 @@ services:
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT}
       JOW_SCRAPER_URL: ${JOW_SCRAPER_URL:-http://jow-scraper:8001}
-      POPOTE_UPLOAD_DIR: ${POPOTE_UPLOAD_DIR:-/uploads/popote}
-      NEXT_PUBLIC_POPOTE_UPLOAD_BASE_URL: ${NEXT_PUBLIC_POPOTE_UPLOAD_BASE_URL:-/api/popote/images}
+      GAMELLE_UPLOAD_DIR: ${GAMELLE_UPLOAD_DIR:-/uploads/gamelle}
+      NEXT_PUBLIC_GAMELLE_UPLOAD_BASE_URL: ${NEXT_PUBLIC_GAMELLE_UPLOAD_BASE_URL:-/api/gamelle/images}
     ports:
       - "3010:3000"
     volumes:
-      - uploads_popote:/uploads/popote
+      - uploads_gamelle:/uploads/gamelle
       - uploads_cerveau:/uploads/cerveau
     networks:
       - internal
@@ -72,5 +72,5 @@ networks:
 
 volumes:
   db_data:
-  uploads_popote:
+  uploads_gamelle:
   uploads_cerveau:

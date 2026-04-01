@@ -7,6 +7,19 @@
  */
 
 import webpush from 'web-push'
+
+const PARCHEMIN_BODIES = [
+  'Par la barbe du Roi ! Vous aviez griffonné ceci sur le Parchemin... Est-ce l\'heure de s\'en occuper ou faut-il brûler la preuve ?',
+  'L\'encre de votre Parchemin s\'anime : une note importante attend d\'être consultée. Libérez votre esprit, le domaine veille.',
+  'Oyez, oyez ! Un édit consigné dans votre Parchemin refait surface. Le scribe vous rappelle à vos engagements pour la bonne marche du Fief.',
+  'Holà ! La plume a tremblé : un écrit sur votre Parchemin requiert votre attention. Ne laissez pas cette pensée s\'envoler dans les oubliettes du domaine.',
+]
+
+function randomParcheminBody(noteTitle: string): string {
+  const withTitle = `Un rappel du Parchemin : ne perdez pas le fil de vos pensées. Votre note sur "${noteTitle}" vous attend au logis.`
+  const pool = [...PARCHEMIN_BODIES, withTitle]
+  return pool[Math.floor(Math.random() * pool.length)]
+}
 import type { CerveauEntry, CerveauPreferences } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isQuietTime } from '@/lib/cerveau/isQuietTime'
@@ -17,8 +30,9 @@ type PushPayload = {
   body:                 string
   entryId?:             string
   url:                  string
-  snoozeOptions?:       { action: string; label: string; minutes: number }[]
+  snoozeOptions?:       { action: string; label: string; minutes?: number }[]
   defaultSnoozeMinutes?: number
+  actions?:             { action: string; label: string; minutes?: number }[]
 }
 
 type SubRow = {
@@ -38,6 +52,17 @@ async function sendPush(sub: SubRow, payload: PushPayload): Promise<void> {
   } catch (err) {
     console.error('[scheduler] push failed', err)
   }
+}
+
+// ── Résolution des destinataires par email ────────────────────────────────
+// notifTo : 'ILAN' | 'CAMILLE' | 'BOTH'
+function notifTargetEmails(notifTo: string | null): string[] {
+  const ILAN    = process.env.ILAN_EMAIL    ?? ''
+  const CAMILLE = process.env.CAMILLE_EMAIL ?? ''
+  if (notifTo === 'BOTH')    return [ILAN, CAMILLE].filter(Boolean)
+  if (notifTo === 'ILAN')    return [ILAN].filter(Boolean)
+  if (notifTo === 'CAMILLE') return [CAMILLE].filter(Boolean)
+  return []
 }
 
 function formatAbsolute(date: Date): string {
@@ -375,6 +400,53 @@ export async function runNotificationScheduler(): Promise<{ sent: number; recurr
     // ── Daily digest ──────────────────────────────────────────────
     await sendDailyDigest(userId, subs, prefs, now)
   }
+
+  // ── Parchemin notifications ───────────────────────────────────────────
+  const parcheminNotifs = await prisma.parcheminNote.findMany({
+    where: {
+      notifAt:     { lte: now },
+      notifSentAt: null,
+      archivedAt:  null,
+    },
+  })
+
+  for (const note of parcheminNotifs) {
+    const emails  = notifTargetEmails(note.notifTo)
+    console.log(`[parchemin] note "${note.title}" → notifTo=${note.notifTo} emails=${JSON.stringify(emails)}`)
+    const targets = await prisma.user.findMany({ where: { email: { in: emails } } })
+    console.log(`[parchemin] targets found: ${targets.length}`)
+
+    let noteSent = 0
+    for (const user of targets) {
+      const subs = await prisma.pushSubscription.findMany({ where: { userId: user.id } })
+      console.log(`[parchemin] user ${user.email} → ${subs.length} subscription(s)`)
+      for (const sub of subs) {
+        await sendPush(
+          { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+          {
+            title: note.title,
+            body:  note.notifBody ?? randomParcheminBody(note.title),
+            url:   `/parchemin/${note.id}`,
+            actions: [
+              { action: 'open',      label: '📖 Voir !' },
+              { action: 'snooze_2h', label: '⏳ Patience', minutes: 120 },
+              { action: 'pin',       label: '📌 Clouer' },
+            ],
+          },
+        )
+        sent++
+        noteSent++
+      }
+    }
+
+    if (noteSent > 0) {
+      await prisma.parcheminNote.update({
+        where: { id: note.id },
+        data:  { notifSentAt: now },
+      })
+    }
+  }
+
 
   const recurrences = await processRecurringEntries()
 

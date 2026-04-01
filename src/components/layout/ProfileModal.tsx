@@ -1,13 +1,15 @@
 'use client'
 import { useState, useEffect, type ReactElement } from 'react'
 import { useSession } from 'next-auth/react'
+import { Bell, BellOff, Loader2, Send } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useTheme } from '@/components/layout/ThemeProvider'
+import { subscribeToPush, requestNotificationPermission } from '@/lib/cerveau/notifications'
 import type { Theme } from '@/types/theme'
 
-type Tab = 'profil' | 'themes'
+type Tab = 'profil' | 'themes' | 'preferences'
 
 interface ProfileModalProps {
   isOpen: boolean
@@ -32,7 +34,7 @@ function ThemePreview({ cssVars }: { cssVars: Record<string, string> | null }): 
 export function ProfileModal({ isOpen, onClose }: ProfileModalProps): ReactElement {
   const { data: session, update: updateSession } = useSession()
 const { theme: currentTheme, setTheme, previewTheme, deleteTheme, themes, isLoading: themesLoading } = useTheme()  
-const [tab, setTab] = useState<Tab>('profil')
+const [tab, setTab] = useState<Tab>('preferences')
 
   // ── Profil ────────────────────────────────────────────────────────────────
   const [name, setName]             = useState('')
@@ -43,6 +45,14 @@ const [tab, setTab] = useState<Tab>('profil')
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError]     = useState<string | null>(null)
   const [profileSuccess, setProfileSuccess] = useState(false)
+
+  // ── Parchemin ─────────────────────────────────────────────────────────────
+  const [permissionGranted,  setPermissionGranted]  = useState(false)
+  const [isSubscribed,       setIsSubscribed]        = useState(false)
+  const [isSubscribing,      setIsSubscribing]       = useState(false)
+  const [isTesting,          setIsTesting]           = useState(false)
+  const [notifyOnCreate,     setNotifyOnCreate]      = useState(true)
+  const [prefsLoading,       setPrefsLoading]        = useState(false)
 
   // ── Thèmes ────────────────────────────────────────────────────────────────
   // selectedTheme = choix en cours (pas encore confirmé)
@@ -57,7 +67,7 @@ const [tab, setTab] = useState<Tab>('profil')
   const [deleteError, setDeleteError]       = useState<string | null>(null)
   const [preview, setPreview]               = useState<Record<string, string> | null>(null)
 
-  // Sync selectedTheme quand le modal s'ouvre
+  // Sync selectedTheme + parchemin prefs quand le modal s'ouvre
   useEffect(() => {
     if (isOpen) {
       setName(session?.user?.name ?? '')
@@ -66,6 +76,15 @@ const [tab, setTab] = useState<Tab>('profil')
       setCurrentPwd(''); setNewPwd(''); setConfirmPwd('')
       setSelectedTheme(currentTheme)
       setApplySuccess(false)
+      setPermissionGranted(typeof Notification !== 'undefined' && Notification.permission === 'granted')
+      if (session) {
+        void fetch('/api/cerveau/push/subscribe')
+          .then(r => r.ok ? r.json() : null)
+          .then((d: { success: boolean; data: { subscribed: boolean } } | null) => { if (d?.success) setIsSubscribed(d.data.subscribed) })
+        void fetch('/api/parchemin/preferences')
+          .then(r => r.ok ? r.json() : null)
+          .then((d: { success: boolean; data: { notifyOnCreate: boolean } } | null) => { if (d?.success) setNotifyOnCreate(d.data.notifyOnCreate) })
+      }
     }
   }, [isOpen, session, currentTheme])
 
@@ -170,6 +189,45 @@ const [tab, setTab] = useState<Tab>('profil')
     }
   }
 
+  // ── Parchemin handlers ────────────────────────────────────────────────────
+  async function handleEnableNotifications(): Promise<void> {
+    setIsSubscribing(true)
+    try {
+      if (typeof Notification === 'undefined') return
+      if (Notification.permission === 'denied') return
+      const granted = await requestNotificationPermission()
+      if (!granted) return
+      await subscribeToPush()
+      setPermissionGranted(true)
+      setIsSubscribed(true)
+    } finally {
+      setIsSubscribing(false)
+    }
+  }
+
+  async function handleTestNotification(): Promise<void> {
+    setIsTesting(true)
+    try {
+      await fetch('/api/cerveau/push/test', { method: 'POST' })
+    } finally {
+      setIsTesting(false)
+    }
+  }
+
+  async function handleToggleNotifyOnCreate(val: boolean): Promise<void> {
+    setNotifyOnCreate(val)
+    setPrefsLoading(true)
+    try {
+      await fetch('/api/parchemin/preferences', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ notifyOnCreate: val }),
+      })
+    } finally {
+      setPrefsLoading(false)
+    }
+  }
+
   // ── Styles ────────────────────────────────────────────────────────────────
   const border = '1px solid var(--border)'
   const hasChanges = selectedTheme !== currentTheme
@@ -179,7 +237,7 @@ const [tab, setTab] = useState<Tab>('profil')
     color: tab === t ? 'var(--bg)' : 'var(--text2)',
     border: 'none',
     cursor: 'pointer',
-    padding: '6px 16px',
+    padding: '6px 14px',
     borderRadius: '8px',
     fontSize: '13px',
     fontFamily: 'var(--font-body)',
@@ -187,11 +245,12 @@ const [tab, setTab] = useState<Tab>('profil')
   })
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Mon profil" size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Mon profil" size="xl" className="h-160">
       {/* ── Tabs ── */}
       <div className="flex gap-1 p-1 rounded-xl mb-5" style={{ backgroundColor: 'var(--surface2)' }}>
-        <button style={tabStyle('profil')} onClick={() => setTab('profil')}>Profil</button>
-        <button style={tabStyle('themes')} onClick={() => setTab('themes')}>Thèmes</button>
+        <button style={tabStyle('profil')}      onClick={() => setTab('profil')}>Profil</button>
+        <button style={tabStyle('themes')}      onClick={() => setTab('themes')}>Thèmes</button>
+        <button style={tabStyle('preferences')} onClick={() => setTab('preferences')}>Préférences</button>
       </div>
 
       {/* ── Tab Profil ── */}
@@ -218,6 +277,106 @@ const [tab, setTab] = useState<Tab>('profil')
               Enregistrer
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* ── Tab Préférences ── */}
+      {tab === 'preferences' && (
+        <div className="flex flex-col gap-8">
+
+          {/* ── Module : Fief ── */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1" style={{ backgroundColor: 'var(--border)' }} />
+              <p className="text-xs font-semibold tracking-widest uppercase px-2" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                Fief
+              </p>
+              <div className="h-px flex-1" style={{ backgroundColor: 'var(--border)' }} />
+            </div>
+            <div
+              className="flex items-center justify-between p-4 rounded-xl"
+              style={{ backgroundColor: 'var(--surface2)' }}
+            >
+              <div className="flex items-center gap-3">
+                {isSubscribed
+                  ? <Bell size={18} style={{ color: 'var(--accent)' }} />
+                  : <BellOff size={18} style={{ color: 'var(--muted)' }} />}
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                    {isSubscribed ? 'Notifications activées' : 'Notifications désactivées'}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                    {isSubscribed ? 'Cet appareil reçoit les rappels' : 'Activer pour recevoir les rappels'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {isSubscribed && (
+                  <button
+                    type="button"
+                    onClick={() => void handleTestNotification()}
+                    disabled={isTesting}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60"
+                    style={{ backgroundColor: 'var(--surface)', color: 'var(--text2)' }}
+                  >
+                    {isTesting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                    Tester
+                  </button>
+                )}
+                {!isSubscribed && (
+                  <button
+                    type="button"
+                    onClick={() => void handleEnableNotifications()}
+                    disabled={isSubscribing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60"
+                    style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+                  >
+                    {isSubscribing && <Loader2 size={13} className="animate-spin" />}
+                    {permissionGranted ? 'Réactiver' : 'Activer'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>{/* end module Fief */}
+
+          {/* ── Module : Parchemin ── */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1" style={{ backgroundColor: 'var(--border)' }} />
+              <p className="text-xs font-semibold tracking-widest uppercase px-2" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                Parchemin
+              </p>
+              <div className="h-px flex-1" style={{ backgroundColor: 'var(--border)' }} />
+            </div>
+            <div
+              className="flex items-center justify-between p-4 rounded-xl"
+              style={{ backgroundColor: 'var(--surface2)' }}
+            >
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                  Notifier à la création
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                  Prévenir l'autre membre quand tu crées une note
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={notifyOnCreate}
+                onClick={() => void handleToggleNotifyOnCreate(!notifyOnCreate)}
+                disabled={prefsLoading}
+                className="relative w-11 h-6 rounded-full transition-colors shrink-0 disabled:opacity-60"
+                style={{ backgroundColor: notifyOnCreate ? 'var(--accent)' : 'var(--surface)' }}
+              >
+                <span
+                  className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"
+                  style={{ transform: notifyOnCreate ? 'translateX(20px)' : 'translateX(0)' }}
+                />
+              </button>
+            </div>
+          </div>{/* end module Parchemin */}
+
         </div>
       )}
 

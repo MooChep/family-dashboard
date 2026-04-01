@@ -7,7 +7,12 @@ import { Suspense } from 'react'
 import { CategoryNav } from '@/components/cerveau/CategoryNav'
 import type { EntryType } from '@prisma/client'
 import {
-  PiggyBank, Brain, ChefHat, CalendarDays, Settings2, LogOut,
+  PiggyBank, ChefHat, CalendarDays, Settings2, LogOut,
+  Castle,
+  ScrollText,
+  CookingPotIcon,
+  Crown,
+  BrushCleaning,
 } from 'lucide-react'
 
 interface NavItem {
@@ -18,30 +23,49 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  {
+    label: 'Fief',
+    href: '/',
+    icon: <Castle size={20} strokeWidth={1.5} />,
+    soon: false,
+  },
+  {
+    label: 'Parchemin',
+    href:  '/parchemin',
+    icon:  <ScrollText size={20} strokeWidth={1.5} />,
+    soon:  false,
+  },
   { 
-    label: 'Épargne',    
+    label: 'Butin',    
     href: '/epargne',   
     icon: <PiggyBank size={20} strokeWidth={1.5} />, 
     soon: false 
   },
   { 
-    label: 'Cerveau',    
-    href: '/cerveau',    
-    icon: <Brain size={20} strokeWidth={1.5} />,      
+    label: 'Gamelle',     
+    href: '/gamelle',    
+    icon: <CookingPotIcon size={20} strokeWidth={1.5} />, 
     soon: false 
   },
-  { 
-    label: 'Popote',     
-    href: '/popote',    
-    icon: <ChefHat size={20} strokeWidth={1.5} />, 
-    soon: false 
+  {
+    label: 'Labeur',
+    href: '/labeur',
+    icon: <BrushCleaning size={20} strokeWidth={1.5} />,
+    soon: true
   },
-  { 
-    label: 'Calendrier', 
-    href: '/habitudes', 
-    icon: <CalendarDays size={20} strokeWidth={1.5} />, 
-    soon: true 
+  {
+    label: 'Oyez',
+    href: '/habitudes',
+    icon: <CalendarDays size={20} strokeWidth={1.5} />,
+    soon: true
   },
+  {
+    label: 'Heritier',
+    href: '/heritier',
+    icon: <Crown size={20} strokeWidth={1.5} />,
+    soon: true
+  }
+
 ]
 
 function CerveauFilterSection({ pathname }: { pathname: string }) {

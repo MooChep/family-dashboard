@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { Badge } from '@/components/ui/Badge'
 // Import des icônes Lucide
-import { PiggyBank, Brain, ChefHat, CalendarDays } from 'lucide-react'
+import { PiggyBank, ScrollText, Brain, ChefHat, CalendarDays, BrushCleaning, Crown } from 'lucide-react'
 
 export default async function DashboardPage(): Promise<ReactElement> {
   const session = await getServerSession(authOptions)
@@ -13,33 +13,47 @@ export default async function DashboardPage(): Promise<ReactElement> {
   // Remplacement des symboles texte par des composants d'icônes Lucide
 const MODULES = [
   { 
-    label: 'Épargne',    
+    label: 'Parchemin',     
+    href: '/parchemin',     
+    icon: <ScrollText size={20} strokeWidth={1.5} />, 
+    description: 'Marquer au fer rouge les événements du royaume qui pèsent sur votre mental.', 
+    soon: false 
+  },
+  { 
+    label: 'Butin',    
     href: '/epargne',   
     icon: <PiggyBank size={20} strokeWidth={1.5} />, 
-    description: "Suivi des comptes et objectifs d'épargne", 
+    description: "Suivre la trace de chaque écu, pour faire fructifier la réserve du Fief.", 
     soon: false 
   },
   { 
-    label: 'Cerveau',    
-    href: '/cerveau',    
-    icon: <Brain size={20} strokeWidth={1.5} />,      
-    description: 'Vider sa charge mentale', 
-    soon: false 
-  },
-  { 
-    label: 'Popote',     
-    href: '/popote',    
+    label: 'Gamelle',     
+    href: '/gamelle',    
     icon: <ChefHat size={20} strokeWidth={1.5} />, 
-    description: 'Gestion des recettes et planification des repas', 
+    description: 'Preparer les victuailles pour que personne ne crie famine', 
     soon: false 
   },
-  { 
-    label: 'Calendrier', 
-    href: '/habitudes', 
-    icon: <CalendarDays size={20} strokeWidth={1.5} />, 
-    description: 'Événements familiaux et planning partagé', 
-    soon: true 
+  {
+    label: 'Labeur',
+    href: '/labeur',
+    icon: <BrushCleaning size={20} strokeWidth={1.5} />,
+    description: 'Organiser les corvées et les diligences pour l’entretien du domaine.',
+    soon: true
   },
+  {
+    label: 'Oyez',
+    href: '/habitudes',
+    icon: <CalendarDays size={20} strokeWidth={1.5} />,
+    description: 'Annoncer les temps forts et les célébrations du royaume au son des trompettes.', 
+    soon: true
+  },
+  {
+    label: 'Heritier',
+    href: '/heritier',
+    icon: <Crown size={20} strokeWidth={1.5} />,
+    description: 'Chronique de la lignée et archives des hauts faits de la descendance.', 
+    soon: true
+  }
 ]
   return (
     <div className="flex flex-col gap-8 pt-15">

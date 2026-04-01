@@ -41,7 +41,7 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 # On garde les node_modules pour avoir tsx et les types en prod
 COPY --from=builder /app/node_modules ./node_modules
 
-RUN mkdir -p /uploads/popote /uploads/cerveau && chown -R nextjs:nodejs /app /uploads
+RUN mkdir -p /uploads/gamelle /uploads/cerveau && chown -R nextjs:nodejs /app /uploads
 USER nextjs
 
 EXPOSE 3000

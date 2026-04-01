@@ -1,12 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 import { seedThemes } from './themes.js'
-import { seedPopote } from './popote.js'
+import { seedGamelle } from './gamelle.js'
 
 const prisma = new PrismaClient()
 
 async function main(): Promise<void> {
   await seedThemes(prisma)
-  await seedPopote(prisma)
+  await seedGamelle(prisma)
 }
 
 main()

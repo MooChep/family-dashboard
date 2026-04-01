@@ -7,9 +7,9 @@ import { NavPanelContent } from '@/components/layout/NavPanelContent'
 import { ProfileModal } from '@/components/layout/ProfileModal'
 
 const PAGE_TITLES: Record<string, string> = {
-  '/':                            'Dashboard',
+  '/':                            'Fief',
   '/cerveau':                     'Cerveau',
-  '/epargne':                     'Épargne',
+  '/epargne':                     'Butin',
   '/epargne/mois':                'Mois',
   '/epargne/analyses':            'Analyses',
   '/epargne/analyses/depenses':   'Dépenses',
@@ -20,10 +20,17 @@ const PAGE_TITLES: Record<string, string> = {
   '/epargne/categories':          'Catégories',
   '/menage':                      'Ménage',
   '/projets':                     'Projets',
+  '/gamelle':                      'Gamelle',
+  '/parchemin':                       'Parchemin',
+  '/parchemin/new':                   'Nouvelle note',
+  '/parchemin/archive':               'Archives',
+  '/parchemin/preferences':           'Préférences',
 }
 
 function getTitle(pathname: string): string {
-  return PAGE_TITLES[pathname] ?? pathname.split('/').filter(Boolean).pop() ?? 'Dashboard'
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
+  if (pathname.startsWith('/parchemin/')) return 'Note'
+  return pathname.split('/').filter(Boolean).pop() ?? 'Dashboard'
 }
 
 export function MobileHeader(): React.ReactElement {

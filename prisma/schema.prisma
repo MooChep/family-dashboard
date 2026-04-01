@@ -20,6 +20,8 @@ model User {
   pushSubscriptions    PushSubscription[]
   cerveauPreferences   CerveauPreferences?
   cerveauTemplates     CerveauTemplate[]   @relation("CerveauTemplateCreatedBy")
+  parcheminNotes           ParcheminNote[]         @relation("ParcheminNoteCreatedBy")
+  parcheminPreferences     ParcheminPreferences?
 }
 
 model UserConfig {
@@ -387,7 +389,7 @@ enum EntryStatus {
   SNOOZED
 }
 
-// ── Popote ─────────────────────────────────────────────────────────────────────
+// ── Gamelle ─────────────────────────────────────────────────────────────────────
 
 enum BaseUnit {
   GRAM
@@ -543,6 +545,61 @@ model Inventory {
   reference   IngredientReference @relation(fields: [referenceId], references: [id])
   quantity    Float
   updatedAt   DateTime            @updatedAt
+}
+
+// ── Parchemin ──────────────────────────────────────────────────────────────────────
+
+enum NoteFormat {
+  TEXT
+  CHECKLIST
+  BULLETS
+  NUMBERED
+}
+
+model ParcheminNote {
+  id          String     @id @default(cuid())
+  title       String
+  format      NoteFormat @default(TEXT)
+  body        String?    @db.Text
+  pinned      Boolean    @default(false)
+  parentId    String?
+  parent      ParcheminNote?  @relation("NoteChildren", fields: [parentId], references: [id])
+  children    ParcheminNote[] @relation("NoteChildren")
+  items       ParcheminItem[]
+  notifAt     DateTime?
+  notifTo     String?
+  notifBody   String?
+  notifSentAt DateTime?
+  dueDate     DateTime?
+  createdById String
+  createdBy   User        @relation("ParcheminNoteCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  archivedAt  DateTime?
+
+  @@index([parentId])
+  @@index([createdById])
+  @@index([notifAt])
+  @@index([pinned])
+  @@index([dueDate])
+}
+
+model ParcheminItem {
+  id      String    @id @default(cuid())
+  noteId  String
+  note    ParcheminNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  label   String
+  checked Boolean   @default(false)
+  order   Int       @default(0)
+
+  @@index([noteId])
+}
+
+model ParcheminPreferences {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifyOnCreate   Boolean @default(true)
 }
 
 // Un seul like global par recette (pas de distinction utilisateur en V1)
