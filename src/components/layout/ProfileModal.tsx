@@ -6,7 +6,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useTheme } from '@/components/layout/ThemeProvider'
-import { subscribeToPush, requestNotificationPermission } from '@/lib/cerveau/notifications'
+import { subscribeToPush, requestNotificationPermission } from '@/lib/notifications'
 import type { Theme } from '@/types/theme'
 
 type Tab = 'profil' | 'themes' | 'preferences'
@@ -50,6 +50,7 @@ const [tab, setTab] = useState<Tab>('preferences')
   const [permissionGranted,  setPermissionGranted]  = useState(false)
   const [isSubscribed,       setIsSubscribed]        = useState(false)
   const [isSubscribing,      setIsSubscribing]       = useState(false)
+  const [isUnsubscribing,    setIsUnsubscribing]     = useState(false)
   const [isTesting,          setIsTesting]           = useState(false)
   const [notifyOnCreate,     setNotifyOnCreate]      = useState(true)
   const [prefsLoading,       setPrefsLoading]        = useState(false)
@@ -78,9 +79,20 @@ const [tab, setTab] = useState<Tab>('preferences')
       setApplySuccess(false)
       setPermissionGranted(typeof Notification !== 'undefined' && Notification.permission === 'granted')
       if (session) {
-        void fetch('/api/cerveau/push/subscribe')
-          .then(r => r.ok ? r.json() : null)
-          .then((d: { success: boolean; data: { subscribed: boolean } } | null) => { if (d?.success) setIsSubscribed(d.data.subscribed) })
+        void (async () => {
+          try {
+            const reg = typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+              ? await navigator.serviceWorker.ready : null
+            const pushSub = reg ? await reg.pushManager.getSubscription() : null
+            if (pushSub) {
+              const endpoint = encodeURIComponent(pushSub.endpoint)
+              const d = await fetch(`/api/push/subscribe?endpoint=${endpoint}`).then(r => r.ok ? r.json() : null) as { success: boolean; data: { subscribed: boolean } } | null
+              setIsSubscribed(d?.data?.subscribed ?? false)
+            } else {
+              setIsSubscribed(false)
+            }
+          } catch { setIsSubscribed(false) }
+        })()
         void fetch('/api/parchemin/preferences')
           .then(r => r.ok ? r.json() : null)
           .then((d: { success: boolean; data: { notifyOnCreate: boolean } } | null) => { if (d?.success) setNotifyOnCreate(d.data.notifyOnCreate) })
@@ -205,10 +217,30 @@ const [tab, setTab] = useState<Tab>('preferences')
     }
   }
 
+  async function handleDisableNotifications(): Promise<void> {
+    setIsUnsubscribing(true)
+    try {
+      const reg = typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+        ? await navigator.serviceWorker.ready : null
+      const pushSub = reg ? await reg.pushManager.getSubscription() : null
+      if (pushSub) {
+        await fetch('/api/push/subscribe', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: pushSub.endpoint }),
+        })
+        await pushSub.unsubscribe()
+      }
+      setIsSubscribed(false)
+    } finally {
+      setIsUnsubscribing(false)
+    }
+  }
+
   async function handleTestNotification(): Promise<void> {
     setIsTesting(true)
     try {
-      await fetch('/api/cerveau/push/test', { method: 'POST' })
+      await fetch('/api/push/test', { method: 'POST' })
     } finally {
       setIsTesting(false)
     }
@@ -312,16 +344,28 @@ const [tab, setTab] = useState<Tab>('preferences')
               </div>
               <div className="flex gap-2">
                 {isSubscribed && (
-                  <button
-                    type="button"
-                    onClick={() => void handleTestNotification()}
-                    disabled={isTesting}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60"
-                    style={{ backgroundColor: 'var(--surface)', color: 'var(--text2)' }}
-                  >
-                    {isTesting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                    Tester
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void handleTestNotification()}
+                      disabled={isTesting}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60"
+                      style={{ backgroundColor: 'var(--surface)', color: 'var(--text2)' }}
+                    >
+                      {isTesting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                      Tester
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDisableNotifications()}
+                      disabled={isUnsubscribing}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60"
+                      style={{ backgroundColor: 'var(--surface)', color: 'var(--danger)' }}
+                    >
+                      {isUnsubscribing ? <Loader2 size={13} className="animate-spin" /> : <BellOff size={13} />}
+                      Désactiver
+                    </button>
+                  </>
                 )}
                 {!isSubscribed && (
                   <button
