@@ -19,7 +19,7 @@ interface RecipeDetailProps {
 function formatIngredientQty(displayQuantity: number, displayUnit: string, mult: number): string {
   const qty = displayQuantity * mult
   const frac = displayFraction(qty)
-  const formatted = frac ?? (Number.isInteger(qty) ? String(qty) : parseFloat(qty.toFixed(2)).toString())
+  const formatted = frac ?? (Number.isInteger(qty) ? String(qty) : parseFloat(qty.toFixed(2)).toString().replace('.', ','))
   return displayUnit ? `${formatted} ${displayUnit}` : formatted
 }
 

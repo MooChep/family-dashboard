@@ -122,5 +122,5 @@ function _resolveBaseUnit(displayUnit: string, conversions: Conversion[]): strin
 }
 
 function _stripTrailingZero(n: number): string {
-  return parseFloat(n.toFixed(3)).toString()
+  return parseFloat(n.toFixed(3)).toString().replace('.', ',')
 }
