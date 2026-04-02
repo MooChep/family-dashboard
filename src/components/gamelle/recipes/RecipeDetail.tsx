@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { X, Pencil, ChefHat, Minus, Plus } from 'lucide-react'
 import { displayFraction } from '@/lib/gamelle/fractions'
@@ -28,26 +28,13 @@ function formatIngredientQty(displayQuantity: number, displayUnit: string, mult:
  * Image circulaire, grille ingrédients 3 colonnes, étapes numérotées, footer sticky.
  */
 export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeDetailProps) {
-  const [portions,     setPortions]     = useState(2)
-  const [headerTitle,  setHeaderTitle]  = useState(false)
-  const imageRef = useRef<HTMLDivElement>(null)
+  const [portions, setPortions] = useState(2)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
-
-  useEffect(() => {
-    const el = imageRef.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([entry]) => setHeaderTitle(!entry.isIntersecting),
-      { threshold: 0 },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
 
   const mult = portions / (recipe.basePortions || 1)
 
@@ -62,8 +49,8 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
           <X size={20} />
         </button>
         <h1
-          className="flex-1 font-display text-base font-semibold truncate transition-opacity"
-          style={{ color: 'var(--text)', opacity: headerTitle ? 1 : 0 }}
+          className="flex-1 font-display text-base font-semibold truncate"
+          style={{ color: 'var(--text)' }}
         >
           {recipe.title}
         </h1>
@@ -79,7 +66,7 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
       {/* Contenu scrollable */}
       <div className="flex-1 overflow-y-auto">
         {/* Image circulaire + titre */}
-        <div ref={imageRef} className="flex flex-col items-center px-4 pt-6 pb-4 gap-3">
+        <div className="flex flex-col items-center px-4 pt-6 pb-4 gap-3">
           <div
             className="rounded-full overflow-hidden flex items-center justify-center"
             style={{ width: 120, height: 120, background: 'var(--surface2)', border: '2px solid var(--border)', flexShrink: 0 }}
