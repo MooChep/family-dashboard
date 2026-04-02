@@ -2,15 +2,12 @@ import { type ReactElement } from 'react'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { Badge } from '@/components/ui/Badge'
-import { redirect } from 'next/navigation' // Import pour la redirection de secours
-// Import des icônes Lucide
+import { redirect } from 'next/navigation'
 import { PiggyBank, ScrollText, ChefHat, CalendarDays, BrushCleaning, Crown } from 'lucide-react'
 
 export default async function DashboardPage(): Promise<ReactElement> {
   const session = await getServerSession(authOptions)
 
-  // SÉCURITÉ : Si la session est nulle, on redirige vers le login 
-  // au lieu de laisser crash avec user.name
   if (!session?.user) {
     redirect('/auth/login')
   }
@@ -81,36 +78,41 @@ export default async function DashboardPage(): Promise<ReactElement> {
           Modules
         </h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {MODULES.map((module) => (
-            <a 
-              key={module.href} 
-              href={module.soon ? '#' : module.href}
-              onClick={module.soon ? (e) => e.preventDefault() : undefined}
-            >
-              <div
-                className="rounded-xl p-5 flex flex-col gap-3"
-                style={{
-                  backgroundColor: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  opacity: module.soon ? 0.6 : 1,
-                  cursor: module.soon ? 'default' : 'pointer',
-                }}
+          {MODULES.map((module) => {
+            // Si le module est "soon", on transforme le lien en <div> pour éviter l'interactivité interdite
+            const Container = module.soon ? 'div' : 'a'
+            
+            return (
+              <Container 
+                key={module.href} 
+                href={module.soon ? undefined : module.href}
+                className="block"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center" style={{ color: 'var(--accent)' }}>{module.icon}</span>
-                    <span className="text-sm font-medium" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
-                      {module.label}
-                    </span>
+                <div
+                  className="rounded-xl p-5 flex flex-col gap-3 h-full"
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    opacity: module.soon ? 0.6 : 1,
+                    cursor: module.soon ? 'default' : 'pointer',
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center" style={{ color: 'var(--accent)' }}>{module.icon}</span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
+                        {module.label}
+                      </span>
+                    </div>
+                    {module.soon && <Badge variant="success">bientôt</Badge>}
                   </div>
-                  {module.soon && <Badge variant="success">bientôt</Badge>}
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+                    {module.description}
+                  </p>
                 </div>
-                <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
-                  {module.description}
-                </p>
-              </div>
-            </a>
-          ))}
+              </Container>
+            )
+          })}
         </div>
       </div>
     </div>
