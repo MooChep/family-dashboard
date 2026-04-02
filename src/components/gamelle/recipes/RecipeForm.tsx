@@ -10,8 +10,11 @@ import type { IngredientWithAisle } from '@/app/api/gamelle/ingredients/route'
 
 interface RecipeFormProps {
   /** Données pré-remplies depuis l'import Jow, ou undefined pour saisie manuelle. */
-  prefill?:     ImportFetchResult
-  resolutions?: Resolution
+  prefill?:      ImportFetchResult
+  resolutions?:  Resolution
+  /** Recette existante à éditer (mode="edit"). */
+  initialData?:  RecipeWithIngredients
+  mode?:         'create' | 'edit'
 }
 
 type IngredientRow = {
@@ -29,26 +32,40 @@ type IngredientRow = {
  * Formulaire d'édition recette — utilisé après import Jow et en saisie manuelle.
  * Les ingrédients sont éditables (quantité, unité, ajout, suppression).
  */
-export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
+export function RecipeForm({ prefill, resolutions, initialData, mode = 'create' }: RecipeFormProps) {
   const router = useRouter()
+  const isEdit = mode === 'edit'
 
   // ── Champs du formulaire ──────────────────────────────────────────────────
-  const [title,           setTitle]           = useState(prefill?.title ?? '')
-  const [description,     setDescription]     = useState(prefill?.description ?? '')
-  const [preparationTime, setPreparationTime] = useState(String(prefill?.preparationTime ?? ''))
-  const [cookingTime,     setCookingTime]     = useState(String(prefill?.cookingTime ?? ''))
-  const [basePortions,    setBasePortions]    = useState(String(prefill?.basePortions ?? 4))
-  const [utensils,        setUtensils]        = useState('')
-  const [category,        setCategory]        = useState<RecipeCategory>(prefill ? 'MAIN' : 'OTHER')
-  const [steps,           setSteps]           = useState<RecipeStep[]>(prefill?.steps ?? [])
+  const [title,           setTitle]           = useState(initialData?.title ?? prefill?.title ?? '')
+  const [description,     setDescription]     = useState(initialData?.description ?? prefill?.description ?? '')
+  const [preparationTime, setPreparationTime] = useState(String(initialData?.preparationTime ?? prefill?.preparationTime ?? ''))
+  const [cookingTime,     setCookingTime]     = useState(String(initialData?.cookingTime ?? prefill?.cookingTime ?? ''))
+  const [basePortions,    setBasePortions]    = useState(String(initialData?.basePortions ?? prefill?.basePortions ?? 4))
+  const [utensils,        setUtensils]        = useState(initialData?.utensils ?? '')
+  const [category,        setCategory]        = useState<RecipeCategory>(initialData?.category ?? (prefill ? 'MAIN' : 'OTHER'))
+  const [steps,           setSteps]           = useState<RecipeStep[]>(initialData?.steps ?? prefill?.steps ?? [])
   const [saving,          setSaving]          = useState(false)
+  const [deleting,        setDeleting]        = useState(false)
   const [error,           setError]           = useState('')
 
   const scrapeError = prefill?.scrapeError ?? false
 
   // ── Ingrédients éditables ─────────────────────────────────────────────────
-  // Priorité : resolutions (du mapper) > matchStatus (fallback si mapper non affiché)
+  // Priorité : initialData (édition) > resolutions (mapper import) > matchStatus
   const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>(() => {
+    if (initialData) {
+      return initialData.ingredients.map(ing => ({
+        referenceId:     ing.referenceId,
+        label:           ing.reference.name,
+        displayQuantity: ing.displayQuantity,
+        quantity:        ing.quantity,
+        displayUnit:     ing.displayUnit,
+        isOptional:      ing.isOptional,
+        isIgnored:       ing.isIgnored,
+        isStaple:        ing.isStaple,
+      }))
+    }
     if (!prefill) return []
     return prefill.ingredients.flatMap(ing => {
       const base = {
@@ -126,7 +143,7 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
     const payload: CreateRecipePayload = {
       title:           title.trim(),
       description:     description.trim() || undefined,
-      imageLocal:      prefill?.imageLocal ?? '',
+      imageLocal:      initialData?.imageLocal ?? prefill?.imageLocal ?? '',
       preparationTime: preparationTime ? Number(preparationTime) : undefined,
       cookingTime:     cookingTime      ? Number(cookingTime)     : undefined,
       basePortions:    Number(basePortions) || 4,
@@ -139,13 +156,12 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
     }
 
     try {
-      const res = await fetch('/api/gamelle/recipes', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
-      })
-      const json = await res.json() as ApiResponse<RecipeWithIngredients>
+      const url    = isEdit ? `/api/gamelle/recipes/${initialData!.id}` : '/api/gamelle/recipes'
+      const method = isEdit ? 'PATCH' : 'POST'
+      const res    = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const json   = await res.json() as ApiResponse<RecipeWithIngredients>
       if (json.success && json.data) {
+        router.refresh()
         router.push('/gamelle/recettes')
       } else {
         setError(json.error ?? 'Erreur lors de la sauvegarde.')
@@ -154,6 +170,22 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
       setError('Erreur réseau.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // ── Suppression ───────────────────────────────────────────────────────────
+  async function handleDelete() {
+    if (!initialData) return
+    if (!confirm(`Supprimer "${initialData.title}" ? Cette action est irréversible.`)) return
+
+    setDeleting(true)
+    try {
+      await fetch(`/api/gamelle/recipes/${initialData.id}`, { method: 'DELETE' })
+      router.refresh()
+      router.push('/gamelle/recettes')
+    } catch {
+      setError('Erreur lors de la suppression.')
+      setDeleting(false)
     }
   }
 
@@ -373,12 +405,24 @@ export function RecipeForm({ prefill, resolutions }: RecipeFormProps) {
       {/* Sauvegarde */}
       <button
         onClick={() => void handleSave()}
-        disabled={saving || !title.trim()}
+        disabled={saving || deleting || !title.trim()}
         className="w-full py-3.5 rounded-xl font-mono text-sm font-medium disabled:opacity-40"
         style={{ background: 'var(--accent)', color: '#fff' }}
       >
-        {saving ? 'Enregistrement…' : 'Enregistrer la recette →'}
+        {saving ? 'Enregistrement…' : isEdit ? 'Enregistrer les modifications →' : 'Enregistrer la recette →'}
       </button>
+
+      {/* Suppression — mode édition uniquement */}
+      {isEdit && (
+        <button
+          onClick={() => void handleDelete()}
+          disabled={saving || deleting}
+          className="w-full py-3 rounded-xl font-mono text-sm disabled:opacity-40"
+          style={{ background: 'transparent', color: 'var(--danger)', border: '1px solid var(--danger)' }}
+        >
+          {deleting ? 'Suppression…' : 'Supprimer la recette'}
+        </button>
+      )}
     </div>
   )
 }

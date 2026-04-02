@@ -22,6 +22,7 @@ export function RecipeList() {
   const [filter,        setFilter]        = useState<Filter>('all')
   const [selected,      setSelected]      = useState<RecipeWithIngredients | null>(null)
   const [activeIds,     setActiveIds]     = useState<Set<string>>(new Set())
+  const [tick,          setTick]          = useState(0)
 
   const LIMIT = 30
 
@@ -58,7 +59,13 @@ export function RecipeList() {
 
   useEffect(() => {
     void fetchRecipes(page, search, filter)
-  }, [fetchRecipes, page, search, filter])
+  }, [fetchRecipes, page, search, filter, tick])
+
+  // Polling 30s — synchronise avec les ajouts de l'autre utilisateur
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   // Filtre "Rapides" côté client (≤ 30 min) — les autres filtres sont côté API
   const displayed = filter === 'quick'

@@ -82,7 +82,7 @@ function SlotRow({ slot, onRemove, onSelect }: { slot: PlanningSlotWithRecipe; o
         ) : null}
 
         <button
-          onClick={() => onRemove(slot.id)}
+          onClick={e => { e.stopPropagation(); onRemove(slot.id) }}
           className="p-1.5 rounded-lg"
           style={{ color: 'var(--muted)' }}
         >

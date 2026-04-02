@@ -83,6 +83,7 @@ export default function MenuPage() {
     try {
       await fetch(`/api/gamelle/planning/slots/${id}`, { method: 'DELETE' })
       setSlots(prev => prev.filter(s => s.id !== id))
+      setConsumeSlot(prev => (prev?.id === id ? null : prev))
       setCalendarKey(k => k + 1)
     } catch { /* ignore */ }
   }

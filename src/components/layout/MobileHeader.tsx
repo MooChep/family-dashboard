@@ -19,16 +19,25 @@ const PAGE_TITLES: Record<string, string> = {
   '/epargne/categories':          'Catégories',
   '/menage':                      'Ménage',
   '/projets':                     'Projets',
-  '/gamelle':                      'Gamelle',
-  '/parchemin':                       'Parchemin',
-  '/parchemin/new':                   'Nouvelle note',
-  '/parchemin/archive':               'Archives',
-  '/parchemin/preferences':           'Préférences',
+  '/gamelle':                     'Gamelle',
+  '/gamelle/recettes':            'Recettes',
+  '/gamelle/recettes/import':     'Import Jow',
+  '/gamelle/menu':                'Mon menu',
+  '/gamelle/courses':             'Courses',
+  '/gamelle/stock':               'Stock',
+  '/gamelle/config':              'Configuration',
+  '/parchemin':                   'Parchemin',
+  '/parchemin/new':               'Nouvelle note',
+  '/parchemin/archive':           'Archives',
+  '/parchemin/preferences':       'Préférences',
 }
 
 function getTitle(pathname: string): string {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
   if (pathname.startsWith('/parchemin/')) return 'Note'
+  if (pathname.startsWith('/gamelle/cuisine/')) return 'Mode cuisine'
+  if (pathname.endsWith('/edit')) return 'Modifier la recette'
+  if (pathname.startsWith('/gamelle/recettes/')) return 'Recette'
   return pathname.split('/').filter(Boolean).pop() ?? 'Dashboard'
 }
 
