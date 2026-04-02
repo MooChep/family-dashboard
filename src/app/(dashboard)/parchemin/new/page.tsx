@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, FileText, CheckSquare, List, ListOrdered, ChevronDown } from 'lucide-react'
-import { DatePickerFR } from '@/components/cerveau/DatePickerFR'
+import { DatePickerFR } from '@/components/ui/DatePickerFR'
 import type { NoteFormat, NoteWithRelations } from '@/lib/parchemin/types'
 
 const FORMAT_OPTIONS: { id: NoteFormat; icon: React.ElementType; label: string }[] = [

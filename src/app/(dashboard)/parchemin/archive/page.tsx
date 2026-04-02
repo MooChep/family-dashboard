@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, FileText, CheckSquare, List, ListOrdered, RotateCcw, Trash2 } from 'lucide-react'
-import { useCerveauToast, CerveauToast } from '@/components/cerveau/CerveauToast'
-import { formatRelative } from '@/lib/cerveau/formatDate'
+import { useCerveauToast, CerveauToast } from '@/components/ui/CerveauToast'
+import { formatRelative } from '@/lib/formatDate'
 import type { NoteWithRelations, NoteFormat } from '@/lib/parchemin/types'
 
 const FORMAT_ICONS: Record<NoteFormat, React.ElementType> = {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { CheckCircle, AlertCircle } from 'lucide-react'
-import type { ToastFn } from '@/lib/cerveau/hooks/useEntryActions'
+type ToastFn = (message: string, kind: 'success' | 'error', undo?: () => Promise<void>) => void
 
 type ToastState = {
   message: string

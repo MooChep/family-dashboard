@@ -8,7 +8,6 @@ import { ProfileModal } from '@/components/layout/ProfileModal'
 
 const PAGE_TITLES: Record<string, string> = {
   '/':                            'Fief',
-  '/cerveau':                     'Cerveau',
   '/epargne':                     'Butin',
   '/epargne/mois':                'Mois',
   '/epargne/analyses':            'Analyses',

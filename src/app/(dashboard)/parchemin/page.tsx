@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ScrollText, Bell, FileText, CheckSquare, List, ListOrdered, Plus, Pin, Archive } from 'lucide-react'
-import { SwipeableCard } from '@/components/cerveau/SwipeableCard'
-import { useCerveauToast, CerveauToast } from '@/components/cerveau/CerveauToast'
-import { formatRelative, formatCountdown } from '@/lib/cerveau/formatDate'
+import { SwipeableCard } from '@/components/ui/SwipeableCard'
+import { useCerveauToast, CerveauToast } from '@/components/ui/CerveauToast'
+import { formatRelative, formatCountdown } from '@/lib/formatDate'
 import type { NoteWithRelations, NoteFormat } from '@/lib/parchemin/types'
 
 const FORMAT_ICONS: Record<NoteFormat, React.ElementType> = {

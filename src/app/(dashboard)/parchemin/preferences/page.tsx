@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Bell, BellOff, Loader2, ArrowLeft, Send } from 'lucide-react'
-import { useCerveauToast, CerveauToast } from '@/components/cerveau/CerveauToast'
-import { subscribeToPush, requestNotificationPermission } from '@/lib/cerveau/notifications'
+import { useCerveauToast, CerveauToast } from '@/components/ui/CerveauToast'
+import { subscribeToPush, requestNotificationPermission } from '@/lib/notifications'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -17,7 +17,7 @@ export default function ParcheminPreferencesPage() {
 
   useEffect(() => {
     setPermissionGranted(typeof Notification !== 'undefined' && Notification.permission === 'granted')
-    void fetch('/api/cerveau/push/subscribe')
+    void fetch('/api/push/subscribe')
       .then(r => r.json())
       .then((data: { success: boolean; data: { subscribed: boolean } }) => {
         if (data.success) setIsSubscribed(data.data.subscribed)
@@ -51,7 +51,7 @@ export default function ParcheminPreferencesPage() {
   async function handleTestNotification() {
     setIsTesting(true)
     try {
-      const res  = await fetch('/api/cerveau/push/test', { method: 'POST' })
+      const res  = await fetch('/api/push/test', { method: 'POST' })
       const data = await res.json() as { success: boolean; error?: string }
       if (data.success) showToast('Notification envoyée !', 'success')
       else showToast(data.error ?? 'Erreur', 'error')
@@ -99,7 +99,7 @@ export default function ParcheminPreferencesPage() {
             }}
           >
             ⚠️ Notifications PWA — service worker inactif en développement.
-            Test manuel via GET /api/cerveau/push/schedule
+            Test manuel via GET /api/push/schedule
           </div>
         )}
 

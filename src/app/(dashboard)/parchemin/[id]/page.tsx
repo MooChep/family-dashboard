@@ -6,8 +6,8 @@ import {
   ArrowLeft, Bell, Pencil, CheckSquare, Square, FileText, List, ListOrdered, X, Plus,
   GripVertical, ListChecks, House,
 } from 'lucide-react'
-import { DatePickerFR } from '@/components/cerveau/DatePickerFR'
-import { useCerveauToast, CerveauToast } from '@/components/cerveau/CerveauToast'
+import { DatePickerFR } from '@/components/ui/DatePickerFR'
+import { useCerveauToast, CerveauToast } from '@/components/ui/CerveauToast'
 import type { NoteWithRelations, NoteFormat } from '@/lib/parchemin/types'
 import type { ParcheminItem } from '@prisma/client'
 

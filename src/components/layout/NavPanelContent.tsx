@@ -1,11 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { Suspense } from 'react'
-import { CategoryNav } from '@/components/cerveau/CategoryNav'
-import type { EntryType } from '@prisma/client'
 import {
   PiggyBank, ChefHat, CalendarDays, Settings2, LogOut,
   Castle,
@@ -68,16 +65,6 @@ const NAV_ITEMS: NavItem[] = [
 
 ]
 
-function CerveauFilterSection({ pathname }: { pathname: string }) {
-  const searchParams = useSearchParams()
-  const active = (searchParams.get('cat') as EntryType | null) ?? 'ALL'
-  if (!pathname.startsWith('/cerveau')) return null
-  return (
-    <div style={{ borderTop: '1px solid var(--border)' }}>
-      <CategoryNav active={active} layout="vertical" />
-    </div>
-  )
-}
 
 interface NavPanelContentProps {
   /** Fourni sur mobile : affiche le bouton ✕ et ferme le drawer au clic nav */
@@ -182,11 +169,6 @@ export function NavPanelContent({ onClose, onProfileOpen }: NavPanelContentProps
           )
         })}
       </nav>
-
-      {/* ─── Filtre Cerveau ────────────────────────────────────────────── */}
-      <Suspense>
-        <CerveauFilterSection pathname={pathname} />
-      </Suspense>
 
       {/* ─── Utilisateur ───────────────────────────────────────────────── */}
       <div

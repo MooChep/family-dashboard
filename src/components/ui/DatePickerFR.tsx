@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, forwardRef, useImperativeHandle } from 'react'
-import { formatDateLongFR, formatAbsolute } from '@/lib/cerveau/formatDate'
+import { formatDateLongFR, formatAbsolute } from '@/lib/formatDate'
 
 interface DatePickerFRProps {
   value:      string

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { DatePickerFR } from '@/components/cerveau/DatePickerFR'
+import { DatePickerFR } from '@/components/ui/DatePickerFR'
 
 interface NotifSheetProps {
   isOpen:    boolean
