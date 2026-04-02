@@ -11,18 +11,24 @@ export type GeneratedItem = {
 }
 
 /**
- * Génère la liste de courses à partir de tous les slots actifs.
+ * Génère la liste de courses à partir des slots actifs.
+ *
+ * @param slotIds - Si fourni, ne compile que ces slots. Sinon, tous les slots actifs.
  *
  * Ordre des opérations (spec 7.3) :
- * 1. Compiler les ingrédients des slots actifs (isIgnored=false, isStaple=false)
- * 2. Fusionner par referenceId (quantity en base units — pas de conflit d'unités)
+ * 1. Compiler les ingrédients des slots sélectionnés (isIgnored=false, isStaple=false)
+ * 2. Fusionner par referenceId (quantity en base units)
  * 3. Déduire Inventory.quantity
- * 4. Filtrer les items ≤ 0
+ * 4. Filtrer les items <= 0
  * 5. Trier par rayon (Aisle.order)
  */
-export async function generateShoppingList(prisma: PrismaClient): Promise<GeneratedItem[]> {
-  // 1. Tous les slots avec ingrédients actifs
+export async function generateShoppingList(
+  prisma: PrismaClient,
+  slotIds?: string[],
+): Promise<GeneratedItem[]> {
+  // 1. Slots sélectionnés ou tous les slots actifs
   const slots = await prisma.planningSlot.findMany({
+    where: slotIds ? { id: { in: slotIds } } : undefined,
     include: {
       recipe: {
         include: {
@@ -39,7 +45,10 @@ export async function generateShoppingList(prisma: PrismaClient): Promise<Genera
     },
   })
 
-  const activeSlots = slots.filter(s => s.portionsConsumed < s.portions)
+  // Si slotIds fournis = sélection explicite ; sinon filtrer sur actifs
+  const activeSlots = slotIds
+    ? slots
+    : slots.filter(s => s.portionsConsumed < s.portions)
 
   // 2. Compiler + fusionner par referenceId
   const needed = new Map<string, {

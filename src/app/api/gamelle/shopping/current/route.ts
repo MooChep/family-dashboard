@@ -11,8 +11,8 @@ const ITEMS_ORDERBY = [
 
 /**
  * GET /api/gamelle/shopping/current
- * Retourne la liste de courses active (la plus récente) avec ses items.
- * Retourne null si aucune liste n'existe.
+ * Retourne la liste de courses la plus récente avec ses items, son statut et ses recettes liées.
+ * Retourne null si aucune liste n'existe ou si la dernière est ARCHIVED.
  */
 export async function GET(_request: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions)
@@ -25,8 +25,14 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         orderBy: ITEMS_ORDERBY,
         include: { reference: { include: { aisle: true } } },
       },
+      recipes: {
+        include: { recipe: { select: { id: true, title: true, imageLocal: true } } },
+      },
     },
   })
 
-  return NextResponse.json(list ?? null)
+  // Une liste archivée est terminée — on retourne null pour proposer d'en générer une nouvelle
+  if (!list || list.status === 'ARCHIVED') return NextResponse.json(null)
+
+  return NextResponse.json(list)
 }
