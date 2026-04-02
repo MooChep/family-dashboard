@@ -133,7 +133,7 @@ model BankAccount {
 
 model Reconciliation {
   id           String                @id @default(cuid())
-  month        DateTime              @unique
+  month        DateTime
   totalReal    Float
   totalBdd     Float
   gap          Float

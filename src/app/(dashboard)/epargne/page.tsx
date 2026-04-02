@@ -47,8 +47,8 @@ export default function EpargneDashboard(): ReactElement {
       ])
       if (!dashRes.ok) throw new Error('Erreur chargement dashboard')
       setData(await dashRes.json() as DashboardData)
-      const regulData = await regulRes.json() as Record<string, unknown> | null
-      setRegulDone(regulData !== null)
+      const regulData = await regulRes.json() as Record<string, unknown>[]
+      setRegulDone(regulData.length > 0)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue')
     } finally {
