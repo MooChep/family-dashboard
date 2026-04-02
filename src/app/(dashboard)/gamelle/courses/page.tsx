@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, CheckCircle2 } from 'lucide-react'
+import { RefreshCw, CheckCircle2, ChevronLeft } from 'lucide-react'
 import { CheckPlacard } from '@/components/gamelle/shopping/CheckPlacard'
 import { ShoppingList }  from '@/components/gamelle/shopping/ShoppingList'
+import { RecipeSelector } from '@/components/gamelle/shopping/RecipeSelector'
 import type { ShoppingItem } from '@/components/gamelle/shopping/CheckPlacard'
 
 type LinkedRecipe = {
@@ -27,10 +28,11 @@ const POLL_INTERVAL = 5_000
  * Le statut en base pilote la vue affichée — pas de state local volatile.
  */
 export default function CoursesPage() {
-  const [list,       setList]       = useState<ShoppingListData | null>(null)
-  const [loading,    setLoading]    = useState(true)
-  const [generating, setGenerating] = useState(false)
-  const [archiving,  setArchiving]  = useState(false)
+  const [list,        setList]        = useState<ShoppingListData | null>(null)
+  const [loading,     setLoading]     = useState(true)
+  const [generating,  setGenerating]  = useState(false)
+  const [archiving,   setArchiving]   = useState(false)
+  const [showSelector, setShowSelector] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => { void loadCurrent() }, [])
@@ -56,16 +58,17 @@ export default function CoursesPage() {
     }
   }
 
-  async function handleGenerate() {
+  async function handleGenerate(slotIds: string[]) {
     setGenerating(true)
     try {
       const res  = await fetch('/api/gamelle/shopping/generate', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({}),
+        body:    JSON.stringify({ slotIds }),
       })
       const data = await res.json() as ShoppingListData
       setList(data)
+      setShowSelector(false)
     } catch { /* ignore */ } finally {
       setGenerating(false)
     }
@@ -142,26 +145,15 @@ export default function CoursesPage() {
     )
   }
 
-  if (!list) {
+  if (!list || showSelector) {
     return (
       <div className="flex flex-col min-h-screen" style={{ background: 'var(--bg)' }}>
-        <PageHeader />
-        <div className="flex flex-col items-center justify-center gap-4 flex-1 px-8 text-center">
-          <span className="text-4xl">🛒</span>
-          <p className="font-display text-base font-semibold" style={{ color: 'var(--text)' }}>
-            Aucune liste de courses
-          </p>
-          <p className="font-body text-sm" style={{ color: 'var(--muted)' }}>
-            Génère une liste depuis les recettes de ton menu.
-          </p>
-          <button
-            onClick={() => void handleGenerate()}
-            disabled={generating}
-            className="px-5 py-3 rounded-xl font-mono text-sm font-medium disabled:opacity-40"
-            style={{ background: 'var(--accent)', color: '#fff' }}
-          >
-            {generating ? 'Génération…' : 'Générer la liste'}
-          </button>
+        <PageHeader showBack={showSelector} onBack={() => setShowSelector(false)} />
+        <div className="flex-1 overflow-y-auto">
+          <RecipeSelector
+            onConfirm={slotIds => void handleGenerate(slotIds)}
+            loading={generating}
+          />
         </div>
       </div>
     )
@@ -174,7 +166,7 @@ export default function CoursesPage() {
   return (
     <div className="flex flex-col min-h-screen" style={{ background: 'var(--bg)' }}>
       <PageHeader
-        onRegenerate={list.status === 'DRAFT' ? handleGenerate : undefined}
+        onRegenerate={list.status === 'DRAFT' ? () => setShowSelector(true) : undefined}
         generating={generating}
       />
 
@@ -226,18 +218,28 @@ export default function CoursesPage() {
 function PageHeader({
   onRegenerate,
   generating,
+  showBack,
+  onBack,
 }: {
   onRegenerate?: () => void
-  generating?: boolean
+  generating?:   boolean
+  showBack?:     boolean
+  onBack?:       () => void
 }) {
   return (
     <div
       className="flex items-center justify-between px-4 py-3 shrink-0"
       style={{ borderBottom: '1px solid var(--border)' }}
     >
-      <h1 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
-        Courses
-      </h1>
+      {showBack ? (
+        <button onClick={onBack} className="p-1 rounded-lg" style={{ color: 'var(--muted)' }}>
+          <ChevronLeft size={20} />
+        </button>
+      ) : (
+        <h1 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+          Courses
+        </h1>
+      )}
       {onRegenerate && (
         <button
           onClick={onRegenerate}
