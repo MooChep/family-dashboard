@@ -7,7 +7,6 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { MobileHeader } from '@/components/layout/MobileHeader'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { BottomNav } from '@/components/layout/BottomNav'
-import { CerveauBottomNav } from '@/components/layout/CerveauBottomNav'
 import { ParcheminBottomNav } from '@/components/layout/ParcheminBottomNav'
 
 export default async function DashboardLayout({
@@ -38,7 +37,6 @@ export default async function DashboardLayout({
             {children}
           </PageWrapper>
           <BottomNav />
-          <CerveauBottomNav />
           <ParcheminBottomNav />
         </div>
       </div>
