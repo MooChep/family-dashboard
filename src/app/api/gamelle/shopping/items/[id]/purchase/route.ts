@@ -5,10 +5,10 @@ import { prisma } from '@/lib/prisma'
 
 /**
  * PATCH /api/gamelle/shopping/items/[id]/purchase
- * Marque un item comme acheté et met à jour l'inventaire.
- * body: { quantity: number; unit: string }
- *   – quantity + unit : quantité réellement achetée
- * L'inventaire est mis à jour en unités de base.
+ * Marque un item comme acheté ou annule l'achat.
+ * body: { quantity?: number; unit?: string; purchased?: boolean }
+ *   – purchased: false → annulation (purchasedQuantity: null, pas de rollback stock)
+ *   – quantity + unit : quantité réellement achetée (achat)
  */
 export async function PATCH(
   request: NextRequest,
@@ -23,29 +23,32 @@ export async function PATCH(
   })
   if (!item) return NextResponse.json({ error: 'Item introuvable' }, { status: 404 })
 
-  let quantity: number
-  let unit: string
-  try {
-    const body = await request.json() as { quantity?: number; unit?: string }
-    quantity = body.quantity ?? (item.quantity ?? 0)
-    unit     = body.unit     ?? (item.displayUnit ?? '')
-  } catch {
-    quantity = item.quantity ?? 0
-    unit     = item.displayUnit ?? ''
+  let body: { quantity?: number; unit?: string; purchased?: boolean } = {}
+  try { body = await request.json() as typeof body } catch { /* ignore */ }
+
+  // Annulation d'achat — pas de rollback stock (trop complexe, peu utile)
+  if (body.purchased === false) {
+    const updated = await prisma.shoppingListItem.update({
+      where:   { id: params.id },
+      data:    { purchased: false, purchasedQuantity: null },
+      include: { reference: { include: { aisle: true } } },
+    })
+    return NextResponse.json(updated)
   }
 
-  // Conversion vers l'unité de base pour l'inventaire
-  const baseUnit         = item.reference?.baseUnit ?? 'UNIT'
-  const quantityInBase   = _toBaseUnits(quantity, unit, baseUnit)
-  const purchasedQuantity = quantityInBase
+  // Achat
+  const quantity = body.quantity ?? (item.quantity ?? 0)
+  const unit     = body.unit     ?? (item.displayUnit ?? '')
+
+  const baseUnit        = item.reference?.baseUnit ?? 'UNIT'
+  const quantityInBase  = _toBaseUnits(quantity, unit, baseUnit)
 
   await prisma.$transaction(async tx => {
     await tx.shoppingListItem.update({
       where: { id: params.id },
-      data:  { purchased: true, purchasedQuantity },
+      data:  { purchased: true, purchasedQuantity: quantityInBase },
     })
 
-    // Mise à jour inventaire si l'item a un ingrédient référencé
     if (item.referenceId && quantityInBase > 0) {
       await tx.inventory.upsert({
         where:  { referenceId: item.referenceId },

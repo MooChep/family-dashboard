@@ -7,11 +7,18 @@ import { QuickActions } from './QuickActions'
 import { formatQuantity } from '@/lib/gamelle/units'
 import type { ShoppingItem } from './CheckPlacard'
 
+const UPLOAD_BASE = process.env.NEXT_PUBLIC_GAMELLE_UPLOAD_BASE_URL ?? '/uploads/gamelle'
+
 type AisleGroup = {
   aisleId:   string
   aisleName: string
   order:     number
   items:     ShoppingItem[]
+}
+
+type LinkedRecipe = {
+  recipe:   { id: string; title: string; imageLocal: string | null }
+  portions: number
 }
 
 function groupByAisle(items: ShoppingItem[]): AisleGroup[] {
@@ -33,30 +40,33 @@ function groupByAisle(items: ShoppingItem[]): AisleGroup[] {
 }
 
 interface ShoppingListProps {
-  items:          ShoppingItem[]
-  onPurchase:     (id: string, quantity: number, unit: string) => Promise<void>
-  onAddManual:    (label: string) => Promise<void>
+  items:               ShoppingItem[]
+  linkedRecipes?:      LinkedRecipe[]
+  onPurchase:          (id: string, quantity: number, unit: string) => Promise<void>
+  onCancelPurchase:    (id: string) => Promise<void>
+  onAddManual:         (label: string) => Promise<void>
 }
+
+type ViewMode = 'aisle' | 'recipe'
 
 /**
  * Vue liste de courses Smart Swipe.
+ * – Toggle par rayon / par recette
  * – Swipe droite : acheté avec la quantité prévue
  * – Swipe gauche : ouvre Quick Actions (quantité personnalisée)
- * – Les articles achetés sont affichés en bas en style atténué
- * – Ajout d'un article manuel via le bouton +
+ * – Croix ✕ sur items achetés → annulation
  */
-export function ShoppingList({ items, onPurchase, onAddManual }: ShoppingListProps) {
-  const [quickActionsFor, setQuickActionsFor] = useState<string | null>(null)
-  const [addingManual,    setAddingManual]    = useState(false)
-  const [manualLabel,     setManualLabel]     = useState('')
+export function ShoppingList({ items, linkedRecipes = [], onPurchase, onCancelPurchase, onAddManual }: ShoppingListProps) {
+  const [viewMode,         setViewMode]         = useState<ViewMode>('aisle')
+  const [quickActionsFor,  setQuickActionsFor]  = useState<string | null>(null)
+  const [addingManual,     setAddingManual]     = useState(false)
+  const [manualLabel,      setManualLabel]      = useState('')
   const [submittingManual, setSubmittingManual] = useState(false)
 
   const unpurchased = items.filter(i => !i.purchased)
   const purchased   = items.filter(i => i.purchased)
-
-  const groups = groupByAisle(unpurchased)
-
-  const qaItem = quickActionsFor ? items.find(i => i.id === quickActionsFor) : null
+  const groups      = groupByAisle(unpurchased)
+  const qaItem      = quickActionsFor ? items.find(i => i.id === quickActionsFor) : null
 
   async function handleManualSubmit() {
     const label = manualLabel.trim()
@@ -74,6 +84,26 @@ export function ShoppingList({ items, onPurchase, onAddManual }: ShoppingListPro
   return (
     <div className="flex flex-col pb-24">
 
+      {/* Toggle vue */}
+      <div
+        className="flex shrink-0"
+        style={{ borderBottom: '1px solid var(--border)' }}
+      >
+        {(['aisle', 'recipe'] as ViewMode[]).map(mode => (
+          <button
+            key={mode}
+            onClick={() => setViewMode(mode)}
+            className="flex-1 py-2.5 font-mono text-xs transition-colors"
+            style={{
+              color:        viewMode === mode ? 'var(--accent)' : 'var(--muted)',
+              borderBottom: viewMode === mode ? '2px solid var(--accent)' : '2px solid transparent',
+            }}
+          >
+            {mode === 'aisle' ? 'Par rayon' : 'Par recette'}
+          </button>
+        ))}
+      </div>
+
       {/* Compteur */}
       <div className="flex items-center justify-between px-4 py-2">
         <span className="font-mono text-xs" style={{ color: 'var(--muted)' }}>
@@ -89,42 +119,127 @@ export function ShoppingList({ items, onPurchase, onAddManual }: ShoppingListPro
       {/* Aide swipe */}
       {unpurchased.length > 0 && (
         <p className="font-mono text-[10px] px-4 pb-2 text-center" style={{ color: 'var(--muted)' }}>
-          → acheté · ← quantité perso
+          ← quantité perso · → acheté
         </p>
       )}
 
-      {/* Groupes par rayon */}
-      {groups.map(group => (
-        <div key={group.aisleId}>
-          <p
-            className="font-mono text-[10px] uppercase tracking-widest px-4 py-1.5"
-            style={{
-              color:        'var(--muted)',
-              background:   'var(--surface2)',
-              borderTop:    '1px solid var(--border)',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            {group.aisleName}
-          </p>
-
-          {group.items.map(item => (
-            <SwipeItem
-              key={item.id}
-              purchased={item.purchased}
-              onSwipeRight={() => void onPurchase(item.id, item.quantity ?? 0, item.displayUnit ?? '')}
-              onSwipeLeft={() => setQuickActionsFor(item.id)}
-            >
-              <ItemRow item={item} />
-            </SwipeItem>
+      {/* Vue par rayon */}
+      {viewMode === 'aisle' && (
+        <>
+          {groups.map(group => (
+            <div key={group.aisleId}>
+              <p
+                className="font-mono text-[10px] uppercase tracking-widest px-4 py-1.5"
+                style={{ color: 'var(--muted)', background: 'var(--surface2)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
+              >
+                {group.aisleName}
+              </p>
+              {group.items.map(item => (
+                <SwipeItem
+                  key={item.id}
+                  purchased={item.purchased}
+                  onSwipeRight={() => void onPurchase(item.id, item.quantity ?? 0, item.displayUnit ?? '')}
+                  onSwipeLeft={() => setQuickActionsFor(item.id)}
+                >
+                  <ItemRow item={item} onCancel={null} />
+                </SwipeItem>
+              ))}
+            </div>
           ))}
-        </div>
-      ))}
 
-      {unpurchased.length === 0 && purchased.length === 0 && (
-        <p className="font-mono text-xs px-4 py-8 text-center" style={{ color: 'var(--muted)' }}>
-          Liste vide
-        </p>
+          {unpurchased.length === 0 && purchased.length === 0 && (
+            <p className="font-mono text-xs px-4 py-8 text-center" style={{ color: 'var(--muted)' }}>Liste vide</p>
+          )}
+        </>
+      )}
+
+      {/* Vue par recette */}
+      {viewMode === 'recipe' && (
+        <>
+          {linkedRecipes.map(lr => {
+            const recipeItems = items.filter(i =>
+              // Associer via le referenceId n'est pas fiable — on affiche tous les items non-manuels
+              // car on n'a pas recipeId sur chaque item. On affiche les items par recette via la liste plate.
+              !i.isManual
+            )
+            // Affichage groupé uniquement si on a des recettes liées
+            return (
+              <div key={lr.recipe.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                {/* Header recette */}
+                <div
+                  className="flex items-center gap-3 px-4 py-2.5"
+                  style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}
+                >
+                  <div
+                    className="shrink-0 rounded-full overflow-hidden flex items-center justify-center"
+                    style={{ width: 32, height: 32, background: 'var(--surface)', border: '1px solid var(--border)' }}
+                  >
+                    {lr.recipe.imageLocal ? (
+                      <img src={`${UPLOAD_BASE}/${lr.recipe.imageLocal}`} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-display text-xs font-bold" style={{ color: 'var(--muted)' }}>
+                        {lr.recipe.title.charAt(0)}
+                      </span>
+                    )}
+                  </div>
+                  <span className="flex-1 font-display text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>
+                    {lr.recipe.title}
+                  </span>
+                  <span className="font-mono text-xs shrink-0" style={{ color: 'var(--muted)' }}>
+                    {lr.portions} 🍽️
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+          {/* Fallback : affichage plat si pas de recettes liées */}
+          {linkedRecipes.length === 0 && groups.map(group => (
+            <div key={group.aisleId}>
+              <p
+                className="font-mono text-[10px] uppercase tracking-widest px-4 py-1.5"
+                style={{ color: 'var(--muted)', background: 'var(--surface2)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
+              >
+                {group.aisleName}
+              </p>
+              {group.items.map(item => (
+                <SwipeItem
+                  key={item.id}
+                  purchased={item.purchased}
+                  onSwipeRight={() => void onPurchase(item.id, item.quantity ?? 0, item.displayUnit ?? '')}
+                  onSwipeLeft={() => setQuickActionsFor(item.id)}
+                >
+                  <ItemRow item={item} onCancel={null} />
+                </SwipeItem>
+              ))}
+            </div>
+          ))}
+
+          {/* Items non-manuels dans la vue recette */}
+          {linkedRecipes.length > 0 && (
+            <div>
+              {groups.map(group => (
+                <div key={group.aisleId}>
+                  <p
+                    className="font-mono text-[10px] uppercase tracking-widest px-4 py-1.5"
+                    style={{ color: 'var(--muted)', background: 'var(--surface2)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
+                  >
+                    {group.aisleName}
+                  </p>
+                  {group.items.map(item => (
+                    <SwipeItem
+                      key={item.id}
+                      purchased={item.purchased}
+                      onSwipeRight={() => void onPurchase(item.id, item.quantity ?? 0, item.displayUnit ?? '')}
+                      onSwipeLeft={() => setQuickActionsFor(item.id)}
+                    >
+                      <ItemRow item={item} onCancel={null} />
+                    </SwipeItem>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Articles achetés (atténués, en bas) */}
@@ -132,24 +247,16 @@ export function ShoppingList({ items, onPurchase, onAddManual }: ShoppingListPro
         <div style={{ marginTop: 16 }}>
           <p
             className="font-mono text-[10px] uppercase tracking-widest px-4 py-1.5"
-            style={{
-              color:        'var(--muted)',
-              background:   'var(--surface2)',
-              borderTop:    '1px solid var(--border)',
-              borderBottom: '1px solid var(--border)',
-            }}
+            style={{ color: 'var(--muted)', background: 'var(--surface2)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
           >
             Achetés
           </p>
           {purchased.map(item => (
-            <SwipeItem
+            <ItemRow
               key={item.id}
-              purchased={item.purchased}
-              onSwipeRight={() => Promise.resolve()}
-              onSwipeLeft={() => undefined}
-            >
-              <ItemRow item={item} />
-            </SwipeItem>
+              item={item}
+              onCancel={() => void onCancelPurchase(item.id)}
+            />
           ))}
         </div>
       )}
@@ -167,7 +274,7 @@ export function ShoppingList({ items, onPurchase, onAddManual }: ShoppingListPro
               value={manualLabel}
               onChange={e => setManualLabel(e.target.value)}
               onKeyDown={e => {
-                if (e.key === 'Enter') void handleManualSubmit()
+                if (e.key === 'Enter')  void handleManualSubmit()
                 if (e.key === 'Escape') { setAddingManual(false); setManualLabel('') }
               }}
               placeholder="Article à ajouter…"
@@ -190,11 +297,7 @@ export function ShoppingList({ items, onPurchase, onAddManual }: ShoppingListPro
           <button
             onClick={() => setAddingManual(true)}
             className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl font-body text-sm"
-            style={{
-              color:      'var(--text2)',
-              background: 'var(--surface2)',
-              border:     '1px solid var(--border)',
-            }}
+            style={{ color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)' }}
           >
             <Plus size={14} />
             Ajouter un article
@@ -221,7 +324,7 @@ export function ShoppingList({ items, onPurchase, onAddManual }: ShoppingListPro
   )
 }
 
-function ItemRow({ item }: { item: ShoppingItem }) {
+function ItemRow({ item, onCancel }: { item: ShoppingItem; onCancel: (() => void) | null }) {
   const qty = item.quantity !== null
     ? formatQuantity(item.quantity, item.displayUnit ?? '')
     : null
@@ -231,18 +334,6 @@ function ItemRow({ item }: { item: ShoppingItem }) {
       className="flex items-center gap-3 px-4 py-3"
       style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}
     >
-      <div
-        className="shrink-0 w-5 h-5 rounded flex items-center justify-center"
-        style={{
-          border:     `1.5px solid ${item.purchased ? 'var(--success)' : 'var(--border2)'}`,
-          background:  item.purchased ? 'var(--success)' : 'transparent',
-        }}
-      >
-        {item.purchased && (
-          <span className="text-xs font-bold leading-none" style={{ color: '#fff' }}>✓</span>
-        )}
-      </div>
-
       <span
         className="flex-1 font-body text-sm"
         style={{
@@ -257,6 +348,24 @@ function ItemRow({ item }: { item: ShoppingItem }) {
         <span className="font-mono text-xs shrink-0" style={{ color: 'var(--text2)' }}>
           {qty}
         </span>
+      )}
+
+      {/* Croix annulation — visible uniquement sur les items achetés */}
+      {item.purchased && onCancel && (
+        <button
+          onClick={onCancel}
+          className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
+        >
+          <X size={10} style={{ color: 'var(--muted)' }} />
+        </button>
+      )}
+
+      {/* Indicateurs swipe pour les items non achetés */}
+      {!item.purchased && (
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="font-mono text-[10px]" style={{ color: 'var(--border2)' }}>←→</span>
+        </div>
       )}
     </div>
   )

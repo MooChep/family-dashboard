@@ -112,6 +112,21 @@ export default function CoursesPage() {
     } catch { await loadCurrent() }
   }
 
+  async function handleCancelPurchase(id: string) {
+    if (!list) return
+    setList(prev => prev ? {
+      ...prev,
+      items: prev.items.map(i => i.id === id ? { ...i, purchased: false } : i),
+    } : null)
+    try {
+      await fetch(`/api/gamelle/shopping/items/${id}/purchase`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ purchased: false }),
+      })
+    } catch { await loadCurrent() }
+  }
+
   async function handleAddManual(label: string) {
     if (!list) return
     try {
@@ -184,7 +199,9 @@ export default function CoursesPage() {
         {list.status === 'ACTIVE' && (
           <ShoppingList
             items={list.items.filter(i => !i.skipped)}
+            linkedRecipes={list.recipes}
             onPurchase={handlePurchase}
+            onCancelPurchase={handleCancelPurchase}
             onAddManual={handleAddManual}
           />
         )}
