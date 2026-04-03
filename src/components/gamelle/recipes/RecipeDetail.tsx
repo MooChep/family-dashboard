@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { X, Pencil, ChefHat, Minus, Plus } from 'lucide-react'
+import { X, Pencil, ChefHat, Minus, Plus, Heart } from 'lucide-react'
 import { displayFraction } from '@/lib/gamelle/fractions'
 import type { RecipeWithIngredients } from '@/lib/gamelle/types'
 
@@ -29,12 +29,39 @@ function formatIngredientQty(displayQuantity: number, displayUnit: string, mult:
  */
 export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeDetailProps) {
   const [portions, setPortions] = useState(2)
+  const [liked,    setLiked]    = useState(false)
+  const [liking,   setLiking]   = useState(false)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
+
+  // Charger l'état du like au montage
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res  = await fetch(`/api/gamelle/recipes/liked`)
+        const json = await res.json() as { success: boolean; data: { data: { id: string }[] } }
+        if (json.success) {
+          setLiked(json.data.data.some(r => r.id === recipe.id))
+        }
+      } catch { /* ignore */ }
+    })()
+  }, [recipe.id])
+
+  async function handleToggleLike() {
+    if (liking) return
+    setLiking(true)
+    try {
+      const res  = await fetch(`/api/gamelle/recipes/${recipe.id}/like`, { method: 'POST' })
+      const data = await res.json() as { liked: boolean }
+      setLiked(data.liked)
+    } catch { /* ignore */ } finally {
+      setLiking(false)
+    }
+  }
 
   const mult = portions / (recipe.basePortions || 1)
 
@@ -54,6 +81,14 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
         >
           {recipe.title}
         </h1>
+        <button
+          onClick={() => void handleToggleLike()}
+          disabled={liking}
+          className="p-1 rounded-lg disabled:opacity-40"
+          style={{ color: liked ? 'var(--danger, #e74c3c)' : 'var(--muted)' }}
+        >
+          <Heart size={18} fill={liked ? 'currentColor' : 'none'} />
+        </button>
         <Link
           href={`/gamelle/recettes/${recipe.id}/edit`}
           className="p-1 rounded-lg"

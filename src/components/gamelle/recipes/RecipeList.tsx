@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, X } from 'lucide-react'
+import { Search, X, Heart } from 'lucide-react'
 import { RecipeCard } from './RecipeCard'
 import { RecipeDetail } from './RecipeDetail'
 import type { RecipeWithIngredients, PaginatedResponse, ApiResponse, RecipeCategory } from '@/lib/gamelle/types'
@@ -82,13 +82,22 @@ export function RecipeList() {
           <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text)' }}>
             Recettes
           </h1>
-          <Link
-            href="/gamelle/recettes/import"
-            className="font-mono text-xs px-3 py-1.5 rounded-lg"
-            style={{ background: 'var(--accent)', color: '#fff' }}
-          >
-            + Importer
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/gamelle/recettes/liked"
+              className="p-1.5 rounded-lg flex items-center"
+              style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
+            >
+              <Heart size={14} />
+            </Link>
+            <Link
+              href="/gamelle/recettes/import"
+              className="font-mono text-xs px-3 py-1.5 rounded-lg"
+              style={{ background: 'var(--accent)', color: '#fff' }}
+            >
+              + Importer
+            </Link>
+          </div>
         </div>
 
         {/* Recherche */}

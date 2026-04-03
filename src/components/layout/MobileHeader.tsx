@@ -22,6 +22,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/gamelle':                     'Gamelle',
   '/gamelle/recettes':            'Recettes',
   '/gamelle/recettes/import':     'Import Jow',
+  '/gamelle/recettes/liked':      'Favoris',
   '/gamelle/menu':                'Mon menu',
   '/gamelle/courses':             'Courses',
   '/gamelle/stock':               'Stock',
