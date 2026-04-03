@@ -27,6 +27,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/gamelle/courses':             'Courses',
   '/gamelle/stock':               'Stock',
   '/gamelle/config':              'Configuration',
+  '/gamelle/ingredients':         'Dictionnaire',
   '/gamelle/stats':               'Statistiques',
   '/parchemin':                   'Parchemin',
   '/parchemin/new':               'Nouvelle note',
