@@ -7,19 +7,21 @@ import type { RecipeCardData, PlanningSlotWithRecipe, CreateSlotPayload, Period 
 const UPLOAD_BASE = process.env.NEXT_PUBLIC_GAMELLE_UPLOAD_BASE_URL ?? '/uploads/gamelle'
 
 interface AddToMenuSheetProps {
-  recipe:    RecipeCardData
-  onConfirm: (slot: PlanningSlotWithRecipe) => void
-  onClose:   () => void
+  recipe:        RecipeCardData
+  initialDate?:  string
+  initialPeriod?: Period
+  onConfirm:     (slot: PlanningSlotWithRecipe) => void
+  onClose:       () => void
 }
 
 /**
  * Bottom sheet d'ajout d'une recette au menu.
  * Sélecteur portions + date optionnelle + période (Midi/Soir).
  */
-export function AddToMenuSheet({ recipe, onConfirm, onClose }: AddToMenuSheetProps) {
+export function AddToMenuSheet({ recipe, initialDate, initialPeriod, onConfirm, onClose }: AddToMenuSheetProps) {
   const [portions, setPortions] = useState(2)
-  const [date,     setDate]     = useState('')
-  const [period,   setPeriod]   = useState<Period>('DINNER')
+  const [date,     setDate]     = useState(initialDate ?? '')
+  const [period,   setPeriod]   = useState<Period>(initialPeriod ?? 'DINNER')
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
 
