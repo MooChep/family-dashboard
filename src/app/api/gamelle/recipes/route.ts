@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import Fuse from 'fuse.js'
 import type {
   ApiResponse,
   PaginatedResponse,
@@ -37,22 +38,40 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   try {
     const where = {
-      ...(search   ? { title:    { contains: search } } : {}),
       ...(category ? { category: category as import('@prisma/client').RecipeCategory } : {}),
     }
 
-    const [recipes, total] = await Promise.all([
-      prisma.recipe.findMany({
-        where,
-        include: RECIPE_INCLUDE,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.recipe.count({ where }),
-    ])
+    // Charger toutes les recettes (filtrées par catégorie si demandé) pour le fuzzy search
+    const allRecipes = await prisma.recipe.findMany({
+      where,
+      include: RECIPE_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    })
 
-    const data = recipes.map(r => ({ ...r, steps: parseSteps(r) }))
+    const allParsed = allRecipes.map(r => ({
+      ...r,
+      steps:           parseSteps(r),
+      ingredientNames: r.ingredients.map((i: { reference: { name: string } }) => i.reference.name).join(' '),
+    }))
+
+    // Fuzzy search avec fuse.js si recherche non vide
+    let filtered = allParsed
+    if (search) {
+      const fuse = new Fuse(allParsed, {
+        keys: [
+          { name: 'title',           weight: 0.5 },
+          { name: 'description',     weight: 0.2 },
+          { name: 'ingredientNames', weight: 0.3 },
+        ],
+        threshold:    0.4,
+        includeScore: true,
+      })
+      filtered = fuse.search(search).map(r => r.item)
+    }
+
+    const total = filtered.length
+    const data  = filtered.slice((page - 1) * limit, page * limit)
+
     return Response.json({
       success: true,
       data: { data, total, page, limit },
