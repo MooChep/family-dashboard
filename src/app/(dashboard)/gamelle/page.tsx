@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import { ChefHat, ShoppingCart, CalendarDays, Archive, ChevronRight } from 'lucide-react'
+import { ChefHat, ShoppingCart, CalendarDays, Archive, ChevronRight, Sparkles, BarChart2 } from 'lucide-react'
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { formatQuantity } from '@/lib/gamelle/units'
+import { SuggestionsPanel } from '@/components/gamelle/suggestions/SuggestionsPanel'
 
 export const metadata = { title: 'Gamelle' }
 
@@ -98,7 +99,7 @@ export default async function GamellePage() {
         >
           <ChefHat size={18} style={{ color: '#fff' }} />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="font-display text-xl font-semibold leading-none" style={{ color: 'var(--text)' }}>
             La Gamelle
           </h1>
@@ -106,6 +107,9 @@ export default async function GamellePage() {
             Recettes · Menu · Courses · Stock
           </p>
         </div>
+        <Link href="/gamelle/stats" className="p-2 rounded-xl" style={{ color: 'var(--muted)' }}>
+          <BarChart2 size={18} />
+        </Link>
       </div>
 
       {/* ── Widget Courses ──────────────────────────────────────────────────── */}
@@ -285,6 +289,24 @@ export default async function GamellePage() {
               </div>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* ── Widget Suggestions anti-gaspillage ──────────────────────────────── */}
+      <section className="mb-4">
+        <div className="flex items-center justify-between px-4 mb-2">
+          <div className="flex items-center gap-2">
+            <Sparkles size={14} style={{ color: 'var(--accent)' }} />
+            <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+              À cuisiner
+            </span>
+          </div>
+        </div>
+        <div
+          className="mx-4 rounded-2xl overflow-hidden"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+        >
+          <SuggestionsPanel limit={3} />
         </div>
       </section>
 
