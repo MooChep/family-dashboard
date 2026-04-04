@@ -46,7 +46,7 @@ export default function LikedRecipesPage() {
             Aucun favori
           </p>
           <p className="font-body text-sm" style={{ color: 'var(--muted)' }}>
-            Appuie sur le cœur dans une fiche recette pour l&apos;ajouter à tes favoris.
+            Appuie sur le coeur dans une fiche recette pour l&apos;ajouter à tes favoris.
           </p>
         </div>
       ) : (

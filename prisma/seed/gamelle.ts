@@ -9,30 +9,36 @@ import { PrismaClient, BaseUnit } from '@prisma/client'
 export async function seedGamelle(prisma: PrismaClient): Promise<void> {
   console.log('🥘 Seeding Gamelle — rayons + ingrédients...')
 
-  // ── 1. Rayons ─────────────────────────────────────────────────────────────
+ // ── 1. Rayons ─────────────────────────────────────────────────────────────
 
-  const aislesData: { name: string; order: number }[] = [
-    { name: 'Électroménager',             order: 1  },
-    { name: 'Vaisselle',                  order: 2  },
-    { name: 'Maison',                     order: 3  },
-    { name: 'Boulangerie',                order: 4  },
-    { name: 'Pâtisseries',                order: 5  },
-    { name: 'Rôtisserie',                 order: 6  },
-    { name: 'Boucherie',                  order: 7  },
-    { name: 'Fromagerie',                 order: 8  },
-    { name: 'Poissonnerie',               order: 9  },
-    { name: 'Fromage libre-service',      order: 10 },
-    { name: 'Beurre — Crème — Œuf',       order: 11 },
-    { name: 'Épicerie salée',             order: 12 },
-    { name: 'Surgelé',                    order: 13 },
-    { name: 'Boissons',                   order: 14 },
-    { name: 'Fruits & Légumes',           order: 15 },
-    { name: 'Charcuterie',               order: 16 },
-    { name: 'Hygiène',                    order: 17 },
-    { name: 'Épicerie sucrée',            order: 18 },
-    { name: 'Produits frais libre-service', order: 19 },
-  ]
-
+const aislesData: { name: string; order: number }[] = [
+  { name: 'Autre',                             order: 1  },
+  { name: 'Électroménager',                    order: 2  },
+  { name: 'Vaisselle',                         order: 3  },
+  { name: 'Entretien - Ménage',                order: 4  },
+  { name: 'Maison',                            order: 5  },
+  { name: 'Boulangerie',                       order: 6  },
+  { name: 'Pâtisseries',                       order: 7  },
+  { name: 'Bébé',                              order: 8  },
+  { name: 'Lait - Oeuf - Fromage libre service', order: 9  },
+  { name: 'Charcuterie',                       order: 10 },
+  { name: 'Rotisserie',                        order: 11 },
+  { name: 'Boucherie',                         order: 12 },
+  { name: 'Desserts',                          order: 13 },
+  { name: 'Viande libre service',              order: 14 },
+  { name: 'Traiteur - Plats cuisinés',         order: 15 },
+  { name: 'Fromagerie',                        order: 16 },
+  { name: 'Fruits & Légumes',                  order: 17 },
+  { name: 'Poissonnerie',                      order: 18 },
+  { name: 'Épicerie sucrée',                   order: 19 },
+  { name: 'Surgelé',                           order: 20 },
+  { name: 'Boissons',                          order: 21 },
+  { name: 'Hygiène',                           order: 22 },
+  { name: 'Épicerie salée',                    order: 23 },
+  { name: 'Condiments',                        order: 24 },
+  { name: 'Epicerie sèche',                    order: 25 },
+  { name: 'Conserves',                         order: 26 },
+];
   const aisleMap: Record<string, string> = {}
 
   for (const aisle of aislesData) {
@@ -58,13 +64,13 @@ export async function seedGamelle(prisma: PrismaClient): Promise<void> {
 
   type IngredientSeed = { name: string; baseUnit: BaseUnit; aisle: string }
 
-  const ingredients: IngredientSeed[] = [
+const ingredients: IngredientSeed[] = [
     // ── Boucherie ──────────────────────────────────────────────────────────
-    { name: 'Poulet',               baseUnit: 'GRAM',       aisle: 'Boucherie' },
-    { name: 'Blanc de poulet',      baseUnit: 'GRAM',       aisle: 'Boucherie' },
-    { name: 'Cuisse de poulet',     baseUnit: 'GRAM',       aisle: 'Boucherie' },
-    { name: 'Bœuf haché',           baseUnit: 'GRAM',       aisle: 'Boucherie' },
-    { name: 'Steak haché',          baseUnit: 'GRAM',       aisle: 'Boucherie' },
+    { name: 'Poulet',               baseUnit: 'GRAM',       aisle: 'Rotisserie' },
+    { name: 'Blanc de poulet',      baseUnit: 'GRAM',       aisle: 'Rotisserie' },
+    { name: 'Cuisse de poulet',     baseUnit: 'GRAM',       aisle: 'Rotisserie' },
+    { name: 'Boeuf haché',           baseUnit: 'GRAM',       aisle: 'Boucherie' },
+    { name: 'Steak haché',          baseUnit: 'GRAM',       aisle: 'Surgelé' },
     { name: 'Filet mignon',         baseUnit: 'GRAM',       aisle: 'Boucherie' },
     { name: 'Côtes de porc',        baseUnit: 'GRAM',       aisle: 'Boucherie' },
     { name: 'Escalope de dinde',    baseUnit: 'GRAM',       aisle: 'Boucherie' },
@@ -72,21 +78,21 @@ export async function seedGamelle(prisma: PrismaClient): Promise<void> {
     { name: 'Agneau',               baseUnit: 'GRAM',       aisle: 'Boucherie' },
 
     // ── Charcuterie ────────────────────────────────────────────────────────
-    { name: 'Lardons',              baseUnit: 'GRAM',       aisle: 'Charcuterie' },
-    { name: 'Jambon blanc',         baseUnit: 'GRAM',       aisle: 'Charcuterie' },
-    { name: 'Jambon cru',           baseUnit: 'GRAM',       aisle: 'Charcuterie' },
+    { name: 'Lardons',              baseUnit: 'GRAM',       aisle: 'Viande libre service' },
+    { name: 'Jambon blanc',         baseUnit: 'GRAM',       aisle: 'Viande libre service' },
+    { name: 'Jambon cru',           baseUnit: 'GRAM',       aisle: 'Viande libre service' },
+    { name: 'Bacon',                baseUnit: 'GRAM',       aisle: 'Viande libre service' },
+    { name: 'Pancetta',             baseUnit: 'GRAM',       aisle: 'Viande libre service' },
     { name: 'Chorizo',              baseUnit: 'GRAM',       aisle: 'Charcuterie' },
     { name: 'Saucisse',             baseUnit: 'GRAM',       aisle: 'Charcuterie' },
     { name: 'Merguez',              baseUnit: 'GRAM',       aisle: 'Charcuterie' },
-    { name: 'Bacon',                baseUnit: 'GRAM',       aisle: 'Charcuterie' },
-    { name: 'Pancetta',             baseUnit: 'GRAM',       aisle: 'Charcuterie' },
 
     // ── Poissonnerie ───────────────────────────────────────────────────────
     { name: 'Saumon',               baseUnit: 'GRAM',       aisle: 'Poissonnerie' },
     { name: 'Cabillaud',            baseUnit: 'GRAM',       aisle: 'Poissonnerie' },
     { name: 'Crevettes',            baseUnit: 'GRAM',       aisle: 'Poissonnerie' },
-    { name: 'Thon en boîte',        baseUnit: 'GRAM',       aisle: 'Poissonnerie' },
-    { name: 'Sardines',             baseUnit: 'GRAM',       aisle: 'Poissonnerie' },
+    { name: 'Thon en boîte',        baseUnit: 'GRAM',       aisle: 'Épicerie salée' }, 
+    { name: 'Sardines',             baseUnit: 'GRAM',       aisle: 'Épicerie salée' }, 
     { name: 'Lieu noir',            baseUnit: 'GRAM',       aisle: 'Poissonnerie' },
 
     // ── Fruits & Légumes ───────────────────────────────────────────────────
@@ -101,7 +107,7 @@ export async function seedGamelle(prisma: PrismaClient): Promise<void> {
     { name: 'Poivron rouge',        baseUnit: 'GRAM',       aisle: 'Fruits & Légumes' },
     { name: 'Poivron jaune',        baseUnit: 'GRAM',       aisle: 'Fruits & Légumes' },
     { name: 'Poivron vert',         baseUnit: 'GRAM',       aisle: 'Fruits & Légumes' },
-    { name: 'Champignons de Paris', baseUnit: 'GRAM',       aisle: 'Fruits & Légumes' },
+    { name: 'Champignons de Paris', baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
     { name: 'Épinards',             baseUnit: 'GRAM',       aisle: 'Fruits & Légumes' },
     { name: 'Poireau',              baseUnit: 'GRAM',       aisle: 'Fruits & Légumes' },
     { name: 'Pomme de terre',       baseUnit: 'GRAM',       aisle: 'Fruits & Légumes' },
@@ -116,31 +122,29 @@ export async function seedGamelle(prisma: PrismaClient): Promise<void> {
     { name: 'Banane',               baseUnit: 'UNIT',       aisle: 'Fruits & Légumes' },
     { name: 'Orange',               baseUnit: 'UNIT',       aisle: 'Fruits & Légumes' },
 
-    // ── Beurre — Crème — Œuf ──────────────────────────────────────────────
-    { name: 'Beurre',               baseUnit: 'GRAM',       aisle: 'Beurre — Crème — Œuf' },
-    { name: 'Crème liquide entière', baseUnit: 'MILLILITER', aisle: 'Beurre — Crème — Œuf' },
-    { name: 'Crème fraîche épaisse', baseUnit: 'GRAM',      aisle: 'Beurre — Crème — Œuf' },
-    { name: 'Lait',                 baseUnit: 'MILLILITER', aisle: 'Beurre — Crème — Œuf' },
-    { name: 'Lait demi-écrémé',     baseUnit: 'MILLILITER', aisle: 'Beurre — Crème — Œuf' },
-    { name: 'Œufs',                 baseUnit: 'UNIT',       aisle: 'Beurre — Crème — Œuf' },
+    // ── Lait - Oeuf - Fromage ──────────────────────────────────────────────
+    { name: 'Beurre',               baseUnit: 'GRAM',       aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Crème liquide entière', baseUnit: 'MILLILITER', aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Crème fraîche épaisse', baseUnit: 'GRAM',      aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Crème fraîche liquide', baseUnit: 'GRAM',      aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Lait',                 baseUnit: 'MILLILITER', aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Lait entier',     baseUnit: 'MILLILITER', aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Oeufs',                 baseUnit: 'UNIT',       aisle: 'Lait - Oeuf - Fromage libre service' },
 
     // ── Fromagerie ─────────────────────────────────────────────────────────
-    { name: 'Emmental râpé',        baseUnit: 'GRAM',       aisle: 'Fromagerie' },
-    { name: 'Gruyère râpé',         baseUnit: 'GRAM',       aisle: 'Fromagerie' },
-    { name: 'Parmesan râpé',        baseUnit: 'GRAM',       aisle: 'Fromagerie' },
-    { name: 'Mozzarella',           baseUnit: 'GRAM',       aisle: 'Fromagerie' },
-    { name: 'Comté',                baseUnit: 'GRAM',       aisle: 'Fromagerie' },
-    { name: 'Cheddar',              baseUnit: 'GRAM',       aisle: 'Fromagerie' },
-    { name: 'Fromage de chèvre',    baseUnit: 'GRAM',       aisle: 'Fromagerie' },
-    { name: 'Roquefort',            baseUnit: 'GRAM',       aisle: 'Fromagerie' },
+    { name: 'Emmental râpé',        baseUnit: 'GRAM',       aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Parmesan râpé',        baseUnit: 'GRAM',       aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Mozzarella',           baseUnit: 'GRAM',       aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Comté',                baseUnit: 'GRAM',       aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Cheddar',              baseUnit: 'UNIT',       aisle: 'Lait - Oeuf - Fromage libre service' },
 
-    // ── Produits frais libre-service ──────────────────────────────────────
-    { name: 'Fromage blanc',        baseUnit: 'GRAM',       aisle: 'Produits frais libre-service' },
-    { name: 'Ricotta',              baseUnit: 'GRAM',       aisle: 'Produits frais libre-service' },
-    { name: 'Yaourt nature',        baseUnit: 'UNIT',       aisle: 'Produits frais libre-service' },
-    { name: 'Mascarpone',           baseUnit: 'GRAM',       aisle: 'Produits frais libre-service' },
+    // ── Traiteur - Desserts ──────────────────────────────────────────────
+    { name: 'Fromage blanc',        baseUnit: 'GRAM',       aisle: 'Desserts' },
+    { name: 'Ricotta',              baseUnit: 'GRAM',       aisle: 'Lait - Oeuf - Fromage libre service' },
+    { name: 'Yaourt nature',        baseUnit: 'UNIT',       aisle: 'Desserts' },
+    { name: 'Mascarpone',           baseUnit: 'GRAM',       aisle: 'Lait - Oeuf - Fromage libre service' },
 
-    // ── Épicerie salée — féculents ────────────────────────────────────────
+    // ── Épicerie salée ────────────────────────────────────────────────────
     { name: 'Riz',                  baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
     { name: 'Pâtes',                baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
     { name: 'Spaghettis',           baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
@@ -151,7 +155,6 @@ export async function seedGamelle(prisma: PrismaClient): Promise<void> {
     { name: 'Lentilles vertes',     baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
     { name: 'Pois chiches',         baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
     { name: 'Haricots rouges',      baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
-    // Épicerie salée — huiles & condiments
     { name: 'Huile d\'olive',       baseUnit: 'MILLILITER', aisle: 'Épicerie salée' },
     { name: 'Huile de tournesol',   baseUnit: 'MILLILITER', aisle: 'Épicerie salée' },
     { name: 'Vinaigre blanc',       baseUnit: 'MILLILITER', aisle: 'Épicerie salée' },
@@ -162,10 +165,9 @@ export async function seedGamelle(prisma: PrismaClient): Promise<void> {
     { name: 'Concentré de tomate',  baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
     { name: 'Tomates concassées',   baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
     { name: 'Bouillon de volaille', baseUnit: 'UNIT',       aisle: 'Épicerie salée' },
-    { name: 'Bouillon de bœuf',     baseUnit: 'UNIT',       aisle: 'Épicerie salée' },
+    { name: 'Bouillon de boeuf',     baseUnit: 'UNIT',       aisle: 'Épicerie salée' },
     { name: 'Lait de coco',         baseUnit: 'MILLILITER', aisle: 'Épicerie salée' },
     { name: 'Huile de sésame',      baseUnit: 'MILLILITER', aisle: 'Épicerie salée' },
-    // Épicerie salée — épices & aromates
     { name: 'Sel',                  baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
     { name: 'Poivre',               baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
     { name: 'Cumin',                baseUnit: 'GRAM',       aisle: 'Épicerie salée' },
@@ -205,7 +207,7 @@ export async function seedGamelle(prisma: PrismaClient): Promise<void> {
     // ── Boulangerie ────────────────────────────────────────────────────────
     { name: 'Pain de mie',          baseUnit: 'UNIT',       aisle: 'Boulangerie' },
     { name: 'Pain burger',          baseUnit: 'UNIT',       aisle: 'Boulangerie' },
-    { name: 'Tortillas',            baseUnit: 'UNIT',       aisle: 'Boulangerie' },
+    { name: 'Tortillas',            baseUnit: 'UNIT',       aisle: 'Epicerie sèche' },
     { name: 'Chapelure',            baseUnit: 'GRAM',       aisle: 'Boulangerie' },
   ]
 
