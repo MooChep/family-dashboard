@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Check, X, GripVertical } from 'lucide-react'
+import { ConfirmDialog } from '@/components/gamelle/shared/ConfirmDialog'
 import {
   DndContext,
   closestCenter,
@@ -127,9 +128,10 @@ export function AislesConfig() {
   const [loading,   setLoading]   = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName,  setEditName]  = useState('')
-  const [addName,   setAddName]   = useState('')
-  const [adding,    setAdding]    = useState(false)
-  const [error,     setError]     = useState('')
+  const [addName,       setAddName]       = useState('')
+  const [adding,        setAdding]        = useState(false)
+  const [error,         setError]         = useState('')
+  const [pendingDelete, setPendingDelete] = useState<Aisle | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -150,25 +152,28 @@ export function AislesConfig() {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    setAisles(prev => {
-      const oldIndex = prev.findIndex(a => a.id === active.id)
-      const newIndex = prev.findIndex(a => a.id === over.id)
-      const reordered = arrayMove(prev, oldIndex, newIndex)
+    const oldIndex   = aisles.findIndex(a => a.id === active.id)
+    const newIndex   = aisles.findIndex(a => a.id === over.id)
+    const reordered  = arrayMove(aisles, oldIndex, newIndex)
+    const orderedIds = reordered.map(a => a.id)
+    const snapshot   = aisles
 
-      // Fire-and-forget — persist new order
-      void fetch('/api/gamelle/aisles/reorder', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ orderedIds: reordered.map(a => a.id) }),
-      }).then(r => {
-        if (!r.ok) {
-          // Rollback si erreur
-          setAisles(prev)
-          setError('Erreur lors du réordonnancement')
-        }
-      })
+    // Mise à jour optimiste immédiate
+    setAisles(reordered)
 
-      return reordered
+    // Persist — hors du updater pour éviter le double-appel de React StrictMode
+    void fetch('/api/gamelle/aisles/reorder', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ orderedIds }),
+    }).then(async r => {
+      if (!r.ok) {
+        setAisles(snapshot)
+        setError('Erreur lors du réordonnancement')
+      }
+    }).catch(() => {
+      setAisles(snapshot)
+      setError('Erreur réseau lors du réordonnancement')
     })
   }
 
@@ -275,11 +280,20 @@ export function AislesConfig() {
               onEditNameChange={setEditName}
               onRename={id => void handleRename(id)}
               onCancelEdit={() => setEditingId(null)}
-              onDelete={a => void handleDelete(a)}
+              onDelete={a => setPendingDelete(a)}
             />
           ))}
         </SortableContext>
       </DndContext>
+
+      {pendingDelete && (
+        <ConfirmDialog
+          message={`Supprimer « ${pendingDelete.name} » ?`}
+          detail="Le rayon doit être vide pour pouvoir être supprimé."
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => { void handleDelete(pendingDelete); setPendingDelete(null) }}
+        />
+      )}
     </div>
   )
 }

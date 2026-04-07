@@ -127,13 +127,13 @@ export default function CoursesPage() {
     } catch { await loadCurrent() }
   }
 
-  async function handleAddManual(label: string) {
+  async function handleAddManual(payload: { label: string; referenceId?: string }) {
     if (!list) return
     try {
       const res  = await fetch('/api/gamelle/shopping/items', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ label }),
+        body:    JSON.stringify(payload),
       })
       const item = await res.json() as ShoppingItem
       setList(prev => prev ? { ...prev, items: [...prev.items, item] } : null)
@@ -184,7 +184,27 @@ export default function CoursesPage() {
         onRegenerate={list.status === 'DRAFT' ? () => setShowSelector(true) : undefined}
         generating={generating}
       />
-
+{/* Footer sticky — bouton "J'ai fini mes courses" */}
+      {list.status === 'ACTIVE' && (
+        <div
+          className="shrink-0 px-4 py-1 flex justify-center"
+          style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}
+        >
+          <button
+            onClick={() => void handleArchive()}
+            disabled={archiving}
+            className="w-full py-2.5 rounded-xl font-mono text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-40"
+            style={{
+              background: allDone ? 'var(--success)' : 'var(--surface2)',
+              color:      allDone ? 'var(--surface)' : 'var(--muted)',
+              border:     allDone ? 'none' : '1px solid var(--border)',
+            }}
+          >
+            <CheckCircle2 size={16} />
+            {archiving ? 'Validation…' : "J'ai fini mes courses"}
+          </button>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto">
         {/* DRAFT — check placard */}
         {list.status === 'DRAFT' && (
@@ -206,28 +226,6 @@ export default function CoursesPage() {
           />
         )}
       </div>
-
-      {/* Footer sticky — bouton "J'ai fini mes courses" */}
-      {list.status === 'ACTIVE' && (
-        <div
-          className="shrink-0 px-4 py-3"
-          style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}
-        >
-          <button
-            onClick={() => void handleArchive()}
-            disabled={archiving}
-            className="w-full py-3.5 rounded-xl font-mono text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-40"
-            style={{
-              background: allDone ? 'var(--success)' : 'var(--surface2)',
-              color:      allDone ? '#fff' : 'var(--muted)',
-              border:     allDone ? 'none' : '1px solid var(--border)',
-            }}
-          >
-            <CheckCircle2 size={16} />
-            {archiving ? 'Validation…' : "J'ai fini mes courses"}
-          </button>
-        </div>
-      )}
     </div>
   )
 }

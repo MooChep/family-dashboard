@@ -33,7 +33,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const from   = searchParams.get('from')
   const to     = searchParams.get('to')
 
-  // Vue cri : plage de dates + flottants actifs
+  // Vue calendrier : plage de dates + flottants actifs
   if (from && to) {
     const fromDate = new Date(from)
     const toDate   = new Date(to)

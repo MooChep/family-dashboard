@@ -69,7 +69,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const item = await prisma.inventory.upsert({
     where:  { referenceId: body.referenceId },
-    update: { quantity: body.quantity },
+    update: { quantity: { increment: body.quantity } },
     create: { referenceId: body.referenceId, quantity: body.quantity },
     include: { reference: { include: { aisle: true } } },
   })

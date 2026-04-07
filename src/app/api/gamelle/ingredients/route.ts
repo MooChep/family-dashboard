@@ -29,9 +29,8 @@ export async function GET(request: NextRequest): Promise<Response> {
   const aisleId = searchParams.get('aisleId')?.trim() ?? ''
 
   try {
-    const ingredients = await prisma.ingredientReference.findMany({
+    const allIngredients = await prisma.ingredientReference.findMany({
       where: {
-        ...(search  && { name:    { contains: search } }),
         ...(aisleId && { aisleId }),
       },
       include: { aisle: true },
@@ -40,6 +39,15 @@ export async function GET(request: NextRequest): Promise<Response> {
         { name: 'asc' },
       ],
     })
+
+    let ingredients: IngredientWithAisle[]
+    if (search) {
+      const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      const normalizedSearch = normalize(search)
+      ingredients = allIngredients.filter(i => normalize(i.name).includes(normalizedSearch))
+    } else {
+      ingredients = allIngredients
+    }
 
     return Response.json({ success: true, data: ingredients } satisfies ApiResponse<IngredientWithAisle[]>)
   } catch (error) {

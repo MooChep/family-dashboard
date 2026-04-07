@@ -84,7 +84,7 @@ export function QuickActions({
           background:   'var(--surface)',
           borderTop:    '1px solid var(--border)',
           borderRadius: '16px 16px 0 0',
-          padding:      '20px 16px 32px',
+          padding:      `20px 16px calc(var(--bottom-nav-height, 64px) + 16px)`,
           zIndex:       50,
         }}
       >

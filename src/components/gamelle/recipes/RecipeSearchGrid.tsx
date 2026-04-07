@@ -140,7 +140,7 @@ export function RecipeSearchGrid({ title, mode, onFetch, onSelect, onConfirm }: 
       </div>
 
       {/* Grille */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-24">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <span className="font-mono text-xs" style={{ color: 'var(--muted)' }}>Chargement…</span>

@@ -14,11 +14,21 @@ interface AddToMenuSheetProps {
   onClose:       () => void
 }
 
+const MONTHS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+const DAYS_FR   = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+
+function formatLockedDate(isoDate: string, period: Period): string {
+  const d = new Date(isoDate + 'T12:00:00')
+  return `${DAYS_FR[d.getDay()]} ${d.getDate()} ${MONTHS_FR[d.getMonth()]} — ${period === 'LUNCH' ? 'Déjeuner' : 'Dîner'}`
+}
+
 /**
  * Bottom sheet d'ajout d'une recette au menu.
  * Sélecteur portions + date optionnelle + période (Midi/Soir).
+ * Si initialDate + initialPeriod fournis : date et période verrouillées (non modifiables).
  */
 export function AddToMenuSheet({ recipe, initialDate, initialPeriod, onConfirm, onClose }: AddToMenuSheetProps) {
+  const locked = !!(initialDate && initialPeriod)
   const [portions, setPortions] = useState(2)
   const [date,     setDate]     = useState(initialDate ?? '')
   const [period,   setPeriod]   = useState<Period>(initialPeriod ?? 'DINNER')
@@ -55,9 +65,9 @@ export function AddToMenuSheet({ recipe, initialDate, initialPeriod, onConfirm, 
   const hasImage = recipe.imageLocal || recipe.imageUrl
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: 'rgba(0,0,0,0.4)' }}>
+    <div className="fixed inset-0 z-60 flex flex-col justify-end" style={{ background: 'rgba(0,0,0,0.4)' }}>
       <div
-        className="flex flex-col gap-5 px-4 pt-5 pb-8 rounded-t-2xl"
+        className="flex flex-col gap-5 px-4 pt-5 pb-16 rounded-t-2xl"
         style={{ background: 'var(--bg)', borderTop: '1px solid var(--border)' }}
       >
         {/* Header */}
@@ -117,38 +127,49 @@ export function AddToMenuSheet({ recipe, initialDate, initialPeriod, onConfirm, 
           </div>
         </div>
 
-        {/* Date (optionnelle) */}
-        <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-            Date <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optionnelle)</span>
-          </span>
-          <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl font-mono text-sm outline-none"
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
-          />
-        </div>
-
-        {/* Période — seulement si date choisie */}
-        {date && (
-          <div className="flex gap-3">
-            {(['LUNCH', 'DINNER'] as Period[]).map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className="flex-1 py-2.5 rounded-xl font-mono text-sm transition-colors"
-                style={{
-                  background: period === p ? 'var(--accent)' : 'var(--surface2)',
-                  color:      period === p ? '#fff' : 'var(--text2)',
-                  border:     `1px solid ${period === p ? 'var(--accent)' : 'var(--border)'}`,
-                }}
-              >
-                {p === 'LUNCH' ? 'Midi' : 'Soir'}
-              </button>
-            ))}
+        {/* Date — verrouillée si initialDate + initialPeriod fournis */}
+        {locked ? (
+          <div
+            className="px-3 py-2.5 rounded-xl font-mono text-sm"
+            style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent)', color: 'var(--accent)' }}
+          >
+            📅 {formatLockedDate(initialDate!, initialPeriod!)}
           </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+                Date <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optionnelle)</span>
+              </span>
+              <input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl font-mono text-sm outline-none"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              />
+            </div>
+
+            {/* Période — seulement si date choisie */}
+            {date && (
+              <div className="flex gap-3">
+                {(['LUNCH', 'DINNER'] as Period[]).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    className="flex-1 py-2.5 rounded-xl font-mono text-sm transition-colors"
+                    style={{
+                      background: period === p ? 'var(--accent)' : 'var(--surface2)',
+                      color:      period === p ? '#fff' : 'var(--text2)',
+                      border:     `1px solid ${period === p ? 'var(--accent)' : 'var(--border)'}`,
+                    }}
+                  >
+                    {p === 'LUNCH' ? 'Midi' : 'Soir'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {error && (

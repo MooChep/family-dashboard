@@ -85,7 +85,9 @@ export async function POST(request: NextRequest): Promise<Response> {
   if (body.imageUrl) {
     try {
       const filename = generateImageFilename(body.name ?? body.id)
+      console.log('[gamelle/import/fetch] image download start:', body.imageUrl)
       imageLocal = await downloadAndCompressImage(body.imageUrl, filename)
+      console.log('[gamelle/import/fetch] image download done → local:', imageLocal)
     } catch (err) {
       console.warn('[gamelle/import/fetch] image download failed', err)
     }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Trash2 } from 'lucide-react'
 import { ArrowRight } from 'lucide-react'
+import { ConfirmDialog } from '@/components/gamelle/shared/ConfirmDialog'
 
 type SubRule = {
   id:          string
@@ -19,7 +20,9 @@ type SubRule = {
 export function SubstitutionRules() {
   const [rules,   setRules]   = useState<SubRule[]>([])
   const [loading, setLoading] = useState(true)
-  const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleting,      setDeleting]      = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<SubRule | null>(null)
+  const [search,        setSearch]        = useState('')
 
   useEffect(() => {
     void load()
@@ -62,18 +65,39 @@ export function SubstitutionRules() {
     )
   }
 
+  const normalizeStr = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const filteredRules = search.trim()
+    ? rules.filter(r =>
+        normalizeStr(r.jowName).includes(normalizeStr(search)) ||
+        normalizeStr(r.reference.name).includes(normalizeStr(search))
+      )
+    : rules
+
   return (
     <div className="flex flex-col gap-1">
       <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>
         Substitutions permanentes ({rules.length})
       </p>
+      <input
+        type="search"
+        placeholder="Rechercher…"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        className="w-full px-3 py-2 rounded-lg font-body text-sm outline-none mb-2"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+      />
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-        {rules.map((rule, i) => (
+        {filteredRules.length === 0 && (
+          <p className="font-mono text-xs py-4 text-center" style={{ color: 'var(--muted)' }}>
+            Aucun résultat
+          </p>
+        )}
+        {filteredRules.map((rule, i) => (
           <div
             key={rule.id}
             className="flex items-center gap-3 px-3 py-2.5"
             style={{
-              borderBottom: i < rules.length - 1 ? '1px solid var(--border)' : 'none',
+              borderBottom: i < filteredRules.length - 1 ? '1px solid var(--border)' : 'none',
               background:   'var(--surface2)',
             }}
           >
@@ -85,7 +109,7 @@ export function SubstitutionRules() {
               {rule.reference.name}
             </span>
             <button
-              onClick={() => void handleDelete(rule.id)}
+              onClick={() => setPendingDelete(rule)}
               disabled={deleting === rule.id}
               className="shrink-0 p-1 rounded-lg disabled:opacity-40"
               style={{ color: 'var(--danger)' }}
@@ -95,6 +119,15 @@ export function SubstitutionRules() {
           </div>
         ))}
       </div>
+
+      {pendingDelete && (
+        <ConfirmDialog
+          message={`Supprimer la substitution ?`}
+          detail={`« ${pendingDelete.jowName} » → « ${pendingDelete.reference.name} »`}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => { void handleDelete(pendingDelete.id); setPendingDelete(null) }}
+        />
+      )}
     </div>
   )
 }

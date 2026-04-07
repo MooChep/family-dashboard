@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Plus, Heart } from 'lucide-react'
+import { Check, Eye, Heart } from 'lucide-react'
 import type { RecipeWithIngredients } from '@/lib/gamelle/types'
 
 const UPLOAD_BASE = process.env.NEXT_PUBLIC_GAMELLE_UPLOAD_BASE_URL ?? '/uploads/gamelle'
@@ -100,7 +100,7 @@ export function RecipeCard({ recipe, isInMenu, onOpen, initialLiked = false }: R
           border:     `1px solid ${isInMenu ? 'var(--accent)' : 'var(--border)'}`,
         }}
       >
-        {isInMenu ? <Check size={12} /> : <Plus size={12} />}
+        {isInMenu ? <Check size={12} /> : <Eye size={12} />}
         {isInMenu ? 'Au menu' : 'Voir'}
       </button>
     </div>

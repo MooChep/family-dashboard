@@ -7,6 +7,10 @@ import type { CreateRecipePayload, RecipeStep, ApiResponse, RecipeWithIngredient
 import type { ImportFetchResult } from '@/app/api/gamelle/import/fetch/route'
 import type { Resolution } from '@/components/gamelle/import/IngredientMapper'
 import type { IngredientWithAisle } from '@/app/api/gamelle/ingredients/route'
+import { IngredientPicker } from '@/components/gamelle/shared/IngredientPicker'
+import { convertToBase } from '@/lib/gamelle/units'
+
+const UPLOAD_BASE = process.env.NEXT_PUBLIC_GAMELLE_UPLOAD_BASE_URL ?? '/api/gamelle/images'
 
 interface RecipeFormProps {
   /** Données pré-remplies depuis l'import Jow, ou undefined pour saisie manuelle. */
@@ -15,6 +19,8 @@ interface RecipeFormProps {
   /** Recette existante à éditer (mode="edit"). */
   initialData?:  RecipeWithIngredients
   mode?:         'create' | 'edit'
+  /** Appelé après une sauvegarde réussie (avant router.push). */
+  onSuccess?:    () => void
 }
 
 type IngredientRow = {
@@ -32,7 +38,7 @@ type IngredientRow = {
  * Formulaire d'édition recette — utilisé après import Jow et en saisie manuelle.
  * Les ingrédients sont éditables (quantité, unité, ajout, suppression).
  */
-export function RecipeForm({ prefill, resolutions, initialData, mode = 'create' }: RecipeFormProps) {
+export function RecipeForm({ prefill, resolutions, initialData, mode = 'create', onSuccess }: RecipeFormProps) {
   const router = useRouter()
   const isEdit = mode === 'edit'
 
@@ -68,10 +74,31 @@ export function RecipeForm({ prefill, resolutions, initialData, mode = 'create' 
     }
     if (!prefill) return []
     return prefill.ingredients.flatMap(ing => {
+      const rawQty  = ing.quantity ?? 0
+      const rawUnit = (ing.unit ?? '').trim().toLowerCase()
+
+      // Normalise les unités Jow (abréviations françaises) et unités SI dérivées → unités de base
+      let dispQty  = rawQty
+      let dispUnit = ing.unit ?? ''
+      if (['kg', 'kilog', 'kilo', 'kilogramme', 'kilogrammes'].includes(rawUnit)) {
+        dispQty = rawQty * 1000; dispUnit = 'g'
+      } else if (['cl', 'centilitre', 'centilitres', 'centi'].includes(rawUnit)) {
+        dispQty = rawQty * 10;   dispUnit = 'ml'
+      } else if (['l', 'litre', 'litres', 'liter', 'liters'].includes(rawUnit)) {
+        dispQty = rawQty * 1000; dispUnit = 'ml'
+      } else if (['g', 'gram', 'gramme', 'grammes'].includes(rawUnit)) {
+        dispUnit = 'g'
+      } else if (['ml', 'millilitre', 'millilitres', 'milliliter'].includes(rawUnit)) {
+        dispUnit = 'ml'
+      }
+
+      // quantity = valeur en unité de base (g, ml, UNIT)
+      const baseQty = convertToBase(dispQty, dispUnit, []) ?? dispQty
+
       const base = {
-        displayQuantity: ing.quantity ?? 0,
-        quantity:        ing.quantity ?? 0,
-        displayUnit:     ing.unit ?? '',
+        displayQuantity: dispQty,
+        quantity:        baseQty,
+        displayUnit:     dispUnit,
         isOptional:      ing.isOptional ?? false,
         isIgnored:       false,
         isStaple:        false,
@@ -88,28 +115,13 @@ export function RecipeForm({ prefill, resolutions, initialData, mode = 'create' 
     })
   })
 
-  // ── Ajout d'ingrédient via autocomplete ───────────────────────────────────
-  const [addQuery,   setAddQuery]   = useState('')
-  const [addResults, setAddResults] = useState<IngredientWithAisle[]>([])
-
-  async function searchIngredient(q: string) {
-    setAddQuery(q)
-    if (!q.trim()) { setAddResults([]); return }
-    try {
-      const res  = await fetch(`/api/gamelle/ingredients?search=${encodeURIComponent(q)}`)
-      const json = await res.json() as ApiResponse<IngredientWithAisle[]>
-      if (json.success) setAddResults(json.data ?? [])
-    } catch { /* ignore */ }
-  }
-
+  // ── Ajout d'ingrédient via IngredientPicker ───────────────────────────────
   function addRow(ref: IngredientWithAisle) {
     setIngredientRows(prev => [...prev, {
       referenceId: ref.id, label: ref.name,
       displayQuantity: 0, quantity: 0, displayUnit: '',
       isOptional: false, isIgnored: false, isStaple: false,
     }])
-    setAddQuery('')
-    setAddResults([])
   }
 
   function updateRow(idx: number, patch: Partial<IngredientRow>) {
@@ -161,6 +173,7 @@ export function RecipeForm({ prefill, resolutions, initialData, mode = 'create' 
       const res    = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const json   = await res.json() as ApiResponse<RecipeWithIngredients>
       if (json.success && json.data) {
+        onSuccess?.()
         router.refresh()
         router.push('/gamelle/recettes')
       } else {
@@ -195,6 +208,19 @@ export function RecipeForm({ prefill, resolutions, initialData, mode = 'create' 
 
   return (
     <div className="flex flex-col gap-5 pb-8">
+      {/* Aperçu image importée */}
+      {prefill?.imageLocal && (
+        <div className="flex items-center gap-3">
+          <img
+            src={`${UPLOAD_BASE}/${prefill.imageLocal}`}
+            alt="Aperçu"
+            className="w-16 h-16 rounded-xl object-cover"
+            style={{ border: '1px solid var(--border)', flexShrink: 0 }}
+          />
+          <p className="font-mono text-xs" style={{ color: 'var(--muted)' }}>Photo importée</p>
+        </div>
+      )}
+
       {/* Avertissement scrape */}
       {scrapeError && (
         <div
@@ -306,14 +332,22 @@ export function RecipeForm({ prefill, resolutions, initialData, mode = 'create' 
                   min={0}
                   step="any"
                   value={row.displayQuantity || ''}
-                  onChange={e => updateRow(i, { displayQuantity: Number(e.target.value), quantity: Number(e.target.value) })}
+                  onChange={e => {
+                    const dq  = Number(e.target.value)
+                    const qty = convertToBase(dq, row.displayUnit, []) ?? dq
+                    updateRow(i, { displayQuantity: dq, quantity: qty })
+                  }}
                   placeholder="Qté"
                   className="font-mono text-xs text-right outline-none rounded-lg px-2 py-1"
                   style={{ width: 56, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
                 />
                 <input
                   value={row.displayUnit}
-                  onChange={e => updateRow(i, { displayUnit: e.target.value })}
+                  onChange={e => {
+                    const newUnit = e.target.value
+                    const qty     = convertToBase(row.displayQuantity, newUnit, []) ?? row.displayQuantity
+                    updateRow(i, { displayUnit: newUnit, quantity: qty })
+                  }}
                   placeholder="unité"
                   className="font-mono text-xs outline-none rounded-lg px-2 py-1"
                   style={{ width: 52, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
@@ -326,34 +360,11 @@ export function RecipeForm({ prefill, resolutions, initialData, mode = 'create' 
           </div>
         )}
 
-        {/* Ajout via autocomplete */}
-        <div className="relative">
-          <input
-            className="w-full px-3 py-2 rounded-xl font-body text-sm outline-none"
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
-            placeholder="+ Ajouter un ingrédient…"
-            value={addQuery}
-            onChange={e => void searchIngredient(e.target.value)}
-          />
-          {addResults.length > 0 && (
-            <div
-              className="absolute left-0 right-0 top-full mt-1 rounded-xl overflow-hidden z-10"
-              style={{ border: '1px solid var(--border)', background: 'var(--surface2)' }}
-            >
-              {addResults.slice(0, 6).map(ref => (
-                <button
-                  key={ref.id}
-                  onClick={() => addRow(ref)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 text-left"
-                  style={{ borderBottom: '1px solid var(--border)' }}
-                >
-                  <span className="font-body text-sm" style={{ color: 'var(--text)' }}>{ref.name}</span>
-                  <span className="font-mono text-[10px]" style={{ color: 'var(--muted)' }}>{ref.aisle.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Ajout via IngredientPicker */}
+        <IngredientPicker
+          onSelect={addRow}
+          placeholder="+ Ajouter un ingrédient…"
+        />
       </div>
 
       {/* Étapes */}
@@ -372,10 +383,17 @@ export function RecipeForm({ prefill, resolutions, initialData, mode = 'create' 
               </span>
               <textarea
                 className="flex-1 px-3 py-2 rounded-xl font-body text-sm outline-none"
-                style={{ ...inputStyle, resize: 'none' }}
-                rows={2}
+                style={{ ...inputStyle, resize: 'none', overflow: 'hidden', minHeight: '3rem' }}
                 value={step.text}
                 onChange={e => updateStep(idx, e.target.value)}
+                onInput={e => {
+                  const el = e.currentTarget
+                  el.style.height = 'auto'
+                  el.style.height = `${el.scrollHeight}px`
+                }}
+                ref={el => {
+                  if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` }
+                }}
                 placeholder={`Étape ${step.order}…`}
               />
               <button

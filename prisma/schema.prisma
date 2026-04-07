@@ -505,6 +505,7 @@ model PlanningSlot {
   portions         Int
   portionsConsumed Int       @default(0)
   addedAt          DateTime  @default(now())
+  lastPurchasedAt  DateTime?
 
   @@index([recipeId])
   @@index([scheduledDate])

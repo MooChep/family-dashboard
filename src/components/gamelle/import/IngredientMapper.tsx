@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { Check, Plus, ArrowLeftRight, EyeOff } from 'lucide-react'
 import type { ImportIngredient } from '@/app/api/gamelle/import/fetch/route'
 import type { ApiResponse } from '@/lib/gamelle/types'
-import type { BaseUnit } from '@prisma/client'
+import type { BaseUnit, Aisle } from '@prisma/client'
 import type { IngredientWithAisle } from '@/app/api/gamelle/ingredients/route'
+import { convertToBase } from '@/lib/gamelle/units'
 
 /**
  * Résolution finale : jowIndex → entrée.
@@ -27,24 +28,26 @@ interface IngredientMapperProps {
 type Mode = 'idle' | 'create' | 'substitute' | 'confirm'
 
 type ItemState = {
-  mode:           Mode
-  referenceId:    string | null
-  refName:        string
-  isIgnored:      boolean
-  permanent:      boolean
+  mode:              Mode
+  referenceId:       string | null
+  refName:           string
+  resolvedBaseUnit:  BaseUnit | null   // baseUnit de l'ingrédient final résolu
+  isIgnored:         boolean
+  permanent:         boolean
   // create form
-  newName:        string
-  newUnit:        BaseUnit
-  newAisleId:     string
+  newName:           string
+  newUnit:           BaseUnit
+  newAisleId:        string
   // substitute search
-  subQuery:       string
-  subResults:     IngredientWithAisle[]
+  subQuery:          string
+  subResults:        IngredientWithAisle[]
   // confirm step
-  pendingRefId:   string
-  pendingRefName: string
+  pendingRefId:      string
+  pendingRefName:    string
+  pendingBaseUnit:   BaseUnit | null   // baseUnit de l'ingrédient candidat
   // metadata
-  wasMatched:   boolean
-  matchedVia:   'dict' | 'sub' | null
+  wasMatched:        boolean
+  matchedVia:        'dict' | 'sub' | null
 }
 
 const BASE_UNITS: { value: BaseUnit; label: string }[] = [
@@ -53,31 +56,64 @@ const BASE_UNITS: { value: BaseUnit; label: string }[] = [
   { value: 'UNIT',       label: 'Unités' },
 ]
 
+const BASE_UNIT_LABELS: Record<BaseUnit, string> = {
+  GRAM:       'g',
+  MILLILITER: 'ml',
+  UNIT:       'pcs',
+}
+
+/** Déduit la BaseUnit la plus probable depuis une unité Jow. */
+function jowUnitToBaseUnit(unit: string | null): BaseUnit {
+  const u = (unit ?? '').trim().toLowerCase()
+  if (['kg', 'kilog', 'kilo', 'kilogramme', 'kilogrammes', 'g', 'gram', 'gramme', 'grammes'].includes(u)) return 'GRAM'
+  if (['l', 'litre', 'litres', 'liter', 'liters', 'cl', 'centi', 'centilitre', 'ml', 'millilitre', 'millilitres'].includes(u)) return 'MILLILITER'
+  return 'UNIT'
+}
+
+/** Badge coloré indiquant la base unit. */
+function BaseUnitBadge({ unit, mismatch }: { unit: BaseUnit; mismatch?: boolean }) {
+  return (
+    <span
+      className="font-mono text-[9px] px-1.5 py-0.5 rounded uppercase tracking-widest"
+      style={{
+        background: mismatch ? 'var(--danger)22' : 'var(--surface)',
+        color:      mismatch ? 'var(--danger)'   : 'var(--muted)',
+        border:     `1px solid ${mismatch ? 'var(--danger)' : 'var(--border)'}`,
+      }}
+    >
+      {BASE_UNIT_LABELS[unit]}
+    </span>
+  )
+}
+
 /**
  * Étape 2 — Mapper les ingrédients.
  * Tous les ingrédients sont éditables (y compris les auto-matchés).
  * Substitution : recherche → confirmation (avec option lien permanent) → résolu.
+ * Affiche la baseUnit de l'ingrédient final pour détecter les mismatches d'unité.
  */
 export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps) {
   const [states, setStates] = useState<Record<number, ItemState>>(() =>
     Object.fromEntries(ingredients.map(ing => [ing.jowIndex, {
-      mode:           'idle',
-      referenceId:    ing.matchStatus.matched ? ing.matchStatus.referenceId : null,
-      refName:        ing.matchStatus.matched ? ing.matchStatus.referenceName : '',
-      isIgnored:      false,
-      permanent:      false,
-      newName:        ing.name,
-      newUnit:        'GRAM' as BaseUnit,
-      newAisleId:     '',
-      subQuery:       '',
-      subResults:     [],
-      pendingRefId:   '',
-      pendingRefName: '',
-      wasMatched:     ing.matchStatus.matched,
-      matchedVia:     ing.matchStatus.matched ? ing.matchStatus.via : null,
+      mode:             'idle',
+      referenceId:      ing.matchStatus.matched ? ing.matchStatus.referenceId : null,
+      refName:          ing.matchStatus.matched ? ing.matchStatus.referenceName : '',
+      resolvedBaseUnit: null,  // on ne connaît pas la baseUnit sans fetch supplémentaire
+      isIgnored:        false,
+      permanent:        false,
+      newName:          ing.name,
+      newUnit:          jowUnitToBaseUnit(ing.unit),  // pré-sélection basée sur l'unité Jow
+      newAisleId:       '',
+      subQuery:         '',
+      subResults:       [],
+      pendingRefId:     '',
+      pendingRefName:   '',
+      pendingBaseUnit:  null,
+      wasMatched:       ing.matchStatus.matched,
+      matchedVia:       ing.matchStatus.matched ? ing.matchStatus.via : null,
     }]))
   )
-  const [aisles,       setAisles]       = useState<IngredientWithAisle[]>([])
+  const [aisles,       setAisles]       = useState<Aisle[]>([])
   const [aislesLoaded, setAislesLoaded] = useState(false)
 
   function update(idx: number, patch: Partial<ItemState>) {
@@ -91,16 +127,9 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
   async function loadAisles() {
     if (aislesLoaded) return
     try {
-      const res  = await fetch('/api/gamelle/ingredients')
-      const json = await res.json() as ApiResponse<IngredientWithAisle[]>
-      if (json.success && json.data) {
-        const seen   = new Set<string>()
-        const unique: IngredientWithAisle[] = []
-        for (const ing of json.data) {
-          if (!seen.has(ing.aisleId)) { seen.add(ing.aisleId); unique.push(ing) }
-        }
-        setAisles(unique)
-      }
+      const res  = await fetch('/api/gamelle/aisles')
+      const data = await res.json() as Aisle[]
+      if (Array.isArray(data)) setAisles(data)
     } finally {
       setAislesLoaded(true)
     }
@@ -117,7 +146,12 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
       })
       const json = await res.json() as ApiResponse<IngredientWithAisle>
       if (json.success && json.data) {
-        update(idx, { mode: 'idle', referenceId: json.data.id, refName: json.data.name })
+        update(idx, {
+          mode:             'idle',
+          referenceId:      json.data.id,
+          refName:          json.data.name,
+          resolvedBaseUnit: json.data.baseUnit as BaseUnit,
+        })
       }
     } catch { /* ignore */ }
   }
@@ -177,8 +211,9 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
 
       <div className="flex flex-col gap-3">
         {ingredients.map(ing => {
-          const st   = states[ing.jowIndex]!
-          const done = isResolved(st)
+          const st      = states[ing.jowIndex]!
+          const done    = isResolved(st)
+          const jowBase = jowUnitToBaseUnit(ing.unit)
 
           return (
             <div
@@ -186,19 +221,42 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
               className="rounded-xl p-3 flex flex-col gap-2"
               style={{ background: 'var(--surface2)', border: `1px solid ${done ? 'var(--success)' : 'var(--border)'}` }}
             >
-              {/* Nom Jow + statut */}
+              {/* Nom Jow + unité import */}
               <div className="flex items-center justify-between">
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>Nom Jow</p>
-                  <p className="font-body text-sm font-medium" style={{
-                    color:          done ? 'var(--muted)' : 'var(--text)',
-                    textDecoration: done ? 'line-through' : 'none',
-                  }}>
-                    {ing.name}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-body text-sm font-medium" style={{
+                      color:          done ? 'var(--muted)' : 'var(--text)',
+                      textDecoration: done ? 'line-through' : 'none',
+                    }}>
+                      {ing.name}
+                    </p>
+                    {/* Unité + quantité Jow */}
+                    {ing.quantity !== null && (() => {
+                      const rawUnit = ing.unit ?? ''
+                      const converted = convertToBase(ing.quantity, rawUnit, [])
+                      const unitLower = rawUnit.trim().toLowerCase()
+                      const hasConversion = converted !== null && !['g', 'gram', 'gramme', 'grammes', 'ml', 'milliliter', 'millilitre', '', 'unit', 'unité', 'pièce', 'pcs'].includes(unitLower)
+                      const convertedUnit = ['kg', 'kilog', 'kilo', 'kilogramme', 'kilogrammes'].includes(unitLower) ? 'g'
+                        : ['l', 'litre', 'liter', 'liters', 'litres'].includes(unitLower) ? 'ml'
+                        : unitLower === 'cl' ? 'ml'
+                        : null
+                      return (
+                        <span className="font-mono text-[10px]" style={{ color: 'var(--muted)' }}>
+                          {ing.quantity} {rawUnit}
+                          {hasConversion && converted !== null && convertedUnit && (
+                            <> → {converted}{convertedUnit}</>
+                          )}
+                        </span>
+                      )
+                    })()}
+                  </div>
                 </div>
+
+                {/* État résolu */}
                 {done && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
                     {st.isIgnored ? (
                       <span className="font-mono text-xs" style={{ color: 'var(--muted)' }}>Ignoré</span>
                     ) : (
@@ -206,17 +264,27 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
                         <Check size={14} style={{ color: 'var(--success)' }} />
                         <span className="font-mono text-xs" style={{ color: 'var(--success)' }}>
                           {st.refName}
-                          {st.wasMatched && st.matchedVia === 'sub' && !st.permanent && (
-                            <span className="ml-1 font-mono text-[10px]" style={{ color: 'var(--accent)' }}>★</span>
-                          )}
                           {st.permanent && <span style={{ color: 'var(--accent)' }}> ★</span>}
                         </span>
+                        {/* BaseUnit de l'ingrédient résolu */}
+                        {st.resolvedBaseUnit && (
+                          <BaseUnitBadge
+                            unit={st.resolvedBaseUnit}
+                            mismatch={st.resolvedBaseUnit !== jowBase}
+                          />
+                        )}
+                        {/* Alerte mismatch */}
+                        {st.resolvedBaseUnit && st.resolvedBaseUnit !== jowBase && (
+                          <span className="font-mono text-[9px]" style={{ color: 'var(--danger)' }} title="L'unité Jow et la base unit de l'ingrédient diffèrent">
+                            ⚠
+                          </span>
+                        )}
                       </>
                     )}
                     <button
                       onClick={() => update(ing.jowIndex, {
                         referenceId: null, refName: '', isIgnored: false, permanent: false,
-                        mode: 'idle', subQuery: '', subResults: [],
+                        resolvedBaseUnit: null, mode: 'idle', subQuery: '', subResults: [],
                       })}
                       className="font-mono text-[10px] ml-1"
                       style={{ color: 'var(--muted)' }}
@@ -254,9 +322,15 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
                 </div>
               )}
 
-              {/* Formulaire création */}
+              {/* Formulaire création — newUnit pré-sélectionné depuis l'unité Jow */}
               {!done && st.mode === 'create' && (
                 <div className="flex flex-col gap-2">
+                  {/* Info unité Jow */}
+                  <p className="font-mono text-[10px]" style={{ color: 'var(--muted)' }}>
+                    Unité Jow : <span style={{ color: 'var(--text)' }}>{ing.unit ?? '—'}</span>
+                    {' → '}
+                    <span style={{ color: 'var(--accent)' }}>{BASE_UNIT_LABELS[jowBase]}</span>
+                  </p>
                   <input className={inputCls} style={inputSty} placeholder="Nom canonique"
                     value={st.newName} onChange={e => update(ing.jowIndex, { newName: e.target.value })} />
                   <select className={inputCls + ' font-mono text-xs'} style={inputSty}
@@ -266,7 +340,7 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
                   <select className={inputCls + ' font-mono text-xs'} style={inputSty}
                     value={st.newAisleId} onChange={e => update(ing.jowIndex, { newAisleId: e.target.value })}>
                     <option value="">— Rayon —</option>
-                    {aisles.map(a => <option key={a.aisle.id} value={a.aisle.id}>{a.aisle.name}</option>)}
+                    {aisles.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>
                   <div className="flex gap-2">
                     <button onClick={() => update(ing.jowIndex, { mode: 'idle' })}
@@ -294,11 +368,22 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
                     <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
                       {st.subResults.slice(0, 6).map(ref => (
                         <button key={ref.id}
-                          onClick={() => update(ing.jowIndex, { mode: 'confirm', pendingRefId: ref.id, pendingRefName: ref.name })}
+                          onClick={() => update(ing.jowIndex, {
+                            mode:            'confirm',
+                            pendingRefId:    ref.id,
+                            pendingRefName:  ref.name,
+                            pendingBaseUnit: ref.baseUnit as BaseUnit,
+                          })}
                           className="w-full flex items-center justify-between px-3 py-2 text-left"
                           style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
                           <span className="font-body text-sm" style={{ color: 'var(--text)' }}>{ref.name}</span>
-                          <span className="font-mono text-[10px]" style={{ color: 'var(--muted)' }}>{ref.aisle.name}</span>
+                          <div className="flex items-center gap-2">
+                            <BaseUnitBadge
+                              unit={ref.baseUnit as BaseUnit}
+                              mismatch={ref.baseUnit !== jowBase}
+                            />
+                            <span className="font-mono text-[10px]" style={{ color: 'var(--muted)' }}>{ref.aisle.name}</span>
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -319,9 +404,24 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
                     style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
                   >
                     <ArrowLeftRight size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                    <span className="font-body text-sm font-medium" style={{ color: 'var(--text)' }}>
+                    <span className="font-body text-sm font-medium flex-1" style={{ color: 'var(--text)' }}>
                       {st.pendingRefName}
                     </span>
+                    {st.pendingBaseUnit && (
+                      <BaseUnitBadge
+                        unit={st.pendingBaseUnit}
+                        mismatch={st.pendingBaseUnit !== jowBase}
+                      />
+                    )}
+                    {st.pendingBaseUnit && st.pendingBaseUnit !== jowBase && (
+                      <span
+                        className="font-mono text-[9px]"
+                        style={{ color: 'var(--danger)' }}
+                        title={`Jow utilise "${ing.unit}" (→ ${BASE_UNIT_LABELS[jowBase]}) mais cet ingrédient est en ${BASE_UNIT_LABELS[st.pendingBaseUnit]}`}
+                      >
+                        ⚠ unités différentes
+                      </span>
+                    )}
                   </div>
                   <label className="flex items-center gap-2 cursor-pointer px-1">
                     <input type="checkbox" checked={st.permanent}
@@ -332,13 +432,18 @@ export function IngredientMapper({ ingredients, onDone }: IngredientMapperProps)
                   </label>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => update(ing.jowIndex, { mode: 'substitute', pendingRefId: '', pendingRefName: '' })}
+                      onClick={() => update(ing.jowIndex, { mode: 'substitute', pendingRefId: '', pendingRefName: '', pendingBaseUnit: null })}
                       className="py-2 px-3 rounded-lg font-mono text-xs"
                       style={{ background: 'var(--surface)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
                       ← Retour
                     </button>
                     <button
-                      onClick={() => update(ing.jowIndex, { mode: 'idle', referenceId: st.pendingRefId, refName: st.pendingRefName })}
+                      onClick={() => update(ing.jowIndex, {
+                        mode:             'idle',
+                        referenceId:      st.pendingRefId,
+                        refName:          st.pendingRefName,
+                        resolvedBaseUnit: st.pendingBaseUnit,
+                      })}
                       className="flex-1 py-2 rounded-lg font-mono text-xs"
                       style={{ background: 'var(--accent)', color: '#fff' }}>
                       Valider

@@ -24,12 +24,17 @@ export type Conversion = {
 export function formatQuantity(value: number, unit: string): string {
   const u = unit.trim().toLowerCase()
 
-  if (u === 'g') {
+  // Normalise les unités dérivées → unités de base avant traitement
+  if (u === 'kg') return formatQuantity(value * 1000, 'g')
+  if (u === 'cl') return formatQuantity(value * 10, 'ml')
+  if (['l', 'litre', 'liter'].includes(u)) return formatQuantity(value * 1000, 'ml')
+
+  if (['g', 'gram', 'gramme', 'grammes'].includes(u)) {
     if (value >= 1000) return `${_stripTrailingZero(value / 1000)}kg`
     return `${_stripTrailingZero(value)}g`
   }
 
-  if (u === 'ml') {
+  if (['ml', 'milliliter', 'millilitre'].includes(u)) {
     if (value >= 1000) return `${_stripTrailingZero(value / 1000)}L`
     if (value > 200)   return `${_stripTrailingZero(value / 10)}cl`
     return `${_stripTrailingZero(value)}ml`

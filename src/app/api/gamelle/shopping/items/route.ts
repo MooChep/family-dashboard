@@ -5,16 +5,18 @@ import { prisma } from '@/lib/prisma'
 
 /**
  * POST /api/gamelle/shopping/items
- * Ajoute un article manuel à la liste de courses active.
- * body: { label: string; quantity?: number; displayUnit?: string }
+ * Ajoute un article à la liste de courses active.
+ * body: { label: string; referenceId?: string; quantity?: number; displayUnit?: string }
  *
+ * Si referenceId fourni → item lié à l'ingrédient (isManual: false, trié par rayon).
+ * Sinon → item manuel libre (isManual: true).
  * Les ajouts manuels survivent à la régénération de la liste (spec 7.7).
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json() as { label?: string; quantity?: number; displayUnit?: string }
+  const body = await request.json() as { label?: string; referenceId?: string; quantity?: number; displayUnit?: string }
 
   if (!body.label?.trim()) {
     return NextResponse.json({ error: 'label est requis' }, { status: 400 })
@@ -31,7 +33,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       label:          body.label.trim(),
       quantity:       body.quantity ?? null,
       displayUnit:    body.displayUnit?.trim() ?? null,
-      isManual:       true,
+      isManual:       !body.referenceId,
+      ...(body.referenceId ? { referenceId: body.referenceId } : {}),
     },
     include: { reference: { include: { aisle: true } } },
   })

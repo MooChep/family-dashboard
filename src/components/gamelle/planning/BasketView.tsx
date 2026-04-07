@@ -123,7 +123,7 @@ export function BasketView({ slots, onRemove, onSelect }: BasketViewProps) {
             className="font-mono text-[10px] uppercase tracking-widest px-4 pt-4 pb-2"
             style={{ color: 'var(--muted)' }}
           >
-            Sur le cri ({dated.length})
+            Sur le calendrier ({dated.length})
           </p>
           {dated.map(slot => (
             <SlotRow key={slot.id} slot={slot} onRemove={onRemove} onSelect={onSelect} />

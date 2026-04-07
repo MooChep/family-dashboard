@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { Plus, UtensilsCrossed, X } from 'lucide-react'
 import { SwipeItem } from './SwipeItem'
 import { QuickActions } from './QuickActions'
+import { IngredientPicker } from '@/components/gamelle/shared/IngredientPicker'
 import { formatQuantity } from '@/lib/gamelle/units'
 import type { ShoppingItem } from './CheckPlacard'
+import type { IngredientWithAisle } from '@/app/api/gamelle/ingredients/route'
 
 const UPLOAD_BASE = process.env.NEXT_PUBLIC_GAMELLE_UPLOAD_BASE_URL ?? '/uploads/gamelle'
 
@@ -44,7 +46,7 @@ interface ShoppingListProps {
   linkedRecipes?:      LinkedRecipe[]
   onPurchase:          (id: string, quantity: number, unit: string) => Promise<void>
   onCancelPurchase:    (id: string) => Promise<void>
-  onAddManual:         (label: string) => Promise<void>
+  onAddManual:         (payload: { label: string; referenceId?: string }) => Promise<void>
 }
 
 type ViewMode = 'aisle' | 'recipe'
@@ -60,7 +62,6 @@ export function ShoppingList({ items, linkedRecipes = [], onPurchase, onCancelPu
   const [viewMode,         setViewMode]         = useState<ViewMode>('aisle')
   const [quickActionsFor,  setQuickActionsFor]  = useState<string | null>(null)
   const [addingManual,     setAddingManual]     = useState(false)
-  const [manualLabel,      setManualLabel]      = useState('')
   const [submittingManual, setSubmittingManual] = useState(false)
 
   const unpurchased = items.filter(i => !i.purchased)
@@ -68,13 +69,10 @@ export function ShoppingList({ items, linkedRecipes = [], onPurchase, onCancelPu
   const groups      = groupByAisle(unpurchased)
   const qaItem      = quickActionsFor ? items.find(i => i.id === quickActionsFor) : null
 
-  async function handleManualSubmit() {
-    const label = manualLabel.trim()
-    if (!label) return
+  async function handleIngredientSelected(ing: IngredientWithAisle) {
     setSubmittingManual(true)
     try {
-      await onAddManual(label)
-      setManualLabel('')
+      await onAddManual({ label: ing.name, referenceId: ing.id })
       setAddingManual(false)
     } finally {
       setSubmittingManual(false)
@@ -82,7 +80,7 @@ export function ShoppingList({ items, linkedRecipes = [], onPurchase, onCancelPu
   }
 
   return (
-    <div className="flex flex-col pb-24">
+    <div className="flex flex-col pb-32">
 
       {/* Toggle vue */}
       <div
@@ -185,8 +183,8 @@ export function ShoppingList({ items, linkedRecipes = [], onPurchase, onCancelPu
                   <span className="flex-1 font-display text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>
                     {lr.recipe.title}
                   </span>
-                  <span className="font-mono text-xs shrink-0" style={{ color: 'var(--muted)' }}>
-                    {lr.portions} 🍽️
+                  <span className="flex items-center gap-1 font-mono text-xs shrink-0" style={{ color: 'var(--muted)' }}>
+                    <UtensilsCrossed size={11} /> {lr.portions}
                   </span>
                 </div>
               </div>
@@ -261,36 +259,31 @@ export function ShoppingList({ items, linkedRecipes = [], onPurchase, onCancelPu
         </div>
       )}
 
-      {/* Ajout manuel */}
+      {/* Ajout article — via IngredientPicker */}
       <div className="px-4 pt-4">
         {addingManual ? (
           <div
-            className="flex items-center gap-2 rounded-xl px-3"
+            className="rounded-xl p-3"
             style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
           >
-            <input
-              autoFocus
-              type="text"
-              value={manualLabel}
-              onChange={e => setManualLabel(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter')  void handleManualSubmit()
-                if (e.key === 'Escape') { setAddingManual(false); setManualLabel('') }
-              }}
-              placeholder="Article à ajouter…"
-              className="flex-1 py-2.5 font-body text-sm bg-transparent outline-none"
-              style={{ color: 'var(--text)' }}
-            />
+            <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>
+              Rechercher un ingrédient
+            </p>
+            {submittingManual ? (
+              <p className="font-mono text-xs py-2" style={{ color: 'var(--muted)' }}>Ajout…</p>
+            ) : (
+              <IngredientPicker
+                onSelect={ing => void handleIngredientSelected(ing)}
+                placeholder="Ingrédient à ajouter…"
+                autoFocus
+              />
+            )}
             <button
-              onClick={() => void handleManualSubmit()}
-              disabled={!manualLabel.trim() || submittingManual}
-              className="font-mono text-xs px-3 py-1.5 rounded-lg disabled:opacity-40"
-              style={{ background: 'var(--accent)', color: '#fff' }}
+              onClick={() => setAddingManual(false)}
+              className="mt-2 font-mono text-xs"
+              style={{ color: 'var(--muted)' }}
             >
-              Ajouter
-            </button>
-            <button onClick={() => { setAddingManual(false); setManualLabel('') }}>
-              <X size={16} style={{ color: 'var(--muted)' }} />
+              Annuler
             </button>
           </div>
         ) : (

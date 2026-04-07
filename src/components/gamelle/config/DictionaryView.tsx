@@ -5,6 +5,7 @@ import { Search, Plus, Pencil, Trash2, GitMerge } from 'lucide-react'
 import { IngredientForm } from './IngredientForm'
 import type { IngredientFormData } from './IngredientForm'
 import type { IngredientWithAisle } from '@/app/api/gamelle/ingredients/route'
+import { ConfirmDialog } from '@/components/gamelle/shared/ConfirmDialog'
 
 type Aisle = { id: string; name: string; order: number }
 
@@ -31,9 +32,10 @@ export function DictionaryView() {
   const [aisles,   setAisles]   = useState<Aisle[]>([])
   const [loading,  setLoading]  = useState(true)
   const [search,   setSearch]   = useState('')
-  const [editing,  setEditing]  = useState<IngredientWithAisle | null>(null)
-  const [adding,   setAdding]   = useState(false)
-  const [blocked,  setBlocked]  = useState<BlockedDelete | null>(null)
+  const [editing,       setEditing]       = useState<IngredientWithAisle | null>(null)
+  const [adding,        setAdding]        = useState(false)
+  const [blocked,       setBlocked]       = useState<BlockedDelete | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<IngredientWithAisle | null>(null)
   const [merge,    setMerge]    = useState<MergeState | null>(null)
   const [confirmMerge, setConfirmMerge] = useState(false)
   const mergeDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -226,7 +228,7 @@ export function DictionaryView() {
           <button onClick={() => setEditing(item)} className="p-1.5 rounded-lg" style={{ color: 'var(--text2)' }}>
             <Pencil size={13} />
           </button>
-          <button onClick={() => void handleDelete(item)} className="p-1.5 rounded-lg" style={{ color: 'var(--muted)' }}>
+          <button onClick={() => setPendingDelete(item)} className="p-1.5 rounded-lg" style={{ color: 'var(--muted)' }}>
             <Trash2 size={13} />
           </button>
         </div>
@@ -236,6 +238,15 @@ export function DictionaryView() {
         <p className="font-mono text-xs px-4 py-8 text-center" style={{ color: 'var(--muted)' }}>
           {search ? 'Aucun résultat' : 'Dictionnaire vide'}
         </p>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          message={`Supprimer « ${pendingDelete.name} » ?`}
+          detail="Cette action est irréversible."
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => { void handleDelete(pendingDelete); setPendingDelete(null) }}
+        />
       )}
     </div>
   )

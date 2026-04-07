@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { formatQuantity } from '@/lib/gamelle/units'
 
 /**
  * POST /api/gamelle/planning/slots/[id]/consume
@@ -10,7 +11,11 @@ import { prisma } from '@/lib/prisma'
  * Enregistre la consommation de N portions d'un slot :
  * 1. Incrémente portionsConsumed sur le slot
  * 2. Déduit Inventory.quantity pour chaque ingrédient non-staple, non-ignoré
- *    (ignoré si l'ingrédient n'est pas en inventaire — stock ne descend pas sous 0)
+ *    – Jamais en dessous de 0
+ *    – Ingrédient absent du stock → warning (non bloquant)
+ *    – Stock insuffisant → cap à 0 + warning
+ *
+ * Réponse : { slot: PlanningSlotWithRecipe, warnings: string[] }
  */
 export async function POST(
   request: NextRequest,
@@ -31,7 +36,7 @@ export async function POST(
     return NextResponse.json({ error: 'portions doit être un entier > 0' }, { status: 400 })
   }
 
-  // Charger le slot + recette + ingrédients en une seule requête
+  // Charger le slot + recette + ingrédients avec nom et unité de base
   const slot = await prisma.planningSlot.findUnique({
     where: { id: params.id },
     include: {
@@ -39,7 +44,11 @@ export async function POST(
         include: {
           ingredients: {
             where: { isStaple: false, isIgnored: false },
-            select: { referenceId: true, quantity: true },
+            select: {
+              referenceId: true,
+              quantity: true,
+              reference: { select: { name: true, baseUnit: true } },
+            },
           },
         },
       },
@@ -56,34 +65,59 @@ export async function POST(
     )
   }
 
-  // Ratio portions consommées / basePortions de la recette (quantités stockées pour 1 portion)
+  // Ratio portions consommées / basePortions de la recette
   const ratio = portions / (slot.recipe.basePortions || 1)
 
-  await prisma.$transaction(async tx => {
-    // Déduire l'inventaire pour chaque ingrédient actif
-    for (const ing of slot.recipe.ingredients) {
-      const inventory = await tx.inventory.findUnique({
-        where: { referenceId: ing.referenceId },
+  const warnings: string[] = []
+
+  try {
+    await prisma.$transaction(async tx => {
+      for (const ing of slot.recipe.ingredients) {
+        const name     = ing.reference.name
+        const baseUnit = ing.reference.baseUnit === 'GRAM'
+          ? 'g'
+          : ing.reference.baseUnit === 'MILLILITER'
+          ? 'ml'
+          : ''
+        const needed = ing.quantity * ratio
+
+        const inventory = await tx.inventory.findUnique({
+          where: { referenceId: ing.referenceId },
+        })
+
+        if (!inventory) {
+          // Absent du stock — non bloquant, on ignore
+          warnings.push(`${name} absent du stock — non déduit`)
+          continue
+        }
+
+        if (inventory.quantity < needed) {
+          // Stock insuffisant — on consomme tout ce qui reste (jamais négatif)
+          warnings.push(
+            `${name} : stock insuffisant (${formatQuantity(inventory.quantity, baseUnit)} disponible, ` +
+            `${formatQuantity(needed, baseUnit)} nécessaire) — consommé en totalité`
+          )
+        }
+
+        const newQty = Math.max(0, inventory.quantity - needed)
+        await tx.inventory.update({
+          where: { referenceId: ing.referenceId },
+          data:  { quantity: newQty },
+        })
+      }
+
+      // Incrémenter portionsConsumed
+      await tx.planningSlot.update({
+        where: { id: params.id },
+        data:  { portionsConsumed: slot.portionsConsumed + portions },
       })
-      if (!inventory) continue   // pas en stock → on ignore silencieusement
-
-      const deduction = ing.quantity * ratio
-      const newQty    = Math.max(0, inventory.quantity - deduction)
-
-      await tx.inventory.update({
-        where: { referenceId: ing.referenceId },
-        data:  { quantity: newQty },
-      })
-    }
-
-    // Incrémenter portionsConsumed
-    await tx.planningSlot.update({
-      where: { id: params.id },
-      data:  { portionsConsumed: slot.portionsConsumed + portions },
     })
-  })
+  } catch (err) {
+    console.error('[consume] erreur transaction:', err)
+    return NextResponse.json({ error: 'Erreur lors de la consommation' }, { status: 500 })
+  }
 
-  // Retourner le slot mis à jour
+  // Retourner le slot mis à jour + warnings
   const updated = await prisma.planningSlot.findUnique({
     where:   { id: params.id },
     include: {
@@ -96,5 +130,5 @@ export async function POST(
     },
   })
 
-  return NextResponse.json(updated)
+  return NextResponse.json({ slot: updated, warnings })
 }

@@ -24,5 +24,18 @@ export async function PATCH(
     data:  { status: 'ARCHIVED', archivedAt: new Date() },
   })
 
+  // Marquer lastPurchasedAt sur tous les slots des recettes de cette liste
+  const listRecipes = await prisma.shoppingListRecipe.findMany({
+    where:  { shoppingListId: params.id },
+    select: { recipeId: true },
+  })
+  const recipeIds = listRecipes.map(r => r.recipeId)
+  if (recipeIds.length > 0) {
+    await prisma.planningSlot.updateMany({
+      where: { recipeId: { in: recipeIds } },
+      data:  { lastPurchasedAt: new Date() },
+    })
+  }
+
   return NextResponse.json(updated)
 }

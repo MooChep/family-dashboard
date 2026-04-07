@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Heart } from 'lucide-react'
+import { Heart, ArrowLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { RecipeDetail } from '@/components/gamelle/recipes/RecipeDetail'
 import { RecipeCard } from '@/components/gamelle/recipes/RecipeCard'
 import type { RecipeWithIngredients, ApiResponse, PaginatedResponse } from '@/lib/gamelle/types'
@@ -10,6 +11,7 @@ import type { RecipeWithIngredients, ApiResponse, PaginatedResponse } from '@/li
  * Page Recettes Favorites — liste toutes les recettes likées.
  */
 export default function LikedRecipesPage() {
+  const router = useRouter()
   const [recipes,  setRecipes]  = useState<RecipeWithIngredients[]>([])
   const [loading,  setLoading]  = useState(true)
   const [selected, setSelected] = useState<RecipeWithIngredients | null>(null)
@@ -30,9 +32,12 @@ export default function LikedRecipesPage() {
   return (
     <div className="flex flex-col min-h-screen" style={{ background: 'var(--bg)' }}>
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 flex items-center gap-3">
-        <Heart size={18} style={{ color: 'var(--danger, #e74c3c)' }} fill="currentColor" />
-        <h1 className="font-display text-xl font-semibold" style={{ color: 'var(--text)' }}>
+      <div className="px-4 pt-4 pb-3 flex items-center gap-3" style={{ borderBottom: '1px solid var(--border)' }}>
+        <button onClick={() => router.push('/gamelle/recettes')} className="p-1" style={{ color: 'var(--muted)' }}>
+          <ArrowLeft size={20} />
+        </button>
+        <Heart size={16} style={{ color: 'var(--danger, #e74c3c)' }} fill="currentColor" />
+        <h1 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
           Favoris
         </h1>
       </div>
@@ -50,7 +55,7 @@ export default function LikedRecipesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 px-4 pb-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 px-4 pb-24 sm:grid-cols-3">
           {recipes.map(r => (
             <RecipeCard
               key={r.id}

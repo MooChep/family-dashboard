@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ArrowLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import type { GamelleStats } from '@/app/api/gamelle/stats/route'
 
 const UPLOAD_BASE = process.env.NEXT_PUBLIC_GAMELLE_UPLOAD_BASE_URL ?? '/uploads/gamelle'
@@ -41,6 +43,7 @@ function formatSince(iso: string | null): string {
  * Vue statistiques lifetime du module Gamelle.
  */
 export function StatsView() {
+  const router = useRouter()
   const [stats,   setStats]   = useState<GamelleStats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -65,7 +68,20 @@ export function StatsView() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-4 pb-8">
+    <div className="flex flex-col pb-24">
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 px-4 py-3 shrink-0"
+        style={{ borderBottom: '1px solid var(--border)' }}
+      >
+        <button onClick={() => router.back()} className="p-1" style={{ color: 'var(--muted)' }}>
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+          Statistiques
+        </h1>
+      </div>
+    <div className="flex flex-col gap-4 px-4 py-4">
 
       {/* Recettes */}
       <StatCard>
@@ -149,6 +165,7 @@ export function StatsView() {
         </p>
       </StatCard>
 
+    </div>
     </div>
   )
 }

@@ -63,7 +63,7 @@ export default function IngredientsPage() {
       </div>
 
       {/* Contenu */}
-      <div className="flex-1 overflow-y-auto pb-20">
+      <div className="flex-1 overflow-y-auto pb-24">
         {tab === 'dictionary'    && <DictionaryView />}
         {tab === 'aisles'        && <AislesConfig />}
         {tab === 'substitutions' && (

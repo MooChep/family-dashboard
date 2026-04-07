@@ -86,7 +86,7 @@ function SlotChip({
 }
 
 /**
- * Vue cri 7 jours — grille Midi/Soir avec navigation semaine.
+ * Vue calendrier 7 jours — grille Midi/Soir avec navigation semaine.
  * Slots FLOATING affichés en bas quelque soit la semaine.
  */
 export function CalendarView({ refreshKey, onSelect }: CalendarViewProps) {

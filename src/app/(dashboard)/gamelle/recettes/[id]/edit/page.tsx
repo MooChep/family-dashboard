@@ -34,7 +34,7 @@ export default async function EditRecettePage({ params }: Props) {
   }
 
   return (
-    <div className="px-4 pt-4 pb-8">
+    <div className="px-4 pt-4 pb-24">
       <RecipeForm initialData={data} mode="edit" />
     </div>
   )
