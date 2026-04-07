@@ -1,7 +1,21 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Plus, X, Trash2, Calendar } from 'lucide-react'
+import { Plus, X, Trash2, Calendar, CalendarX, CalendarDays, ChefHat, GripVertical } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import {
+  DndContext,
+  useDraggable,
+  useDroppable,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  pointerWithin,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
 import { AddToMenuSheet } from '@/components/gamelle/planning/AddToMenuSheet'
 import { ConsumeSheet } from '@/components/gamelle/planning/ConsumeSheet'
 import { RecipeSearchGrid } from '@/components/gamelle/recipes/RecipeSearchGrid'
@@ -23,7 +37,10 @@ const DAYS_FR   = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
 type AddContext = { date: string; period: Period } | null
 
 function toISODate(d: Date): string {
-  return d.toISOString().split('T')[0]!
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function formatSlotDate(d: Date): string {
@@ -32,18 +49,43 @@ function formatSlotDate(d: Date): string {
 
 /**
  * Page Menu — layout unifié :
- *  – Section "Le Cri" : scroll horizontal 11 jours (J-3 → J+7)
+ *  – Section "Le Calendrier" : scroll horizontal 11 jours (J-3 → J+7)
  *  – Section "À cuisiner" : cartes flottantes scrollables horizontalement
  */
+// Horaires par défaut (configurable à terme dans les préférences)
+const LUNCH_HOUR  = 12, LUNCH_MIN  = 30
+const DINNER_HOUR = 21, DINNER_MIN = 0
+
+/** Retourne le prochain slot daté (le plus proche dans le temps) */
+function getNearestSlot(slots: PlanningSlotWithRecipe[]): PlanningSlotWithRecipe | null {
+  const now = new Date()
+  const candidates = slots
+    .filter(s => s.type === 'DATED' && s.scheduledDate)
+    .map(s => {
+      const d = new Date(s.scheduledDate!)
+      const [h, m] = s.period === 'LUNCH'
+        ? [LUNCH_HOUR, LUNCH_MIN]
+        : [DINNER_HOUR, DINNER_MIN]
+      d.setHours(h, m, 0, 0)
+      return { slot: s, mealTime: d }
+    })
+    .filter(({ mealTime }) => mealTime >= now)
+    .sort((a, b) => a.mealTime.getTime() - b.mealTime.getTime())
+  return candidates[0]?.slot ?? null
+}
+
 export default function MenuPage() {
+  const router = useRouter()
   const [slots,          setSlots]          = useState<PlanningSlotWithRecipe[]>([])
   const [loading,        setLoading]        = useState(true)
   const [showPicker,     setShowPicker]     = useState(false)
   const [addContext,     setAddContext]     = useState<AddContext>(null)
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCardData | null>(null)
   const [consumeSlot,    setConsumeSlot]    = useState<PlanningSlotWithRecipe | null>(null)
-  const [placeSlot,      setPlaceSlot]      = useState<PlanningSlotWithRecipe | null>(null)
+  const [activeDragId,   setActiveDragId]   = useState<string | null>(null)
   const todayRef = useRef<HTMLDivElement>(null)
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const now = new Date()
   now.setHours(0, 0, 0, 0)
@@ -133,6 +175,18 @@ export default function MenuPage() {
     setConsumeSlot(null)
   }
 
+  async function handleUnassign(slotId: string) {
+    try {
+      const res  = await fetch(`/api/gamelle/planning/slots/${slotId}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ scheduledDate: null, period: null }),
+      })
+      const data = await res.json() as PlanningSlotWithRecipe
+      setSlots(prev => prev.map(s => s.id === slotId ? data : s))
+    } catch { /* ignore */ }
+  }
+
   async function handlePlace(slotId: string, date: string, period: Period) {
     try {
       const res  = await fetch(`/api/gamelle/planning/slots/${slotId}`, {
@@ -142,12 +196,29 @@ export default function MenuPage() {
       })
       const data = await res.json() as PlanningSlotWithRecipe
       setSlots(prev => prev.map(s => s.id === slotId ? data : s))
-      setPlaceSlot(null)
     } catch { /* ignore */ }
   }
 
-  const dated    = slots.filter(s => s.type === 'DATED')
-  const floating = slots.filter(s => s.type === 'FLOATING')
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveDragId(null)
+    const { active, over } = event
+    if (!over) return
+    // over.id format: `${isoDate}|${period}`
+    const [date, period] = (String(over.id)).split('|') as [string, Period]
+    if (!date || !period) return
+    // Ne placer que si le slot cible est vide
+    const occupied = dated.find(s =>
+      s.scheduledDate &&
+      toISODate(new Date(s.scheduledDate)) === date &&
+      s.period === period
+    )
+    if (occupied) return
+    void handlePlace(String(active.id), date, period)
+  }
+
+  const dated       = slots.filter(s => s.type === 'DATED')
+  const floating    = slots.filter(s => s.type === 'FLOATING')
+  const nearestSlot = getNearestSlot(slots)
 
   function getSlot(day: Date, period: Period): PlanningSlotWithRecipe | undefined {
     return dated.find(s =>
@@ -157,8 +228,18 @@ export default function MenuPage() {
     )
   }
 
+  const activeDragSlot = activeDragId ? floating.find(s => s.id === activeDragId) ?? null : null
+
   return (
-    <div className="flex flex-col min-h-screen pb-4" style={{ background: 'var(--bg)' }}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      autoScroll={{ threshold: { x: 0.05, y: 0 } }}
+      onDragStart={e => setActiveDragId(String(e.active.id))}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveDragId(null)}
+    >
+    <div className="flex flex-col min-h-screen pb-24" style={{ background: 'var(--bg)' }}>
 
       {/* Header */}
       <div
@@ -168,25 +249,51 @@ export default function MenuPage() {
         <h1 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
           Mon menu
         </h1>
-        <button
-          onClick={() => handleOpenPicker()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-xs"
-          style={{ background: 'var(--accent)', color: '#fff' }}
-        >
-          <Plus size={14} /> Ajouter
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/gamelle/menu/calendrier"
+            className="p-1.5 rounded-lg flex items-center justify-center"
+            style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}
+          >
+            <CalendarDays size={16} />
+          </Link>
+          <button
+            onClick={() => handleOpenPicker()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-xs"
+            style={{ background: 'var(--accent)', color: '#fff' }}
+          >
+            <Plus size={14} /> Ajouter
+          </button>
+        </div>
       </div>
+
+      {/* Bannière "Mode cuisine" — prochain repas */}
+      {!loading && nearestSlot && (
+        <button
+          onClick={() => router.push(`/gamelle/cuisine/${nearestSlot.recipe.id}?portions=${nearestSlot.portions}`)}
+          className="mx-4 mt-3 flex items-center justify-center gap-3 py-3 rounded-2xl w-full"
+          style={{ background: 'var(--accent)', color: '#fff', maxWidth: 'calc(100% - 2rem)' }}
+        >
+          <ChefHat size={18} style={{ color: '#fff', flexShrink: 0 }} />
+          <div className="flex flex-col items-center">
+            <span className="font-mono text-xs font-semibold" style={{ color: '#fff' }}>Mode cuisine</span>
+            <span className="font-body text-[11px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+              {nearestSlot.recipe.title} · {formatSlotDate(new Date(nearestSlot.scheduledDate!))} {nearestSlot.period === 'LUNCH' ? 'Midi' : 'Soir'}
+            </span>
+          </div>
+        </button>
+      )}
 
       {loading ? (
         <p className="font-mono text-xs p-4" style={{ color: 'var(--muted)' }}>Chargement…</p>
       ) : (
         <>
-          {/* ── Section Le Cri ─────────────────────────────────────────────── */}
+          {/* ── Section Calendrier ─────────────────────────────────────────────── */}
           <section className="mt-4 mb-2">
             <div className="flex items-center gap-2 px-4 mb-2">
               <Calendar size={14} style={{ color: 'var(--accent)' }} />
               <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-                Le Cri
+                Calendrier
               </span>
             </div>
 
@@ -202,7 +309,8 @@ export default function MenuPage() {
                     ref={isToday ? todayRef : undefined}
                     className="shrink-0 rounded-2xl overflow-hidden snap-start flex flex-col"
                     style={{
-                      width:      148,
+                      width:     isToday ? 172 : 148,
+                      minHeight: isToday ? 180 : 148,
                       background: isToday ? 'var(--accent-dim)' : 'var(--surface)',
                       border:     `1px solid ${isToday ? 'var(--accent)' : 'var(--border)'}`,
                     }}
@@ -228,8 +336,9 @@ export default function MenuPage() {
                       {(['LUNCH', 'DINNER'] as Period[]).map(period => {
                         const slot  = period === 'LUNCH' ? lunch : dinner
                         const label = period === 'LUNCH' ? 'Midi' : 'Soir'
+                        const dropId = `${toISODate(day)}|${period}`
                         return (
-                          <div key={period}>
+                          <DroppableSlot key={period} id={dropId} occupied={!!slot}>
                             <p
                               className="font-mono text-[9px] uppercase tracking-widest mb-0.5"
                               style={{ color: 'var(--muted)' }}
@@ -237,26 +346,35 @@ export default function MenuPage() {
                               {label}
                             </p>
                             {slot ? (
-                              <button
-                                onClick={() => setConsumeSlot(slot)}
-                                className="flex items-center gap-1.5 w-full text-left"
-                              >
-                                <div
-                                  className="shrink-0 rounded-full overflow-hidden flex items-center justify-center"
-                                  style={{ width: 20, height: 20, background: 'var(--surface2)', border: '1px solid var(--border)' }}
+                              <div className="flex items-center gap-1 w-full">
+                                <button
+                                  onClick={() => setConsumeSlot(slot)}
+                                  className="flex items-center gap-1.5 flex-1 text-left min-w-0"
                                 >
-                                  {slot.recipe.imageLocal ? (
-                                    <img src={`${UPLOAD_BASE}/${slot.recipe.imageLocal}`} alt="" className="w-full h-full object-cover" />
-                                  ) : (
-                                    <span className="font-display text-[8px] font-bold" style={{ color: 'var(--muted)' }}>
-                                      {slot.recipe.title.charAt(0)}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="font-body text-[10px] leading-snug line-clamp-2" style={{ color: 'var(--text)' }}>
-                                  {slot.recipe.title}
-                                </span>
-                              </button>
+                                  <div
+                                    className="shrink-0 rounded-full overflow-hidden flex items-center justify-center"
+                                    style={{ width: 20, height: 20, background: 'var(--surface2)', border: '1px solid var(--border)' }}
+                                  >
+                                    {slot.recipe.imageLocal ? (
+                                      <img src={`${UPLOAD_BASE}/${slot.recipe.imageLocal}`} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span className="font-display text-[8px] font-bold" style={{ color: 'var(--muted)' }}>
+                                        {slot.recipe.title.charAt(0)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="font-body text-[10px] leading-snug line-clamp-2" style={{ color: 'var(--text)' }}>
+                                    {slot.recipe.title}
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() => void handleUnassign(slot.id)}
+                                  className="shrink-0 p-0.5 rounded"
+                                  style={{ color: 'var(--muted)' }}
+                                >
+                                  <CalendarX size={11} />
+                                </button>
+                              </div>
                             ) : (
                               <button
                                 onClick={() => handleOpenPicker({ date: toISODate(day), period })}
@@ -266,7 +384,7 @@ export default function MenuPage() {
                                 + Planifier
                               </button>
                             )}
-                          </div>
+                          </DroppableSlot>
                         )
                       })}
                     </div>
@@ -291,7 +409,6 @@ export default function MenuPage() {
                     slot={slot}
                     onSelect={() => setConsumeSlot(slot)}
                     onRemove={() => void handleRemove(slot.id)}
-                    onPlace={() => setPlaceSlot(slot)}
                   />
                 ))}
               </div>
@@ -361,47 +478,59 @@ export default function MenuPage() {
         />
       )}
 
-      {/* PlaceSheet — placer un slot volant sur le cri */}
-      {placeSlot && (
-        <PlaceSheet
-          slot={placeSlot}
-          onConfirm={(date, period) => void handlePlace(placeSlot.id, date, period)}
-          onClose={() => setPlaceSlot(null)}
-        />
-      )}
+      <DragOverlay dropAnimation={null}>
+        {activeDragSlot && <FloatingCardOverlay slot={activeDragSlot} />}
+      </DragOverlay>
     </div>
+    </DndContext>
   )
 }
 
-/* ── FloatingCard ──────────────────────────────────────────────────────────── */
+/* ── FloatingCard (draggable) ─────────────────────────────────────────────── */
 
 function FloatingCard({
   slot,
   onSelect,
   onRemove,
-  onPlace,
 }: {
   slot:     PlanningSlotWithRecipe
   onSelect: () => void
   onRemove: () => void
-  onPlace:  () => void
 }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: slot.id })
   const remaining = slot.portions - slot.portionsConsumed
 
   return (
     <div
+      ref={setNodeRef}
       className="shrink-0 rounded-2xl overflow-hidden flex flex-col"
       style={{
         width:      148,
         background: 'var(--surface)',
         border:     '1px dashed var(--accent)',
+        transform:  CSS.Translate.toString(transform),
+        opacity:    isDragging ? 0.4 : 1,
+        touchAction: 'none',
       }}
     >
-      {/* Image / initiale */}
-      <button onClick={onSelect} className="flex-1 p-3 text-left">
+      {/* Handle drag + titre */}
+      <div
+        className="flex items-center gap-1 px-2 pt-2 pb-1 cursor-grab active:cursor-grabbing"
+        style={{ color: 'var(--border2)', touchAction: 'none' }}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={13} className="shrink-0" />
+        <p className="font-body text-xs font-semibold line-clamp-2 leading-snug flex-1" style={{ color: 'var(--text)' }}>
+          {slot.recipe.title}
+        </p>
+      </div>
+
+      {/* Image cliquable → consommer */}
+      <button onClick={onSelect} className="px-2 pb-1 text-left">
         <div
-          className="rounded-xl overflow-hidden flex items-center justify-center mb-2"
-          style={{ width: '100%', height: 72, background: 'var(--surface2)' }}
+          className="rounded-xl overflow-hidden flex items-center justify-center"
+          style={{ width: '100%', height: 68, background: 'var(--surface2)' }}
         >
           {slot.recipe.imageLocal ? (
             <img src={`${UPLOAD_BASE}/${slot.recipe.imageLocal}`} alt="" className="w-full h-full object-cover" />
@@ -411,25 +540,13 @@ function FloatingCard({
             </span>
           )}
         </div>
-        <p className="font-body text-xs font-semibold line-clamp-2 leading-snug" style={{ color: 'var(--text)' }}>
-          {slot.recipe.title}
-        </p>
-        <p className="font-mono text-[10px] mt-0.5" style={{ color: 'var(--muted)' }}>
+        <p className="font-mono text-[10px] mt-1" style={{ color: 'var(--muted)' }}>
           {remaining} portion{remaining > 1 ? 's' : ''}
         </p>
       </button>
 
-      {/* Actions */}
-      <div
-        className="flex items-center justify-between px-2 pb-2 gap-1"
-      >
-        <button
-          onClick={onPlace}
-          className="flex-1 py-1 rounded-lg font-mono text-[10px] text-center"
-          style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
-        >
-          Planifier
-        </button>
+      {/* Supprimer */}
+      <div className="flex justify-end px-2 pb-2">
         <button
           onClick={e => { e.stopPropagation(); onRemove() }}
           className="p-1.5 rounded-lg"
@@ -442,85 +559,58 @@ function FloatingCard({
   )
 }
 
-/* ── PlaceSheet ────────────────────────────────────────────────────────────── */
+/* ── FloatingCardOverlay — ghost pendant le drag ──────────────────────────── */
 
-function PlaceSheet({
-  slot,
-  onConfirm,
-  onClose,
-}: {
-  slot:      PlanningSlotWithRecipe
-  onConfirm: (date: string, period: Period) => void
-  onClose:   () => void
-}) {
-  const [date,    setDate]    = useState('')
-  const [period,  setPeriod]  = useState<Period>('DINNER')
-  const [loading, setLoading] = useState(false)
-
-  async function handleConfirm() {
-    if (!date) return
-    setLoading(true)
-    try { onConfirm(date, period) } finally { setLoading(false) }
-  }
-
+function FloatingCardOverlay({ slot }: { slot: PlanningSlotWithRecipe }) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: 'rgba(0,0,0,0.4)' }}>
-      <div
-        className="flex flex-col gap-4 px-4 pt-5 pb-8 rounded-t-2xl"
-        style={{ background: 'var(--bg)', borderTop: '1px solid var(--border)' }}
-      >
-        <div className="flex items-center justify-between">
-          <p className="font-display text-base font-semibold" style={{ color: 'var(--text)' }}>
-            Planifier sur le cri
-          </p>
-          <button onClick={onClose} style={{ color: 'var(--muted)' }}>
-            <X size={20} />
-          </button>
-        </div>
-
-        <p className="font-body text-sm" style={{ color: 'var(--muted)' }}>
+    <div
+      className="shrink-0 rounded-2xl overflow-hidden flex flex-col"
+      style={{
+        width:      148,
+        background: 'var(--surface)',
+        border:     '2px solid var(--accent)',
+        boxShadow:  '0 8px 24px rgba(0,0,0,0.2)',
+        opacity:    0.95,
+      }}
+    >
+      <div className="flex items-center gap-1 px-2 pt-2 pb-1" style={{ color: 'var(--border2)' }}>
+        <GripVertical size={13} className="shrink-0" />
+        <p className="font-body text-xs font-semibold line-clamp-2 leading-snug flex-1" style={{ color: 'var(--text)' }}>
           {slot.recipe.title}
         </p>
-
-        <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-            Date
-          </span>
-          <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl font-mono text-sm outline-none"
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
-          />
-        </div>
-
-        <div className="flex gap-3">
-          {(['LUNCH', 'DINNER'] as Period[]).map(p => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className="flex-1 py-2.5 rounded-xl font-mono text-sm transition-colors"
-              style={{
-                background: period === p ? 'var(--accent)' : 'var(--surface2)',
-                color:      period === p ? '#fff' : 'var(--text2)',
-                border:     `1px solid ${period === p ? 'var(--accent)' : 'var(--border)'}`,
-              }}
-            >
-              {p === 'LUNCH' ? 'Midi' : 'Soir'}
-            </button>
-          ))}
-        </div>
-
-        <button
-          onClick={() => void handleConfirm()}
-          disabled={!date || loading}
-          className="w-full py-3.5 rounded-xl font-mono text-sm font-medium disabled:opacity-40"
-          style={{ background: 'var(--accent)', color: '#fff' }}
-        >
-          {loading ? 'Enregistrement…' : 'Planifier →'}
-        </button>
       </div>
+      <div className="px-2 pb-2">
+        <div
+          className="rounded-xl overflow-hidden flex items-center justify-center"
+          style={{ width: '100%', height: 68, background: 'var(--surface2)' }}
+        >
+          {slot.recipe.imageLocal ? (
+            <img src={`${UPLOAD_BASE}/${slot.recipe.imageLocal}`} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="font-display text-3xl font-bold" style={{ color: 'var(--muted)' }}>
+              {slot.recipe.title.charAt(0)}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── DroppableSlot — zone de dépôt dans le carousel ──────────────────────── */
+
+function DroppableSlot({ id, occupied, children }: { id: string; occupied: boolean; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id, disabled: occupied })
+  return (
+    <div
+      ref={setNodeRef}
+      className="rounded-lg transition-colors"
+      style={{
+        border:     isOver && !occupied ? '1.5px dashed var(--accent)' : '1.5px solid transparent',
+        background: isOver && !occupied ? 'var(--accent-dim)' : 'transparent',
+      }}
+    >
+      {children}
     </div>
   )
 }

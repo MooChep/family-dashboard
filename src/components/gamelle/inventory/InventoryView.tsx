@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, Check, X } from 'lucide-react'
 import { formatQuantity } from '@/lib/gamelle/units'
 import type { IngredientWithAisle } from '@/app/api/gamelle/ingredients/route'
+import { ConfirmDialog } from '@/components/gamelle/shared/ConfirmDialog'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,11 +36,12 @@ function unitForBase(base: string): string {
  * Rab négatif affiché en var(--danger).
  */
 export function InventoryView() {
-  const [items,    setItems]    = useState<InventoryItem[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState('')
-  const [adding,   setAdding]   = useState(false)
+  const [items,         setItems]         = useState<InventoryItem[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [editingId,     setEditingId]     = useState<string | null>(null)
+  const [editValue,     setEditValue]     = useState('')
+  const [adding,        setAdding]        = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<InventoryItem | null>(null)
 
   useEffect(() => { void load() }, [])
 
@@ -78,6 +80,7 @@ export function InventoryView() {
 
   async function handleDelete(id: string) {
     setItems(prev => prev.filter(i => i.id !== id))
+    setPendingDelete(null)
     try {
       await fetch(`/api/gamelle/inventory/${id}`, { method: 'DELETE' })
     } catch {
@@ -95,7 +98,7 @@ export function InventoryView() {
   }
 
   return (
-    <div className="flex flex-col pb-4">
+    <div className="flex flex-col pb-24">
 
       {/* Header stats */}
       <div
@@ -151,6 +154,16 @@ export function InventoryView() {
         </div>
       )}
 
+      {/* Confirmation suppression */}
+      {pendingDelete && (
+        <ConfirmDialog
+          message={`Supprimer ${pendingDelete.reference.name} ?`}
+          detail="Cette action supprimera cet ingrédient du stock."
+          onConfirm={() => void handleDelete(pendingDelete.id)}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+
       {/* En-tête de colonne */}
       {items.length > 0 && (
         <div
@@ -171,7 +184,7 @@ export function InventoryView() {
       )}
 
       {/* Lignes */}
-      {items.map(item => {
+      {items.filter(i => i.quantity > 0).map(item => {
         const unit    = unitForBase(item.reference.baseUnit)
         const isEditing = editingId === item.id
         const rabNeg  = item.rab < 0
@@ -242,7 +255,7 @@ export function InventoryView() {
 
             {/* Supprimer */}
             <button
-              onClick={e => { e.stopPropagation(); void handleDelete(item.id) }}
+              onClick={e => { e.stopPropagation(); setPendingDelete(item) }}
               className="flex items-center justify-center"
               style={{ color: 'var(--muted)' }}
             >

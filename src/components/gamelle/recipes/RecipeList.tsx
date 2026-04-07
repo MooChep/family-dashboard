@@ -20,8 +20,8 @@ export function RecipeList() {
   const [loading,       setLoading]       = useState(true)
   const [search,        setSearch]        = useState('')
   const [filter,        setFilter]        = useState<Filter>('all')
-  const [selected,      setSelected]      = useState<RecipeWithIngredients | null>(null)
-  const [activeIds,     setActiveIds]     = useState<Set<string>>(new Set())
+  const [selected,  setSelected]  = useState<RecipeWithIngredients | null>(null)
+  const [activeIds, setActiveIds] = useState<Set<string>>(new Set())
   const [tick,          setTick]          = useState(0)
 
   const LIMIT = 30
@@ -160,7 +160,7 @@ export function RecipeList() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4 px-4 pt-2 pb-4">
+            <div className="grid grid-cols-2 gap-4 px-4 pt-2 pb-24">
               {displayed.map(recipe => (
                 <RecipeCard
                   key={recipe.id}
@@ -205,7 +205,7 @@ export function RecipeList() {
           recipe={selected}
           isInMenu={activeIds.has(selected.id)}
           onClose={() => setSelected(null)}
-          onAddToMenu={() => { /* S13 */ }}
+          onAddToMenu={r => setActiveIds(prev => new Set([...prev, r.id]))}
         />
       )}
     </div>

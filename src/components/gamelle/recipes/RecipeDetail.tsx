@@ -1,18 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { X, Pencil, ChefHat, Minus, Plus, Heart } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { X, Pencil, ChefHat, Minus, Plus, Heart, Check } from 'lucide-react'
 import { displayFraction } from '@/lib/gamelle/fractions'
 import type { RecipeWithIngredients } from '@/lib/gamelle/types'
 
 const UPLOAD_BASE = process.env.NEXT_PUBLIC_GAMELLE_UPLOAD_BASE_URL ?? '/uploads/gamelle'
 
 interface RecipeDetailProps {
-  recipe:       RecipeWithIngredients
-  isInMenu:     boolean
-  onClose:      () => void
-  onAddToMenu:  (recipe: RecipeWithIngredients) => void
+  recipe:      RecipeWithIngredients
+  isInMenu:    boolean
+  onClose:     () => void
+  onAddToMenu: (recipe: RecipeWithIngredients) => void  // appelé après ajout réussi
 }
 
 /** Formate une quantité d'ingrédient pour la fiche recette (displayQuantity × mult). */
@@ -28,9 +28,12 @@ function formatIngredientQty(displayQuantity: number, displayUnit: string, mult:
  * Image circulaire, grille ingrédients 3 colonnes, étapes numérotées, footer sticky.
  */
 export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeDetailProps) {
-  const [portions, setPortions] = useState(2)
+  const router = useRouter()
+  const [portions, setPortions] = useState(recipe.basePortions ?? 2)
   const [liked,    setLiked]    = useState(false)
   const [liking,   setLiking]   = useState(false)
+  const [adding,   setAdding]   = useState(false)
+  const [added,    setAdded]    = useState(isInMenu)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -65,6 +68,24 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
 
   const mult = portions / (recipe.basePortions || 1)
 
+  async function handleAddToMenu() {
+    if (added || adding) return
+    setAdding(true)
+    try {
+      const res = await fetch('/api/gamelle/planning/slots', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ recipeId: recipe.id, portions }),
+      })
+      if (res.ok) {
+        setAdded(true)
+        onAddToMenu(recipe)
+      }
+    } catch { /* ignore */ } finally {
+      setAdding(false)
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'var(--bg)' }}>
       {/* Header */}
@@ -89,13 +110,13 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
         >
           <Heart size={18} fill={liked ? 'currentColor' : 'none'} />
         </button>
-        <Link
-          href={`/gamelle/recettes/${recipe.id}/edit`}
+        <button
+          onClick={() => router.push(`/gamelle/recettes/${recipe.id}/edit`)}
           className="p-1 rounded-lg"
           style={{ color: 'var(--muted)' }}
         >
           <Pencil size={18} />
-        </Link>
+        </button>
       </div>
 
       {/* Contenu scrollable */}
@@ -236,28 +257,29 @@ export function RecipeDetail({ recipe, isInMenu, onClose, onAddToMenu }: RecipeD
 
       {/* Footer sticky */}
       <div
-        className="shrink-0 px-4 py-4 flex gap-3"
+        className="shrink-0 px-4 py-2 flex gap-3 pb-18"
         style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}
       >
         <button
-          onClick={() => void onAddToMenu(recipe)}
-          className="flex-1 py-3 rounded-xl font-mono text-sm font-medium transition-opacity"
+          onClick={() => void handleAddToMenu()}
+          disabled={adding}
+          className="flex-1 py-1 rounded-xl font-mono text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-40"
           style={{
-            background: isInMenu ? 'var(--accent-dim)' : 'var(--accent)',
-            color:      isInMenu ? 'var(--accent)' : '#fff',
-            border:     isInMenu ? '1px solid var(--accent)' : 'none',
+            background: added ? 'var(--accent-dim)' : 'var(--accent)',
+            color:      added ? 'var(--accent)'     : '#fff',
+            border:     added ? '1px solid var(--accent)' : 'none',
           }}
         >
-          {isInMenu ? '✓ Au menu' : '+ Ajouter au menu'}
+          {added ? <><Check size={14} /> Au menu</> : adding ? 'Ajout…' : '+ Ajouter au menu'}
         </button>
-        <Link
-          href={`/gamelle/cuisine/${recipe.id}`}
-          className="flex items-center gap-2 px-4 py-3 rounded-xl font-mono text-sm transition-colors"
+        <button
+          onClick={() => router.push(`/gamelle/cuisine/${recipe.id}?portions=${portions}`)}
+          className="flex items-center gap-2 px-4 py-3 rounded-xl font-mono text-sm"
           style={{ background: 'var(--surface2)', color: 'var(--accent)', border: '1px solid var(--border)' }}
         >
           <ChefHat size={16} />
-          Cuisiner
-        </Link>
+          Mode cuisine
+        </button>
       </div>
     </div>
   )

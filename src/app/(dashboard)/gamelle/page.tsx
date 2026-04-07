@@ -1,23 +1,16 @@
 import Link from 'next/link'
-import { ChefHat, ShoppingCart, CalendarDays, Archive, ChevronRight, Sparkles, BarChart2 } from 'lucide-react'
+import { ChefHat, ShoppingCart, CalendarDays, Archive, ChevronRight, Sparkles, BarChart2, RefreshCw } from 'lucide-react'
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { formatQuantity } from '@/lib/gamelle/units'
 import { SuggestionsPanel } from '@/components/gamelle/suggestions/SuggestionsPanel'
+import { MenuCarousel } from '@/components/gamelle/MenuCarousel'
+import type { CarouselDay, CarouselFloating } from '@/components/gamelle/MenuCarousel'
+import { RecommendationsWidget } from '@/components/gamelle/RecommendationsWidget'
 
 export const metadata = { title: 'Gamelle' }
-
-const MONTHS_FR = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep', 'oct', 'nov', 'déc']
-const DAYS_FR   = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
-
-const UPLOAD_BASE = process.env.NEXT_PUBLIC_GAMELLE_UPLOAD_BASE_URL ?? '/uploads/gamelle'
-
-function formatSlotDate(d: Date | null): string {
-  if (!d) return ''
-  return `${DAYS_FR[d.getDay()]} ${d.getDate()} ${MONTHS_FR[d.getMonth()]}`
-}
 
 function unitForBase(base: string): string {
   if (base === 'GRAM')       return 'g'
@@ -66,30 +59,33 @@ export default async function GamellePage() {
 
   const activeSlots = allSlots.filter(s => s.portionsConsumed < s.portions)
   const dated       = activeSlots.filter(s => s.type === 'DATED')
-  const floating    = activeSlots.filter(s => s.type === 'FLOATING')
+  const floatingSlots = activeSlots.filter(s => s.type === 'FLOATING')
 
-  // Construire les 11 jours (J-3 → J+7)
-  const days: Date[] = []
+  // Construire les 11 jours (J-3 → J+7) pour le carousel
+  const carouselDays: CarouselDay[] = []
   for (let i = -3; i <= 7; i++) {
     const d = new Date(now)
     d.setDate(now.getDate() + i)
     d.setHours(0, 0, 0, 0)
-    days.push(d)
+
+    const lunchSlot  = dated.find(s => s.scheduledDate && new Date(s.scheduledDate).toDateString() === d.toDateString() && s.period === 'LUNCH')
+    const dinnerSlot = dated.find(s => s.scheduledDate && new Date(s.scheduledDate).toDateString() === d.toDateString() && s.period === 'DINNER')
+
+    carouselDays.push({
+      isoDate: d.toISOString(),
+      isToday: d.toDateString() === now.toDateString(),
+      lunch:   lunchSlot  ? { id: lunchSlot.id,  recipeTitle: lunchSlot.recipe.title,  recipeImage: lunchSlot.recipe.imageLocal }  : null,
+      dinner:  dinnerSlot ? { id: dinnerSlot.id, recipeTitle: dinnerSlot.recipe.title, recipeImage: dinnerSlot.recipe.imageLocal } : null,
+    })
   }
 
-  function getSlot(day: Date, period: 'LUNCH' | 'DINNER') {
-    return dated.find(s =>
-      s.scheduledDate &&
-      new Date(s.scheduledDate).toDateString() === day.toDateString() &&
-      s.period === period
-    )
-  }
+  const floatingCarousel: CarouselFloating[] = floatingSlots.map(s => ({ id: s.id, recipeTitle: s.recipe.title }))
 
   const pendingItems = shoppingList?._count.items ?? 0
   const isShoppingActive = shoppingList?.status === 'ACTIVE'
 
   return (
-    <div className="flex flex-col min-h-screen pb-4" style={{ background: 'var(--bg)' }}>
+    <div className="flex flex-col min-h-screen pb-24" style={{ background: 'var(--bg)' }}>
 
       {/* Header */}
       <div className="px-4 pt-5 pb-3 flex items-center gap-3">
@@ -194,102 +190,7 @@ export default async function GamellePage() {
           </Link>
         </div>
 
-        <div className="flex gap-3 overflow-x-auto px-4 pb-1 snap-x snap-mandatory">
-          {days.map((day, i) => {
-            const isToday = day.toDateString() === now.toDateString()
-            const lunch   = getSlot(day, 'LUNCH')
-            const dinner  = getSlot(day, 'DINNER')
-
-            return (
-              <div
-                key={i}
-                id={isToday ? 'today-card' : undefined}
-                className="shrink-0 rounded-2xl overflow-hidden snap-start flex flex-col"
-                style={{
-                  width:      148,
-                  background: isToday ? 'var(--accent-dim)' : 'var(--surface)',
-                  border:     `1px solid ${isToday ? 'var(--accent)' : 'var(--border)'}`,
-                }}
-              >
-                {/* Header jour */}
-                <div
-                  className="px-3 py-2"
-                  style={{ borderBottom: '1px solid var(--border)', background: isToday ? 'var(--accent)' : 'var(--surface2)' }}
-                >
-                  <p className="font-mono text-[10px] uppercase tracking-widest font-semibold" style={{ color: isToday ? '#fff' : 'var(--text2)' }}>
-                    {formatSlotDate(day)}
-                  </p>
-                </div>
-
-                {/* Slots */}
-                <div className="flex flex-col gap-1.5 p-2 flex-1">
-                  {(['LUNCH', 'DINNER'] as const).map(period => {
-                    const slot  = period === 'LUNCH' ? lunch : dinner
-                    const label = period === 'LUNCH' ? 'Midi' : 'Soir'
-                    return (
-                      <div key={period}>
-                        <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: 'var(--muted)' }}>
-                          {label}
-                        </p>
-                        {slot ? (
-                          <Link href="/gamelle/menu">
-                            <div className="flex items-center gap-1.5">
-                              <div
-                                className="shrink-0 rounded-full overflow-hidden flex items-center justify-center"
-                                style={{ width: 20, height: 20, background: 'var(--surface2)', border: '1px solid var(--border)' }}
-                              >
-                                {slot.recipe.imageLocal ? (
-                                  <img src={`${UPLOAD_BASE}/${slot.recipe.imageLocal}`} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                  <span className="font-display text-[8px] font-bold" style={{ color: 'var(--muted)' }}>
-                                    {slot.recipe.title.charAt(0)}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="font-body text-[10px] leading-snug line-clamp-2" style={{ color: 'var(--text)' }}>
-                                {slot.recipe.title}
-                              </span>
-                            </div>
-                          </Link>
-                        ) : (
-                          <span className="font-body text-[10px]" style={{ color: 'var(--border2)' }}>— Libre</span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-
-          {/* Slots volants */}
-          {floating.length > 0 && (
-            <div
-              className="shrink-0 rounded-2xl overflow-hidden snap-start flex flex-col"
-              style={{ width: 148, background: 'var(--surface)', border: '1px dashed var(--accent)' }}
-            >
-              <div className="px-3 py-2" style={{ borderBottom: '1px solid var(--border)', background: 'var(--accent-dim)' }}>
-                <p className="font-mono text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--accent)' }}>
-                  À cuisiner
-                </p>
-              </div>
-              <div className="flex flex-col gap-1 p-2">
-                {floating.slice(0, 3).map(slot => (
-                  <Link key={slot.id} href="/gamelle/menu">
-                    <p className="font-body text-[10px] line-clamp-1" style={{ color: 'var(--accent)' }}>
-                      〜 {slot.recipe.title}
-                    </p>
-                  </Link>
-                ))}
-                {floating.length > 3 && (
-                  <p className="font-mono text-[9px]" style={{ color: 'var(--muted)' }}>
-                    +{floating.length - 3} de plus
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <MenuCarousel days={carouselDays} floating={floatingCarousel} />
       </section>
 
       {/* ── Widget Suggestions anti-gaspillage ──────────────────────────────── */}
@@ -311,8 +212,8 @@ export default async function GamellePage() {
       </section>
 
       {/* ── Widget Pantry Health ─────────────────────────────────────────────── */}
-      {inventory.length > 0 && (
-        <section className="px-4">
+      {inventory.filter(i => i.quantity > 0).length > 0 && (
+        <section className="px-4 mb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Archive size={14} style={{ color: 'var(--accent)' }} />
@@ -325,7 +226,7 @@ export default async function GamellePage() {
             </Link>
           </div>
           <div className="flex flex-wrap gap-2">
-            {inventory.map(item => (
+            {inventory.filter(i => i.quantity > 0).map(item => (
               <div
                 key={item.id}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
@@ -342,6 +243,22 @@ export default async function GamellePage() {
           </div>
         </section>
       )}
+
+      {/* ── Widget À redécouvrir ─────────────────────────────────────────────── */}
+      <section className="mb-4">
+        <div className="flex items-center justify-between px-4 mb-2">
+          <div className="flex items-center gap-2">
+            <RefreshCw size={14} style={{ color: 'var(--accent)' }} />
+            <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+              À redécouvrir
+            </span>
+          </div>
+          <Link href="/gamelle/recettes" className="font-mono text-[10px]" style={{ color: 'var(--accent)' }}>
+            Voir tout →
+          </Link>
+        </div>
+        <RecommendationsWidget limit={6} />
+      </section>
     </div>
   )
 }
