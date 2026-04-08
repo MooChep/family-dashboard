@@ -8,11 +8,12 @@ import { useCerveauToast, CerveauToast } from '@/components/ui/CerveauToast'
 import { formatRelative, formatCountdown } from '@/lib/formatDate'
 import type { NoteWithRelations, NoteFormat } from '@/lib/parchemin/types'
 
-const FORMAT_ICONS: Record<NoteFormat, React.ElementType> = {
+const FORMAT_ICONS: Record<string, React.ElementType> = {
   TEXT:      FileText,
   CHECKLIST: CheckSquare,
   BULLETS:   List,
   NUMBERED:  ListOrdered,
+  REMINDER:  Bell,
 }
 
 function sortNotes(notes: NoteWithRelations[]): { pinned: NoteWithRelations[]; unpinned: NoteWithRelations[] } {
@@ -146,7 +147,7 @@ export default function ParcheminPage() {
       {/* Bouton "+ Nouvelle note" — fixé en bas comme l'ajout d'item */}
       <div
         className="fixed left-0 right-0 px-4 z-10"
-        style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom) + 0.5rem)' }}
+        style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom) + 1.5rem)' }}
       >
         <div className="max-w-2xl mx-auto">
           <button
@@ -179,16 +180,18 @@ function NoteCard({
   const dueStr     = note.dueDate ? (note.dueDate as unknown as string) : null
   const isOverdue  = dueStr ? new Date(dueStr) < new Date() : false
 
-  const previewText = note.format === 'TEXT'
-    ? (note.body?.slice(0, 40) ?? '') + (note.body && note.body.length > 40 ? '…' : '')
-    : note.format === 'CHECKLIST'
-      ? (() => {
-          const remaining = (note.items as { checked: boolean }[]).filter(i => !i.checked).length
-          return remaining === 0 && note.items.length > 0
-            ? `${note.items.length} / ${note.items.length} ✓`
-            : `${remaining} / ${note.items.length} restant${remaining > 1 ? 's' : ''}`
-        })()
-      : `${note.items.length} élément${note.items.length > 1 ? 's' : ''}`
+  const previewText = (note.format as string) === 'REMINDER'
+    ? (note.body?.slice(0, 50) ?? '') + (note.body && note.body.length > 50 ? '…' : '')
+    : note.format === 'TEXT'
+      ? (note.body?.slice(0, 40) ?? '') + (note.body && note.body.length > 40 ? '…' : '')
+      : note.format === 'CHECKLIST'
+        ? (() => {
+            const remaining = (note.items as { checked: boolean }[]).filter(i => !i.checked).length
+            return remaining === 0 && note.items.length > 0
+              ? `${note.items.length} / ${note.items.length} ✓`
+              : `${remaining} / ${note.items.length} restant${remaining > 1 ? 's' : ''}`
+          })()
+        : `${note.items.length} élément${note.items.length > 1 ? 's' : ''}`
 
   return (
     <div className="relative group">

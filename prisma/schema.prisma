@@ -555,6 +555,7 @@ enum NoteFormat {
   CHECKLIST
   BULLETS
   NUMBERED
+  REMINDER
 }
 
 model ParcheminNote {

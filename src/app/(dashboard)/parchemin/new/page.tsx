@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, FileText, CheckSquare, List, ListOrdered, ChevronDown } from 'lucide-react'
+import { ArrowLeft, FileText, CheckSquare, List, ListOrdered, ChevronDown, Bell } from 'lucide-react'
 import { DatePickerFR } from '@/components/ui/DatePickerFR'
 import type { NoteFormat, NoteWithRelations } from '@/lib/parchemin/types'
 
@@ -11,6 +11,7 @@ const FORMAT_OPTIONS: { id: NoteFormat; icon: React.ElementType; label: string }
   { id: 'CHECKLIST', icon: CheckSquare, label: 'Liste'   },
   { id: 'BULLETS',   icon: List,        label: 'Puces'   },
   { id: 'NUMBERED',  icon: ListOrdered, label: 'Numéros' },
+  { id: 'REMINDER' as NoteFormat, icon: Bell, label: 'Rappel' },
 ]
 
 const RECIPIENTS: { id: 'ILAN' | 'CAMILLE' | 'BOTH'; label: string }[] = [
@@ -37,9 +38,16 @@ function NewNoteForm() {
   const [parentId, setParentId] = useState<string | undefined>(initialParentId)
   const [saving,   setSaving]   = useState(false)
 
+  const isReminder = format === ('REMINDER' as NoteFormat)
+
   const [showParent,  setShowParent]  = useState(!!initialParentId)
   const [showNotif,   setShowNotif]   = useState(false)
   const [showDueDate, setShowDueDate] = useState(false)
+
+  // En mode Rappel : ouvre la notification automatiquement
+  useEffect(() => {
+    if (isReminder) setShowNotif(true)
+  }, [isReminder])
 
   const [notifAt,  setNotifAt]  = useState('')
   const [notifTo,  setNotifTo]  = useState<'ILAN' | 'CAMILLE' | 'BOTH'>('BOTH')
@@ -155,17 +163,21 @@ function NewNoteForm() {
         return
       }
 
-      if (!title.trim()) return
+      const autoTitle = isReminder
+        ? (body.trim().slice(0, 60) || 'Rappel')
+        : title.trim()
+
+      if (!autoTitle) return
 
       const res = await fetch('/api/parchemin/notes', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          title:   title.trim(),
+          title:   autoTitle,
           format,
-          body:    format === 'TEXT' ? (body || null) : null,
-          items:   format !== 'TEXT' ? items.filter(s => s.trim()) : undefined,
-          dueDate: showDueDate && dueDate ? dueDate : null,
+          body:    format === 'TEXT' || isReminder ? (body || null) : null,
+          items:   format !== 'TEXT' && !isReminder ? items.filter(s => s.trim()) : undefined,
+          dueDate: showDueDate && dueDate && !isReminder ? dueDate : null,
         }),
       })
 
@@ -176,7 +188,11 @@ function NewNoteForm() {
         await fetch(`/api/parchemin/notes/${note.id}/notif`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ notifAt, notifTo }),
+          body:    JSON.stringify({
+            notifAt,
+            notifTo,
+            notifBody: isReminder ? (body.trim() || null) : null,
+          }),
         })
       }
 
@@ -188,7 +204,9 @@ function NewNoteForm() {
 
   const canSave = parentId
     ? (format === 'TEXT' ? body.trim().length > 0 : items.some(i => i.trim()))
-    : title.trim().length > 0
+    : isReminder
+      ? body.trim().length > 0
+      : title.trim().length > 0
 
   const lockedFormat = parentId
     ? parentNotes.find(n => n.id === parentId)?.format
@@ -243,8 +261,8 @@ function NewNoteForm() {
       {/* Bas : titre + contenu + options + bouton */}
       <div className="flex flex-col gap-3 pb-4">
 
-        {/* Titre — masqué si parentId sélectionné */}
-        {!parentId && (
+        {/* Titre — masqué si parentId sélectionné ou mode Rappel */}
+        {!parentId && !isReminder && (
           <input
             type="text"
             value={title}
@@ -344,12 +362,15 @@ function NewNoteForm() {
             </div>
           )}
 
-          <ToggleRow label="Notification" open={showNotif} onToggle={() => setShowNotif(v => !v)} borderTop />
-          {showNotif && (
+          {isReminder ? (
+            /* Mode Rappel : notification toujours visible, sans toggle */
             <div
               className="px-4 pb-4 pt-3 flex flex-col gap-3"
-              style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--surface)' }}
+              style={{ backgroundColor: 'var(--surface)' }}
             >
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
+                Envoyer à
+              </p>
               <div className="flex gap-2">
                 {RECIPIENTS.map(r => (
                   <button
@@ -367,22 +388,56 @@ function NewNoteForm() {
                   </button>
                 ))}
               </div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
+                Quand
+              </p>
               <div className="px-3 py-2.5 rounded-lg" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)' }}>
                 <DatePickerFR value={notifAt} onChange={setNotifAt} showTime />
               </div>
             </div>
-          )}
+          ) : (
+            <>
+              <ToggleRow label="Notification" open={showNotif} onToggle={() => setShowNotif(v => !v)} borderTop />
+              {showNotif && (
+                <div
+                  className="px-4 pb-4 pt-3 flex flex-col gap-3"
+                  style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--surface)' }}
+                >
+                  <div className="flex gap-2">
+                    {RECIPIENTS.map(r => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setNotifTo(r.id)}
+                        className="flex-1 py-2 rounded-lg text-xs font-medium"
+                        style={
+                          notifTo === r.id
+                            ? { backgroundColor: 'var(--accent)', color: '#fff' }
+                            : { backgroundColor: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)' }
+                        }
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="px-3 py-2.5 rounded-lg" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)' }}>
+                    <DatePickerFR value={notifAt} onChange={setNotifAt} showTime />
+                  </div>
+                </div>
+              )}
 
-          <ToggleRow label="Échéance" open={showDueDate} onToggle={() => setShowDueDate(v => !v)} borderTop />
-          {showDueDate && (
-            <div
-              className="px-4 pb-4 pt-3"
-              style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--surface)' }}
-            >
-              <div className="px-3 py-2.5 rounded-lg" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)' }}>
-                <DatePickerFR value={dueDate} onChange={setDueDate} showTime={false} />
-              </div>
-            </div>
+              <ToggleRow label="Échéance" open={showDueDate} onToggle={() => setShowDueDate(v => !v)} borderTop />
+              {showDueDate && (
+                <div
+                  className="px-4 pb-4 pt-3"
+                  style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--surface)' }}
+                >
+                  <div className="px-3 py-2.5 rounded-lg" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)' }}>
+                    <DatePickerFR value={dueDate} onChange={setDueDate} showTime={false} />
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -398,7 +453,7 @@ function NewNoteForm() {
             opacity:         saving || !canSave ? 0.45 : 1,
           }}
         >
-          {saving ? 'Enregistrement…' : parentId ? 'Ajouter à la note' : 'Enregistrer'}
+          {saving ? 'Enregistrement…' : parentId ? 'Ajouter à la note' : isReminder ? 'Programmer le rappel' : 'Enregistrer'}
         </button>
       </div>
     </div>
