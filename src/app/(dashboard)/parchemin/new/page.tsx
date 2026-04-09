@@ -44,9 +44,18 @@ function NewNoteForm() {
   const [showNotif,   setShowNotif]   = useState(false)
   const [showDueDate, setShowDueDate] = useState(false)
 
-  // En mode Rappel : ouvre la notification automatiquement
+  // En mode Rappel : ouvre la notification + date par défaut = maintenant
   useEffect(() => {
-    if (isReminder) setShowNotif(true)
+    if (!isReminder) return
+    setShowNotif(true)
+    if (!notifAt) {
+      const now = new Date()
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      setNotifAt(
+        `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+      )
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReminder])
 
   const [notifAt,  setNotifAt]  = useState('')
@@ -132,8 +141,8 @@ function NewNoteForm() {
   async function handleSave() {
     setSaving(true)
     try {
-      if (parentId) {
-        // Ajouter le contenu directement à la note parente
+      // Mode Rappel + note liée : créer le rappel normalement, sans toucher à la note parente
+      if (!isReminder && parentId) {
         const parent = parentNotes.find(n => n.id === parentId)
         if (!parent) return
 
@@ -149,8 +158,8 @@ function NewNoteForm() {
             })
           }
         } else {
-          const labels    = items.filter(s => s.trim())
-          const maxOrder  = parent.items.reduce((m, i) => Math.max(m, i.order), -1)
+          const labels   = items.filter(s => s.trim())
+          const maxOrder = parent.items.reduce((m, i) => Math.max(m, i.order), -1)
           for (let i = 0; i < labels.length; i++) {
             await fetch(`/api/parchemin/notes/${parentId}/items`, {
               method:  'POST',
@@ -173,11 +182,12 @@ function NewNoteForm() {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          title:   autoTitle,
+          title:    autoTitle,
           format,
-          body:    format === 'TEXT' || isReminder ? (body || null) : null,
-          items:   format !== 'TEXT' && !isReminder ? items.filter(s => s.trim()) : undefined,
-          dueDate: showDueDate && dueDate && !isReminder ? dueDate : null,
+          body:     format === 'TEXT' || isReminder ? (body || null) : null,
+          items:    format !== 'TEXT' && !isReminder ? items.filter(s => s.trim()) : undefined,
+          dueDate:  showDueDate && dueDate && !isReminder ? dueDate : null,
+          parentId: isReminder ? parentId : undefined,
         }),
       })
 
@@ -196,7 +206,8 @@ function NewNoteForm() {
         })
       }
 
-      router.push(`/parchemin/${note.id}`)
+      // Après un rappel lié : redirige vers la note parente, pas le rappel lui-même
+      router.push(isReminder && parentId ? `/parchemin/${parentId}` : `/parchemin/${note.id}`)
     } finally {
       setSaving(false)
     }
@@ -278,12 +289,12 @@ function NewNoteForm() {
         )}
 
         {/* Zone de contenu */}
-        {format === 'TEXT' ? (
+        {format === 'TEXT' || isReminder ? (
           <textarea
             ref={textareaRef}
             value={body}
             onChange={e => { setBody(e.target.value); adjustTextarea(e.target) }}
-            placeholder="Écris ici…"
+            placeholder={isReminder ? 'Acheter du pain…' : 'Écris ici…'}
             className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none leading-relaxed"
             style={{
               backgroundColor: 'var(--surface)',

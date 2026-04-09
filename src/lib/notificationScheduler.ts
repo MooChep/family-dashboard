@@ -433,7 +433,7 @@ export async function runNotificationScheduler(): Promise<{ sent: number; recurr
           {
             title: note.title,
             body:  note.notifBody ?? randomParcheminBody(note.title),
-            url:   `/parchemin/${note.id}`,
+            url:   note.parentId ? `/parchemin/${note.parentId}` : `/parchemin/${note.id}`,
             actions: [
               { action: 'open',      label: '📖 Voir !' },
               { action: 'snooze_2h', label: '⏳ Patience', minutes: 120 },

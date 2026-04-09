@@ -60,7 +60,7 @@ export async function POST(
     // ── Envoi immédiat ───────────────────────────────────────────────────────
     if (body.sendNow) {
       const now      = new Date()
-      const noteData = await prisma.parcheminNote.findUnique({ where: { id }, select: { title: true } })
+      const noteData = await prisma.parcheminNote.findUnique({ where: { id }, select: { title: true, parentId: true } })
 
       if (initVapid()) {
         const ILAN    = process.env.ILAN_EMAIL    ?? ''
@@ -81,7 +81,7 @@ export async function POST(
                 JSON.stringify({
                   title:   noteData?.title ?? 'Parchemin',
                   body:    body.notifBody ?? randomParcheminBody(noteData?.title ?? ''),
-                  url:     `/parchemin/${id}`,
+                  url:     noteData?.parentId ? `/parchemin/${noteData.parentId}` : `/parchemin/${id}`,
                   actions: NOTIF_ACTIONS,
                 }),
               )
