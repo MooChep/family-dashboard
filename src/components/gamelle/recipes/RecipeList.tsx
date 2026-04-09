@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, X, Heart } from 'lucide-react'
+import { Search, X, Heart, Plus } from 'lucide-react'
 import { RecipeCard } from './RecipeCard'
 import { RecipeDetail } from './RecipeDetail'
 import type { RecipeWithIngredients, PaginatedResponse, ApiResponse, RecipeCategory } from '@/lib/gamelle/types'
@@ -14,6 +15,7 @@ type Filter = 'all' | 'quick' | RecipeCategory
  * Gère la recherche, les filtres, la pagination et l'ouverture des fiches.
  */
 export function RecipeList() {
+  const router = useRouter()
   const [recipes,       setRecipes]       = useState<RecipeWithIngredients[]>([])
   const [total,         setTotal]         = useState(0)
   const [page,          setPage]          = useState(1)
@@ -23,6 +25,24 @@ export function RecipeList() {
   const [selected,  setSelected]  = useState<RecipeWithIngredients | null>(null)
   const [activeIds, setActiveIds] = useState<Set<string>>(new Set())
   const [tick,          setTick]          = useState(0)
+  const [creating,      setCreating]      = useState(false)
+
+  async function handleNewRecipe() {
+    setCreating(true)
+    try {
+      const res = await fetch('/api/gamelle/recipes', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ title: 'Nouvelle recette' }),
+      })
+      if (res.ok) {
+        const { data } = await res.json() as { data: RecipeWithIngredients }
+        router.push(`/gamelle/recettes/${data.id}/edit`)
+      }
+    } finally {
+      setCreating(false)
+    }
+  }
 
   const LIMIT = 30
 
@@ -90,12 +110,23 @@ export function RecipeList() {
             >
               <Heart size={14} />
             </Link>
+            <button
+              type="button"
+              onClick={() => void handleNewRecipe()}
+              disabled={creating}
+              className="font-mono text-xs px-3 py-1.5 rounded-lg flex items-center gap-1"
+              style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', opacity: creating ? 0.5 : 1 }}
+            >
+              <Plus size={12} />
+              Nouvelle
+            </button>
             <Link
               href="/gamelle/recettes/import"
-              className="font-mono text-xs px-3 py-1.5 rounded-lg"
+              className="font-mono text-xs px-3 py-1.5 rounded-lg flex items-center gap-1"
               style={{ background: 'var(--accent)', color: '#fff' }}
             >
-              + Importer
+              <Plus size={12} />
+              Importer
             </Link>
           </div>
         </div>
