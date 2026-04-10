@@ -24,6 +24,9 @@ services:
     build: ./services/jow-scraper
     container_name: family-dashboard-jow-scraper
     restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     environment:
       - PORT=8001
     ports:
@@ -39,6 +42,9 @@ services:
         - DATABASE_URL=${DATABASE_URL}
     container_name: family-dashboard-app
     restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     depends_on:
       db:
         condition: service_healthy
