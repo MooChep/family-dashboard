@@ -43,24 +43,16 @@ function NewNoteForm() {
   const [showParent,  setShowParent]  = useState(!!initialParentId)
   const [showNotif,   setShowNotif]   = useState(false)
   const [showDueDate, setShowDueDate] = useState(false)
+  const [notifAt,     setNotifAt]     = useState('')
+  const [notifTo,     setNotifTo]     = useState<'ILAN' | 'CAMILLE' | 'BOTH'>('BOTH')
+  const [dueDate,     setDueDate]     = useState('')
 
   // En mode Rappel : ouvre la notification + date par défaut = maintenant
   useEffect(() => {
     if (!isReminder) return
     setShowNotif(true)
-    if (!notifAt) {
-      const now = new Date()
-      const pad = (n: number) => n.toString().padStart(2, '0')
-      setNotifAt(
-        `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
-      )
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReminder])
-
-  const [notifAt,  setNotifAt]  = useState('')
-  const [notifTo,  setNotifTo]  = useState<'ILAN' | 'CAMILLE' | 'BOTH'>('BOTH')
-  const [dueDate,  setDueDate]  = useState('')
+    setNotifAt(prev => prev || nowDatetimeLocal())
+  }, [isReminder]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [parentNotes, setParentNotes] = useState<NoteWithRelations[]>([])
 
@@ -105,8 +97,15 @@ function NewNoteForm() {
     setFormat(newFmt)
   }
 
+  function nowDatetimeLocal(): string {
+    const d   = new Date()
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
   function handleFormatClick(newFmt: NoteFormat) {
     if (parentId) return // Verrouillé si note parente sélectionnée
+    if ((newFmt as string) === 'REMINDER' && !notifAt) setNotifAt(nowDatetimeLocal())
     applyFormatChange(format, newFmt)
   }
 
