@@ -4,7 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import {
-  PiggyBank, ChefHat, CalendarDays, Settings2, LogOut,
+  PiggyBank, 
+  CalendarDays, 
+  Settings2, 
+  LogOut,
   Castle,
   ScrollText,
   CookingPotIcon,
@@ -48,7 +51,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Labeur',
     href: '/labeur',
     icon: <BrushCleaning size={20} strokeWidth={1.5} />,
-    soon: true
+    soon: false
   },
   {
     label: 'Oyez',

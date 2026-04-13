@@ -24,6 +24,7 @@ import type { CerveauEntry, CerveauPreferences } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isQuietTime } from '@/lib/isQuietTime'
 import { resolveSnoozeSlots, getDefaultSnoozeMinutes } from '@/lib/snoozeOptions'
+import { runLabeurCron } from '@/lib/labeur/cron'
 
 type PushPayload = {
   title:                string
@@ -456,6 +457,17 @@ export async function runNotificationScheduler(): Promise<{ sent: number; recurr
 
 
   const recurrences = await processRecurringEntries()
+
+  // ── Labeur : inflation, régénération cycles, push tâches en retard ────────
+  try {
+    const labeur = await runLabeurCron()
+    sent += labeur.notifsSent
+    console.log(
+      `[scheduler] labeur — régénérées:${labeur.regenerated} inflation:${labeur.inflationUpdated} notifs:${labeur.notifsSent} stocks:${labeur.stocksReset}`
+    )
+  } catch (err) {
+    console.error('[scheduler] labeur cron failed', err)
+  }
 
   return { sent, recurrences }
 }

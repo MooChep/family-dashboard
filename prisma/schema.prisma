@@ -13,6 +13,7 @@ model User {
   name      String
   email     String      @unique
   password  String
+  gender               Gender              @default(NEUTRAL) // pour les titres de seigneur Labeur
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   config               UserConfig?
@@ -22,6 +23,12 @@ model User {
   cerveauTemplates     CerveauTemplate[]   @relation("CerveauTemplateCreatedBy")
   parcheminNotes           ParcheminNote[]         @relation("ParcheminNoteCreatedBy")
   parcheminPreferences     ParcheminPreferences?
+  // ── Labeur ──────────────────────────────────────────────────────────────
+  labeurTasksCreated   LabeurTask[]        @relation("LabeurTaskCreatedBy")
+  labeurCompletions    LabeurCompletion[]  @relation("LabeurCompletionUser")
+  ecuBalance           EcuBalance?         @relation("EcuBalanceUser")
+  labeurMarketItems    LabeurMarketItem[]  @relation("LabeurMarketCreatedBy")
+  labeurPurchases      LabeurPurchase[]    @relation("LabeurPurchaseUser")
 }
 
 model UserConfig {
@@ -603,6 +610,234 @@ model ParcheminPreferences {
   user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   notifyOnCreate   Boolean @default(true)
 }
+
+// ── Labeur ─────────────────────────────────────────────────────────────────────
+
+// Tâche ménagère ou corvée ponctuelle — cœur du module Labeur
+model LabeurTask {
+  id                   String            @id @default(cuid())
+  title                String            // intitulé de la tâche
+  description          String?           @db.Text
+  type                 LabeurTaskType
+  isShared             Boolean           @default(false) // true = nécessite 2 validations
+  ecuValue             Int               // valeur en écu (fixe à la création)
+  // taux de contribution à l'inflation par jour de retard : ecuValue × rate × jours
+  inflationContribRate Float             @default(0.01)
+  streakCount          Int               @default(0)    // roadmap Streak : occurrences consécutives à temps
+  dueDate                   DateTime?         // échéance pour les tâches ONESHOT uniquement
+  oneshotReminderSentAt     DateTime?         // date d'envoi du rappel push ONESHOT (null = pas encore envoyé)
+  status               LabeurTaskStatus  @default(ACTIVE)
+  createdById          String
+  createdBy            User              @relation("LabeurTaskCreatedBy", fields: [createdById], references: [id])
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  recurrence           LabeurRecurrence?
+  completions          LabeurCompletion[]
+  inflationStates      LabeurInflationState[]
+
+  @@index([status])
+  @@index([type])
+  @@index([createdById])
+}
+
+// Configuration de récurrence d'une tâche périodique (1:1 avec LabeurTask)
+model LabeurRecurrence {
+  id              String              @id @default(cuid())
+  taskId          String              @unique
+  task            LabeurTask          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  frequency       LabeurTaskFrequency
+  intervalDays    Int?                // si CUSTOM : nombre de jours entre deux occurrences
+  nextDueAt       DateTime            // prochaine échéance stockée en UTC, interprétée en Europe/Paris
+  lastGeneratedAt DateTime?           // date de la dernière régénération après complétion
+
+  @@index([nextDueAt])
+}
+
+// Enregistrement d'une réalisation de tâche par un membre
+model LabeurCompletion {
+  id           String     @id @default(cuid())
+  taskId       String
+  task         LabeurTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation("LabeurCompletionUser", fields: [userId], references: [id])
+  ecuAwarded   Int        // écu crédités au moment de la réalisation (valeur courante)
+  completedAt  DateTime   @default(now())
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([completedAt])
+}
+
+// Solde d'écu d'un membre du foyer — un seul enregistrement par utilisateur
+model EcuBalance {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation("EcuBalanceUser", fields: [userId], references: [id], onDelete: Cascade)
+  balance        Int      @default(0) // solde courant dépensable (diminue à l'achat)
+  totalEcuEarned Int      @default(0) // cumul historique gagné — base des titres, ne diminue jamais
+  updatedAt      DateTime @updatedAt
+}
+
+// Article disponible dans le Marché des récompenses
+model LabeurMarketItem {
+  id             String                     @id @default(cuid())
+  title          String
+  description    String?                    @db.Text
+  ecuPrice       Int                        // prix de base en écu (inflation appliquée à l'affichage)
+  type           LabeurMarketItemType
+  stock          Int?                       // null = infini ; > 0 = nombre d'utilisations restantes
+  initialStock   Int?                       // stock d'origine pour la réinitialisation périodique
+  resetFrequency LabeurMarketResetFrequency? // réactivation périodique du stock
+  lastResetAt    DateTime?                  // référence pour calculer la prochaine réactivation
+  isActive       Boolean                    @default(true)
+  isSealable     Boolean                    @default(true) // false = toujours accessible même sous malédiction
+  createdById    String
+  createdBy      User                       @relation("LabeurMarketCreatedBy", fields: [createdById], references: [id])
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  purchases      LabeurPurchase[]
+
+  @@index([isActive])
+  @@index([createdById])
+}
+
+// Achat ou contribution sur un article du Marché
+model LabeurPurchase {
+  id           String               @id @default(cuid())
+  itemId       String
+  item         LabeurMarketItem     @relation(fields: [itemId], references: [id])
+  userId       String
+  user         User                 @relation("LabeurPurchaseUser", fields: [userId], references: [id])
+  type         LabeurPurchaseType
+  ecuSpent     Int                  // écu dépensés par CE membre pour cette transaction
+  isComplete   Boolean              @default(false) // true = achat finalisé (individuel ou 100 % collectif)
+  purchasedAt  DateTime             @default(now())
+
+  @@index([itemId])
+  @@index([userId])
+}
+
+// État d'inflation par tâche en retard — une entrée par tâche active en retard
+// Supprimée immédiatement quand la tâche est réalisée
+model LabeurInflationState {
+  id               String     @id @default(cuid())
+  taskId           String     @unique // une seule entrée active par tâche
+  task             LabeurTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  daysOverdue           Int       @default(0) // nombre de jours de retard au dernier calcul
+  inflationPercent      Float     @default(0) // contribution de cette tâche en % (ecuValue × rate × jours)
+  overdueReminderSentAt DateTime?             // date d'envoi du rappel push pour cette instance (null = pas encore envoyé)
+  computedAt            DateTime  @default(now()) @updatedAt
+
+  @@index([computedAt])
+}
+
+// Réglages globaux du module Labeur — singleton (une seule ligne en base)
+model LabeurSettings {
+  id                      String   @id @default(cuid())
+  inflationCap            Float    @default(150) // plafond d'inflation global en %
+  curseSeuil              Float    @default(50)  // seuil de déclenchement de la malédiction en %
+  inflationAlertThreshold Float    @default(25)  // seuil d'alerte push en %
+  overdueReminderHours        Int       @default(24)  // délai avant rappel pour une tâche récurrente en retard
+  oneshotReminderHours        Int       @default(48)  // heures avant dueDate pour rappel tâche ponctuelle
+  timezone                    String    @default("Europe/Paris")
+  lastInflationAlertSentAt    DateTime?             // debounce 24h : dernière alerte inflation envoyée
+  lastCurseAlertSentAt        DateTime?             // debounce 24h : dernière alerte malédiction envoyée
+  updatedAt                   DateTime  @updatedAt
+}
+
+// ── Labeur — Roadmap ───────────────────────────────────────────────────────────
+
+// Quête collective du foyer — objectif à durée limitée avec récompense Marché (roadmap v3)
+model LabeurQuest {
+  id                  String            @id @default(cuid())
+  title               String
+  description         String?           @db.Text
+  targetValue         Int               // valeur cible (ex : 10 tâches à réaliser)
+  currentValue        Int               @default(0)
+  rewardDiscountPct   Int               // réduction accordée sur le Marché à la complétion (%)
+  rewardDurationHours Int               // durée de la réduction en heures
+  expiresAt           DateTime
+  completedAt         DateTime?
+  status              LabeurQuestStatus @default(ACTIVE)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([status])
+}
+
+// Don d'écu entre membres — roadmap v3
+model LabeurEcuGift {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  amount     Int
+  message    String?
+  sentAt     DateTime @default(now())
+
+  @@index([fromUserId])
+  @@index([toUserId])
+}
+
+// ── Labeur — Enums ─────────────────────────────────────────────────────────────
+
+// Genre utilisateur pour les titres de seigneur (ajouté sur le modèle User)
+enum Gender {
+  MALE
+  FEMALE
+  NEUTRAL
+}
+
+// Type de tâche : récurrente (pilotée par LabeurRecurrence) ou ponctuelle
+enum LabeurTaskType {
+  RECURRING // tâche périodique avec LabeurRecurrence associée
+  ONESHOT   // tâche ponctuelle, optionnellement avec dueDate
+}
+
+// Statut d'avancement d'une tâche
+// PARTIALLY_DONE : tâche partagée avec 1 validation sur 2 (§8.5)
+enum LabeurTaskStatus {
+  ACTIVE         // en attente de réalisation
+  PARTIALLY_DONE // tâche partagée : première validation reçue, en attente de la seconde
+  COMPLETED      // réalisée (ou double-validée si partagée)
+  ARCHIVED       // archivée manuellement, hors circulation
+}
+
+// Fréquence de récurrence — distinct de l'enum Recurrence d'Épargne (MONTHLY/QUARTERLY/ANNUAL)
+enum LabeurTaskFrequency {
+  DAILY   // tous les jours
+  WEEKLY  // toutes les semaines
+  MONTHLY // tous les mois
+  CUSTOM  // tous les N jours (intervalDays)
+}
+
+// Type d'article du Marché
+enum LabeurMarketItemType {
+  INDIVIDUAL  // récompense personnelle, achat direct
+  COLLECTIVE  // récompense partagée, financement 50/50 requis
+}
+
+// Nature d'un enregistrement d'achat
+enum LabeurPurchaseType {
+  INDIVIDUAL              // achat individuel complet
+  COLLECTIVE_CONTRIBUTION // contribution partielle à une récompense collective
+}
+
+// Fréquence de réinitialisation du stock d'un article du Marché
+enum LabeurMarketResetFrequency {
+  WEEKLY
+  MONTHLY
+}
+
+// Statut d'une quête collective (roadmap)
+enum LabeurQuestStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+}
+
+// ── Gamelle ─────────────────────────────────────────────────────────────────────
 
 // Un seul like global par recette (pas de distinction utilisateur en V1)
 model RecipeLike {

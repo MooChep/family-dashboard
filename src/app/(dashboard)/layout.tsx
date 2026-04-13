@@ -8,6 +8,7 @@ import { MobileHeader } from '@/components/layout/MobileHeader'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { ParcheminBottomNav } from '@/components/layout/ParcheminBottomNav'
+import { LabeurBottomNav } from '@/components/layout/LabeurBottomNav'
 
 export default async function DashboardLayout({
   children,
@@ -38,6 +39,7 @@ export default async function DashboardLayout({
           </PageWrapper>
           <BottomNav />
           <ParcheminBottomNav />
+          <LabeurBottomNav />
         </div>
       </div>
     </ThemeProvider>
