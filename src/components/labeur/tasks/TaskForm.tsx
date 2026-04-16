@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { RefreshCw, CalendarClock } from 'lucide-react'
 import type { CreateTaskPayload, LabeurTaskFrequency, LabeurTaskType } from '@/lib/labeur/types'
 
 interface TaskFormProps {
@@ -127,7 +128,10 @@ export function TaskForm({ taskId, initialValues }: TaskFormProps) {
                 color:           type === t ? 'var(--bg)'     : 'var(--text2)',
               }}
             >
-              {t === 'RECURRING' ? '🔄 Récurrente' : '📅 Ponctuelle'}
+              {t === 'RECURRING'
+                ? <><RefreshCw size={13} className="inline mr-1" />Récurrente</>
+                : <><CalendarClock size={13} className="inline mr-1" />Ponctuelle</>
+              }
             </button>
           ))}
         </div>

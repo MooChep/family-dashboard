@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ShoppingBag, Users } from 'lucide-react'
+import { ShoppingBag, Users, Lock } from 'lucide-react'
 import type { LabeurMarketItemWithPurchases } from '@/lib/labeur/types'
 
 interface PurchaseButtonProps {
@@ -71,7 +71,7 @@ export function PurchaseButton({ item, currentUserId, onSuccess }: PurchaseButto
         className="w-full py-3 rounded-xl text-sm font-semibold text-center"
         style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--danger)' }}
       >
-        🔴 Article scellé
+        <Lock size={14} className="inline mr-1.5" />Article scellé
       </div>
     )
   }

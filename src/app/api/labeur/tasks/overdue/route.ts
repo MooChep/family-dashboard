@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getLabeurSettings } from '@/lib/labeur/settings'
-import { daysOverdue } from '@/lib/labeur/timezone'
+import { daysOverdue, isDueToday, getTomorrowInTZ } from '@/lib/labeur/timezone'
 import { computeInflationContrib } from '@/lib/labeur/inflation'
 import type { ApiResponse, LabeurOverdueTask } from '@/lib/labeur/types'
 
@@ -28,9 +28,9 @@ export async function GET(): Promise<Response> {
         type:   'RECURRING',
         status: { in: ['ACTIVE', 'PARTIALLY_DONE'] },
         recurrence: {
-          // Filtre grossier en base : nextDueAt avant maintenant
+          // Filtre grossier en base : nextDueAt avant demain minuit (heure locale)
           // Le calcul précis par fuseau horaire est affiné côté serveur ci-dessous
-          nextDueAt: { lt: new Date() },
+          nextDueAt: { lt: getTomorrowInTZ(settings.timezone) },
         },
       },
       include: {
@@ -59,8 +59,11 @@ export async function GET(): Promise<Response> {
 
         return { ...task, daysOverdue: days, currentInflationPercent: inflationPercent }
       })
-      // Garder uniquement celles vraiment en retard (≥ 1 jour en heure locale)
-      .filter((t) => t.daysOverdue > 0)
+      // Garder les tâches en retard ET celles dues aujourd'hui
+      .filter((t) =>
+        t.daysOverdue > 0 ||
+        (t.recurrence !== null && isDueToday(t.recurrence.nextDueAt, settings.timezone))
+      )
       // Trier par contribution inflation décroissante (les plus urgentes en premier)
       .sort((a, b) => b.currentInflationPercent - a.currentInflationPercent)
 

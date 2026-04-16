@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { useTheme } from '@/components/layout/ThemeProvider'
 import { subscribeToPush, requestNotificationPermission } from '@/lib/notifications'
 import type { Theme } from '@/types/theme'
+import type { Gender } from '@prisma/client'
 
 type Tab = 'profil' | 'themes' | 'preferences'
 
@@ -39,6 +40,7 @@ const [tab, setTab] = useState<Tab>('preferences')
   // ── Profil ────────────────────────────────────────────────────────────────
   const [name, setName]             = useState('')
   const [email, setEmail]           = useState('')
+  const [gender, setGender]         = useState<Gender>('NEUTRAL')
   const [currentPwd, setCurrentPwd] = useState('')
   const [newPwd, setNewPwd]         = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
@@ -73,6 +75,10 @@ const [tab, setTab] = useState<Tab>('preferences')
     if (isOpen) {
       setName(session?.user?.name ?? '')
       setEmail(session?.user?.email ?? '')
+      // Charger le genre depuis l'API (pas dans la session JWT par défaut)
+      void fetch('/api/user/profile')
+        .then((r) => r.ok ? r.json() : null)
+        .then((d: { gender?: Gender } | null) => { if (d?.gender) setGender(d.gender) })
       setProfileError(null); setProfileSuccess(false)
       setCurrentPwd(''); setNewPwd(''); setConfirmPwd('')
       setSelectedTheme(currentTheme)
@@ -181,6 +187,7 @@ const [tab, setTab] = useState<Tab>('preferences')
       if (name !== session?.user?.name) body.name = name
       if (email !== session?.user?.email) body.email = email
       if (newPwd) { body.currentPassword = currentPwd; body.newPassword = newPwd }
+      body.gender = gender  // toujours inclus (valeur par défaut NEUTRAL si inchangé)
       if (Object.keys(body).length === 0) { setProfileSuccess(true); return }
       const res = await fetch('/api/user/profile', {
         method: 'PATCH',
@@ -290,6 +297,39 @@ const [tab, setTab] = useState<Tab>('preferences')
         <div className="flex flex-col gap-4">
           <Input label="Nom" type="text" value={name} onChange={(e) => setName(e.target.value)} />
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+
+          {/* Genre — utilisé pour les titres d'honneur du module Labeur */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium" style={{ color: 'var(--text2)' }}>
+              Titre d'honneur (Labeur)
+            </label>
+            <div className="flex gap-2">
+              {([
+                { value: 'NEUTRAL', label: 'Neutre'  },
+                { value: 'MALE',    label: 'Masculin' },
+                { value: 'FEMALE',  label: 'Féminin'  },
+              ] as { value: Gender; label: string }[]).map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setGender(value)}
+                  className="flex-1 py-2 rounded-lg text-sm font-medium"
+                  style={{
+                    backgroundColor: gender === value ? 'var(--accent)' : 'var(--surface2)',
+                    color:           gender === value ? '#fff' : 'var(--text2)',
+                    border:          gender === value ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs" style={{ color: 'var(--muted)' }}>
+              Détermine la forme de ton titre (ex : Seigneur / Dame / Suzerain·e)
+            </p>
+          </div>
+
           <div className="h-px" style={{ backgroundColor: 'var(--border)' }} />
           <p className="text-xs font-medium" style={{ color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
             CHANGER LE MOT DE PASSE

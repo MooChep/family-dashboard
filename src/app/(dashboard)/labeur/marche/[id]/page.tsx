@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { ArrowLeft, ShoppingBag, Users, Trash2, RefreshCw } from 'lucide-react'
@@ -19,8 +19,8 @@ type Params = { id: string }
  * Affiche : description, prix (gonflé), sceau si malédiction,
  * progression collective, historique des achats, bouton d'achat.
  */
-export default function ArticleDetailPage({ params }: { params: Promise<Params> }) {
-  const { id }            = use(params)
+export default function ArticleDetailPage({ params }: { params: Params }) {
+  const { id }            = params
   const router            = useRouter()
   const { data: session } = useSession()
 

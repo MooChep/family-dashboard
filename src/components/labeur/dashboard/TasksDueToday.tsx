@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Clock, Users, AlertTriangle } from 'lucide-react'
+import { Clock, Users, AlertTriangle, Swords } from 'lucide-react'
 import type { LabeurTaskWithRelations } from '@/lib/labeur/types'
 import { useSession } from 'next-auth/react'
 import { useState } from 'react'
@@ -18,7 +18,8 @@ interface TasksDueTodayProps {
  */
 export function TasksDueToday({ tasks, onComplete }: TasksDueTodayProps) {
   const { data: session } = useSession()
-  const [completing, setCompleting] = useState<string | null>(null)
+  const [completing,  setCompleting]  = useState<string | null>(null)
+  const [locallyDone, setLocallyDone] = useState<Set<string>>(new Set())
 
   if (tasks.length === 0) {
     return (
@@ -26,7 +27,7 @@ export function TasksDueToday({ tasks, onComplete }: TasksDueTodayProps) {
         className="rounded-xl px-4 py-6 flex flex-col items-center gap-2"
         style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
       >
-        <span className="text-2xl">⚔</span>
+        <Swords size={24} style={{ color: 'var(--muted)' }} />
         <span className="text-sm" style={{ color: 'var(--muted)' }}>
           Aucune tâche en attente — le fief est en ordre !
         </span>
@@ -38,6 +39,7 @@ export function TasksDueToday({ tasks, onComplete }: TasksDueTodayProps) {
     setCompleting(taskId)
     try {
       await onComplete(taskId)
+      setLocallyDone((prev) => new Set([...prev, taskId]))
     } finally {
       setCompleting(null)
     }
@@ -59,7 +61,7 @@ export function TasksDueToday({ tasks, onComplete }: TasksDueTodayProps) {
 
         // Vérifier si l'utilisateur courant a déjà validé cette instance
         const instanceStart = task.recurrence?.lastGeneratedAt ?? task.createdAt
-        const alreadyDone = task.completions.some(
+        const alreadyDone = locallyDone.has(task.id) || task.completions.some(
           (c) => c.userId === session?.user?.id && new Date(c.completedAt) > new Date(instanceStart)
         )
 

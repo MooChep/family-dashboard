@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
+import { ScrollText } from 'lucide-react'
 import { formatRelative } from '@/lib/formatDate'
 import type { LabeurCompletion, LabeurTask, User } from '@prisma/client'
 
@@ -137,7 +138,7 @@ export default function HistoriquePage() {
           className="rounded-xl px-4 py-10 flex flex-col items-center gap-2"
           style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
         >
-          <span className="text-3xl">📜</span>
+          <ScrollText size={28} style={{ color: 'var(--muted)' }} />
           <span className="text-sm" style={{ color: 'var(--muted)' }}>
             Aucune réalisation pour l'instant.
           </span>

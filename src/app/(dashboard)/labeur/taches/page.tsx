@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Archive } from 'lucide-react'
+import { Plus, Archive, RefreshCw, CalendarClock } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { TaskList } from '@/components/labeur/tasks/TaskList'
 import type { LabeurTaskWithRelations } from '@/lib/labeur/types'
@@ -100,7 +100,10 @@ export default function TachesPage() {
                 fontWeight:      filterType === t ? 600 : 400,
               }}
             >
-              {t === 'all' ? 'Toutes' : t === 'RECURRING' ? '🔄 Récurrentes' : '📅 Ponctuelles'}
+              {t === 'all' ? 'Toutes' : t === 'RECURRING'
+                ? <><RefreshCw size={12} className="inline mr-1" />Récurrentes</>
+                : <><CalendarClock size={12} className="inline mr-1" />Ponctuelles</>
+              }
             </button>
           ))}
         </div>

@@ -14,11 +14,12 @@ interface CompletionButtonProps {
  * Désactivé si l'utilisateur a déjà validé l'instance courante.
  */
 export function CompletionButton({ taskId, disabled, onSuccess }: CompletionButtonProps) {
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState<string | null>(null)
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState<string | null>(null)
+  const [localDone, setLocalDone] = useState(false)
 
   async function handleClick() {
-    if (loading || disabled) return
+    if (loading || disabled || localDone) return
     setLoading(true)
     setError(null)
 
@@ -29,6 +30,7 @@ export function CompletionButton({ taskId, disabled, onSuccess }: CompletionButt
         setError(body.error ?? 'Erreur')
         return
       }
+      setLocalDone(true)
       onSuccess(taskId)
     } catch {
       setError('Erreur réseau')
@@ -37,7 +39,7 @@ export function CompletionButton({ taskId, disabled, onSuccess }: CompletionButt
     }
   }
 
-  if (disabled) {
+  if (disabled || localDone) {
     return (
       <div
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"

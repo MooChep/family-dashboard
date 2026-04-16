@@ -2,14 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ListTodo, ShoppingBag, History, Settings2 } from 'lucide-react'
+import { LayoutDashboard, ListTodo, ShoppingBag, History, Crown, Settings2 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { label: 'Tableau',  href: '/labeur',           icon: LayoutDashboard },
-  { label: 'Tâches',   href: '/labeur/taches',    icon: ListTodo        },
-  { label: 'Marché',   href: '/labeur/marche',    icon: ShoppingBag     },
-  { label: 'Historique', href: '/labeur/historique', icon: History      },
-  { label: 'Réglages', href: '/labeur/reglages',  icon: Settings2       },
+  { label: 'Tableau',    href: '/labeur',             icon: LayoutDashboard },
+  { label: 'Tâches',     href: '/labeur/taches',      icon: ListTodo        },
+  { label: 'Marché',     href: '/labeur/marche',      icon: ShoppingBag     },
+  { label: 'Historique', href: '/labeur/historique',  icon: History         },
+  { label: 'Titres',     href: '/labeur/titres',      icon: Crown           },
+  { label: 'Réglages',   href: '/labeur/reglages',    icon: Settings2       },
 ]
 
 /**
@@ -46,12 +47,12 @@ export function LabeurBottomNav(): React.ReactElement {
               style={{ color: active ? 'var(--accent)' : 'var(--text2)' }}
             >
               <Icon size={20} strokeWidth={active ? 2.5 : 2} />
-              <span className="text-[9px] font-bold uppercase tracking-tighter">
+              <span className="text-[8px] font-bold uppercase tracking-tighter">
                 {item.label}
               </span>
               {active && (
                 <div
-                  className="absolute top-0 w-10 h-0.5 rounded-b-full"
+                  className="absolute top-0 w-8 h-0.5 rounded-b-full"
                   style={{ backgroundColor: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }}
                 />
               )}
@@ -68,7 +69,7 @@ export function LabeurBottomNav(): React.ReactElement {
         <div
           className="flex items-center justify-around gap-1 h-16 px-2"
           style={{
-            width:        540,
+            width:        600,
             background:   'var(--surface)',
             border:       '1px solid var(--border)',
             borderRadius: 24,
@@ -89,12 +90,12 @@ export function LabeurBottomNav(): React.ReactElement {
                 style={{ color: active ? 'var(--accent)' : 'var(--text2)' }}
               >
                 <Icon size={20} strokeWidth={active ? 2.5 : 2} />
-                <span className="text-[9px] font-bold uppercase tracking-tighter">
+                <span className="text-[8px] font-bold uppercase tracking-tighter">
                   {item.label}
                 </span>
                 {active && (
                   <div
-                    className="absolute top-0 w-10 h-0.5 rounded-b-full"
+                    className="absolute top-0 w-8 h-0.5 rounded-b-full"
                     style={{ backgroundColor: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }}
                   />
                 )}

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Plus, User, Users, Store } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { MarketItem } from '@/components/labeur/market/MarketItem'
 import { InflationBanner } from '@/components/labeur/dashboard/InflationBanner'
 import type { LabeurMarketItemWithPurchases, InflationSummary } from '@/lib/labeur/types'
@@ -15,6 +16,7 @@ type FilterType = 'all' | 'INDIVIDUAL' | 'COLLECTIVE'
  * Articles scellés restent visibles (grisés) pour motiver.
  */
 export default function MarchePage() {
+  const { data: session }           = useSession()
   const [items,      setItems]      = useState<LabeurMarketItemWithPurchases[]>([])
   const [inflation,  setInflation]  = useState<InflationSummary | null>(null)
   const [curseSeuil, setCurseSeuil] = useState(50)
@@ -89,7 +91,10 @@ export default function MarchePage() {
               fontWeight:      filter === f ? 600 : 400,
             }}
           >
-            {f === 'all' ? 'Tous' : f === 'INDIVIDUAL' ? '🧍 Individuels' : '👫 Collectifs'}
+            {f === 'all' ? 'Tous' : f === 'INDIVIDUAL'
+              ? <><User size={12} className="inline mr-1" />Individuels</>
+              : <><Users size={12} className="inline mr-1" />Collectifs</>
+            }
           </button>
         ))}
       </div>
@@ -100,7 +105,7 @@ export default function MarchePage() {
           className="rounded-xl px-4 py-10 flex flex-col items-center gap-3"
           style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
         >
-          <span className="text-3xl">🏪</span>
+          <Store size={28} style={{ color: 'var(--muted)' }} />
           <p className="text-sm" style={{ color: 'var(--muted)' }}>
             Le Marché est vide — ajoute ta première récompense !
           </p>
@@ -120,6 +125,8 @@ export default function MarchePage() {
               item={item}
               inflationPercent={globalInflation}
               curseSeuil={curseSeuil}
+              currentUserId={session?.user?.id ?? ''}
+              onBuySuccess={fetchAll}
             />
           ))}
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { ArrowLeft, Trash2, RefreshCw, CalendarClock, Users } from 'lucide-react'
@@ -17,8 +17,8 @@ type Params = { id: string }
  * Page détail d'une tâche Labeur.
  * Affiche les informations complètes, l'historique de completions et permet l'édition / archivage.
  */
-export default function TacheDetailPage({ params }: { params: Promise<Params> }) {
-  const { id }           = use(params)
+export default function TacheDetailPage({ params }: { params: Params }) {
+  const { id }           = params
   const router           = useRouter()
   const { data: session } = useSession()
 
@@ -38,9 +38,9 @@ export default function TacheDetailPage({ params }: { params: Promise<Params> })
 
   useEffect(() => { fetchTask() }, [id])
 
-  async function handleComplete(taskId: string) {
-    await fetch(`/api/labeur/tasks/${taskId}/complete`, { method: 'POST' })
-    await fetchTask()
+  // onSuccess est appelé par CompletionButton après que l'API a déjà été contactée
+  function handleCompletionSuccess() {
+    void fetchTask()
   }
 
   async function handleArchive() {
@@ -224,7 +224,7 @@ export default function TacheDetailPage({ params }: { params: Promise<Params> })
           <CompletionButton
             taskId={task.id}
             disabled={alreadyDone || task.status === 'ARCHIVED'}
-            onSuccess={handleComplete}
+            onSuccess={handleCompletionSuccess}
           />
         </div>
       </div>

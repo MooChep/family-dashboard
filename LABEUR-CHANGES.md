@@ -42,6 +42,33 @@
 - **Description :** Les rappels push pour les tâches ONESHOT n'ont pas été implémentés en S6. Nécessiterait un champ `oneshotReminderSentAt` supplémentaire sur `LabeurTask`. Reporté en S10 (polish) pour éviter une 3ème migration prématurée.
 - **Impact :** Fonctionnalité manquante en V1 partielle ; les rappels récurrents et les alertes inflation/malédiction sont complets.
 
+### [S10] Rappels tâches ponctuelles (ONESHOT) — 3ème migration
+
+- **Date :** 2026-04-14
+- **Session :** S10
+- **Type :** ajout (levée du report S6)
+- **Référence spec :** §8.4
+- **Description :** Implémentation des rappels push ONESHOT, reportés depuis S6. Ajout du champ `LabeurTask.oneshotReminderSentAt DateTime?`. Migration : `20260413131940_labeur_oneshot_reminder`. Logique ajoutée dans `cron.ts` (étape 4) : fenêtre configurable via `settings.oneshotReminderHours`, envoi unique par instance, marquage anti-doublon.
+- **Impact :** 3ème migration Labeur. Fonctionnalité complète conforme à la spec.
+
+### [S10] Page réglages à la place d'une modale
+
+- **Date :** 2026-04-14
+- **Session :** S10
+- **Type :** deviation-plan
+- **Référence spec :** §9 (configuration admin)
+- **Description :** Le plan envisageait une modale pour les réglages Labeur. Implémenté en page dédiée `src/app/(dashboard)/labeur/reglages/page.tsx` pour cohérence avec les autres modules (Gamelle config, Parchemin préférences) et meilleure lisibilité des sliders.
+- **Impact :** Aucun. La page est accessible via la `LabeurBottomNav`.
+
+### [S10] Champ `gender` ajouté au profil utilisateur
+
+- **Date :** 2026-04-14
+- **Session :** S10
+- **Type :** ajout
+- **Référence spec :** §4 (titres d'honneur genrés)
+- **Description :** La spécification prévoyait un champ `gender` sur `User` pour déterminer la forme du titre (Seigneur/Dame/Suzerain·e). Le champ était dans le schéma Prisma depuis S1 mais l'interface utilisateur manquait. Ajouté dans `ProfileModal.tsx` (onglet Profil, sélecteur 3 boutons) et dans `PATCH /api/user/profile` (lecture + validation + persistance).
+- **Impact :** Les balances Labeur afficheront désormais le bon titre genré après mise à jour du profil.
+
 ### [S5] Typage `enrichItem` via `Prisma.LabeurMarketItemGetPayload`
 
 - **Date :** 2026-04-13

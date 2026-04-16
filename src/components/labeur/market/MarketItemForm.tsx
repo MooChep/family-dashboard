@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { User, Users } from 'lucide-react'
 import type { CreateMarketItemPayload, LabeurMarketItemType, LabeurMarketResetFrequency } from '@/lib/labeur/types'
 
 interface MarketItemFormProps {
@@ -96,7 +97,10 @@ export function MarketItemForm({ itemId, initialValues }: MarketItemFormProps) {
                 color:           type === t ? 'var(--bg)'     : 'var(--text2)',
               }}
             >
-              {t === 'INDIVIDUAL' ? '🧍 Individuelle' : '👫 Collective'}
+              {t === 'INDIVIDUAL'
+                ? <><User size={13} className="inline mr-1" />Individuelle</>
+                : <><Users size={13} className="inline mr-1" />Collective</>
+              }
             </button>
           ))}
         </div>

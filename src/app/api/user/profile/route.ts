@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { hash, compare } from 'bcryptjs'
+import { Gender } from '@prisma/client'
 
 // PATCH /api/user/profile
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
@@ -15,6 +16,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     currentPassword?: string
     newPassword?: string
     themeId?: string // Ajout du thème
+    gender?: Gender  // Pour les titres d'honneur Labeur
   }
 
   const user = await prisma.user.findUnique({ 
@@ -40,6 +42,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     if (exists) return NextResponse.json({ error: 'Email déjà utilisé' }, { status: 409 })
   }
 
+  // Validation du genre
+  const validGenders: Gender[] = ['MALE', 'FEMALE', 'NEUTRAL']
+  if (body.gender !== undefined && !validGenders.includes(body.gender)) {
+    return NextResponse.json({ error: 'Genre invalide' }, { status: 400 })
+  }
+
   // Update atomique
   const updated = await prisma.user.update({
     where: { id: session.user.id },
@@ -47,6 +55,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       ...(body.name ? { name: body.name.trim() } : {}),
       ...(body.email ? { email: body.email.trim() } : {}),
       ...(newHashedPassword ? { password: newHashedPassword } : {}),
+      ...(body.gender !== undefined ? { gender: body.gender } : {}),
       // Mise à jour du thème dans la config liée
       ...(body.themeId ? {
         config: {
@@ -57,10 +66,11 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         }
       } : {})
     },
-    select: { 
-      id: true, 
-      name: true, 
+    select: {
+      id: true,
+      name: true,
       email: true,
+      gender: true,
       config: { select: { themeId: true } }
     },
   })
@@ -75,10 +85,11 @@ export async function GET(): Promise<NextResponse> {
   
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { 
-      id: true, 
-      name: true, 
+    select: {
+      id: true,
+      name: true,
       email: true,
+      gender: true,
       config: {
         select: { themeId: true }
       }

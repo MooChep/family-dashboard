@@ -11,17 +11,17 @@ type PrismaTx = Omit<
 
 /**
  * Récupère l'EcuBalance d'un utilisateur, ou la crée à zéro si elle n'existe pas.
- * À appeler dans une transaction pour éviter les race conditions.
+ * Utilise upsert pour être atomique et éviter les erreurs de contrainte unique
+ * en cas de transactions concurrentes (ex: deux tâches complétées simultanément).
  */
 export async function getOrCreateBalance(
   tx: PrismaTx,
   userId: string
 ): Promise<EcuBalance> {
-  const existing = await tx.ecuBalance.findUnique({ where: { userId } })
-  if (existing) return existing
-
-  return tx.ecuBalance.create({
-    data: { userId, balance: 0, totalEcuEarned: 0 },
+  return tx.ecuBalance.upsert({
+    where:  { userId },
+    create: { userId, balance: 0, totalEcuEarned: 0 },
+    update: {},
   })
 }
 

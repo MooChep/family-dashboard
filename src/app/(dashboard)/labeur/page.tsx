@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus } from 'lucide-react'
+import { Plus, Hammer } from 'lucide-react'
 import Link from 'next/link'
 import { InflationBanner } from '@/components/labeur/dashboard/InflationBanner'
 import { EcuBalances } from '@/components/labeur/dashboard/EcuBalances'
@@ -86,8 +86,9 @@ export default function LabeurPage() {
       {/* ── En-tête ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>
-            ⚒ Labeur
+          <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text)' }}>
+            <Hammer size={20} />
+            Labeur
           </h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
             Corvées & récompenses du foyer
