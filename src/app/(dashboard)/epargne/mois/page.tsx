@@ -249,9 +249,6 @@ export default function MoisPage(): ReactElement {
   return (
 <EpargneLayout
   stickySubHeader={monthSelector}
-  fabCategories={categories}
-  fabMonth={currentMonth}
-  onFabSaved={() => void loadAll()}
 >      <div className="flex flex-col gap-6">
         {isLoading ? (
           <div className="flex flex-col gap-4">

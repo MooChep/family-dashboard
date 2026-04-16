@@ -9,6 +9,7 @@ import { PageWrapper } from '@/components/layout/PageWrapper'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { ParcheminBottomNav } from '@/components/layout/ParcheminBottomNav'
 import { LabeurBottomNav } from '@/components/layout/LabeurBottomNav'
+import { GlobalFAB } from '@/components/layout/GlobalFAB'
 
 export default async function DashboardLayout({
   children,
@@ -40,6 +41,7 @@ export default async function DashboardLayout({
           <BottomNav />
           <ParcheminBottomNav />
           <LabeurBottomNav />
+          <GlobalFAB />
         </div>
       </div>
     </ThemeProvider>

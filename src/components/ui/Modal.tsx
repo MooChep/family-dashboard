@@ -13,6 +13,7 @@ interface ModalProps {
   children: ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
+  zIndex?: number
 }
 
 const SIZE_CLASSES: Record<string, string> = {
@@ -29,6 +30,7 @@ export function Modal({
   children,
   size = 'md',
   className,
+  zIndex,
 }: ModalProps): ReactElement | null {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {
@@ -48,8 +50,8 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+      className="fixed inset-0 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: zIndex ?? 50 }}
       onClick={onClose}
     >
       <div
