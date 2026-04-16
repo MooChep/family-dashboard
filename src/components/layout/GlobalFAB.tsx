@@ -154,18 +154,25 @@ export function GlobalFAB() {
 
       {/* ── Bottom sheet Labeur ── */}
       {activeSheet === 'labeur' && (
-        <LabeurQuickAddSheet onClose={() => setActiveSheet(null)} />
+        <LabeurQuickAddSheet
+          onClose={() => setActiveSheet(null)}
+          onSaved={() => router.refresh()}
+        />
       )}
 
       {/* ── Modal Parchemin ── */}
       <NewNoteModal
         isOpen={activeSheet === 'parchemin'}
         onClose={() => setActiveSheet(null)}
+        onSaved={() => router.refresh()}
       />
 
       {/* ── Bottom sheet Butin ── */}
       {activeSheet === 'butin' && (
-        <ButinTransactionSheet onClose={() => setActiveSheet(null)} />
+        <ButinTransactionSheet
+          onClose={() => setActiveSheet(null)}
+          onSaved={() => router.refresh()}
+        />
       )}
     </>
   )
@@ -173,7 +180,7 @@ export function GlobalFAB() {
 
 // ─── Bottom sheet quick-add tâche ────────────────────────────────────────────
 
-function LabeurQuickAddSheet({ onClose }: { onClose: () => void }) {
+function LabeurQuickAddSheet({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [title,   setTitle]   = useState('')
   const [dueDate, setDueDate] = useState('')
   const [saving,  setSaving]  = useState(false)
@@ -226,6 +233,7 @@ function LabeurQuickAddSheet({ onClose }: { onClose: () => void }) {
     const savedTitle = trimmed
     setSaving(false)
     onClose()
+    onSaved()
 
     if (toastTimer.current) clearTimeout(toastTimer.current)
     setToast(savedTitle)
@@ -362,7 +370,7 @@ function getCurrentMonth(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
-function ButinTransactionSheet({ onClose }: { onClose: () => void }) {
+function ButinTransactionSheet({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading,    setLoading]    = useState(true)
 
@@ -386,6 +394,7 @@ function ButinTransactionSheet({ onClose }: { onClose: () => void }) {
       body: JSON.stringify({ ...f, month: getCurrentMonth() }),
     })
     if (!res.ok) throw new Error('Erreur lors de la sauvegarde')
+    onSaved()
   }
 
   if (loading) return null

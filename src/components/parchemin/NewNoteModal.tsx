@@ -37,10 +37,11 @@ function nowDatetimeLocal(): string {
 
 interface NoteFormProps {
   onClose:          () => void
+  onSaved:          () => void
   initialParentId?: string
 }
 
-function NoteFormInner({ onClose, initialParentId }: NoteFormProps) {
+function NoteFormInner({ onClose, onSaved, initialParentId }: NoteFormProps) {
   const router = useRouter()
 
   const [format,   setFormat]   = useState<NoteFormat>('TEXT')
@@ -170,6 +171,7 @@ function NoteFormInner({ onClose, initialParentId }: NoteFormProps) {
           }
         }
         onClose()
+        onSaved()
         router.push(`/parchemin/${parentId}`)
         return
       }
@@ -209,6 +211,7 @@ function NoteFormInner({ onClose, initialParentId }: NoteFormProps) {
       }
 
       onClose()
+      onSaved()
       router.push(isReminder && parentId ? `/parchemin/${parentId}` : `/parchemin/${note.id}`)
     } finally {
       setSaving(false)
@@ -456,20 +459,21 @@ function ToggleRow({
 
 // ─── Wrapper avec searchParams (Suspense boundary requis) ──────────────────────
 
-function NoteFormWithParams({ onClose }: { onClose: () => void }) {
+function NoteFormWithParams({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const searchParams    = useSearchParams()
   const initialParentId = searchParams.get('parentId') ?? undefined
-  return <NoteFormInner onClose={onClose} initialParentId={initialParentId} />
+  return <NoteFormInner onClose={onClose} onSaved={onSaved} initialParentId={initialParentId} />
 }
 
 // ─── Modal exportée ───────────────────────────────────────────────────────────
 
 interface NewNoteModalProps {
-  isOpen:  boolean
-  onClose: () => void
+  isOpen:   boolean
+  onClose:  () => void
+  onSaved?: () => void
 }
 
-export function NewNoteModal({ isOpen, onClose }: NewNoteModalProps) {
+export function NewNoteModal({ isOpen, onClose, onSaved }: NewNoteModalProps) {
   return (
     <Modal
       isOpen={isOpen}
@@ -479,7 +483,7 @@ export function NewNoteModal({ isOpen, onClose }: NewNoteModalProps) {
       zIndex={210}
     >
       <Suspense>
-        <NoteFormWithParams onClose={onClose} />
+        <NoteFormWithParams onClose={onClose} onSaved={onSaved ?? (() => {})} />
       </Suspense>
     </Modal>
   )
