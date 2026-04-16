@@ -38,14 +38,9 @@ export default function TachesPage() {
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
-  async function handleComplete(taskId: string) {
-    const res = await fetch(`/api/labeur/tasks/${taskId}/complete`, { method: 'POST' })
-    if (!res.ok) {
-      const { error } = await res.json()
-      alert(error ?? 'Erreur')
-      return
-    }
-    await fetchTasks()
+  // CompletionButton et le swipe appellent déjà l'API — ce callback ne fait que rafraîchir
+  function handleComplete(_taskId: string) {
+    void fetchTasks()
   }
 
   return (

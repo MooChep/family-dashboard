@@ -41,7 +41,7 @@ export default async function DashboardPage(): Promise<ReactElement> {
       href: '/labeur',
       icon: <BrushCleaning size={20} strokeWidth={1.5} />,
       description: 'Organiser les corvées et les diligences pour l’entretien du domaine.',
-      soon: true
+      soon: false
     },
     {
       label: 'Oyez',
