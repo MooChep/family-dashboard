@@ -8,7 +8,7 @@ import { type ThemeName } from '@/types/theme'
 function buildBreadcrumb(pathname: string): string[] {
   const LABELS: Record<string, string> = {
     '':         'Dashboard',
-    'epargne':  'Épargne',
+    'butin':    'Butin',
     'menage':   'Ménage',
     'projets':  'Projets',
     'habitudes':'Habitudes',
@@ -22,7 +22,7 @@ function buildBreadcrumb(pathname: string): string[] {
 function getPageTitle(pathname: string): string {
   const TITLES: Record<string, string> = {
     '/':          'Dashboard',
-    '/epargne':   'Épargne',
+    '/butin':     'Butin',
     '/menage':    'Ménage',
     '/projets':   'Projets',
     '/habitudes': 'Habitudes',

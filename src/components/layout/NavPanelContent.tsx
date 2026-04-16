@@ -35,11 +35,11 @@ const NAV_ITEMS: NavItem[] = [
     icon:  <ScrollText size={20} strokeWidth={1.5} />,
     soon:  false,
   },
-  { 
-    label: 'Butin',    
-    href: '/epargne',   
-    icon: <PiggyBank size={20} strokeWidth={1.5} />, 
-    soon: false 
+  {
+    label: 'Butin',
+    href: '/butin',
+    icon: <PiggyBank size={20} strokeWidth={1.5} />,
+    soon: false
   },
   { 
     label: 'Gamelle',     

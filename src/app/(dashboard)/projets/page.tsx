@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, type ReactElement } from 'react'
-import { EpargneLayout } from '@/components/epargne/EpargneLayout'
-import { ProjectCard } from '@/components/epargne/ProjectCard'
+import { ButinLayout } from '@/components/butin/ButinLayout'
+import { ProjectCard } from '@/components/butin/ProjectCard'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
@@ -49,7 +49,7 @@ export default function ProjetsPage(): ReactElement {
   async function loadProjets(): Promise<void> {
     setIsLoading(true)
     try {
-      const res = await fetch('/api/epargne/projets')
+      const res = await fetch('/api/butin/projets')
       const data = await res.json() as ProjetWithCategory[]
       setProjets(Array.isArray(data) ? data : [])
     } finally { setIsLoading(false) }
@@ -63,7 +63,7 @@ export default function ProjetsPage(): ReactElement {
     setNewSaving(true); setNewError(null)
     try {
       const target = newTarget.trim() ? parseFloat(newTarget.replace(',', '.')) : null
-      const res = await fetch('/api/epargne/projets', {
+      const res = await fetch('/api/butin/projets', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName.trim(), targetAmount: target }),
       })
@@ -82,7 +82,7 @@ export default function ProjetsPage(): ReactElement {
     if (isNaN(amount) || amount <= 0) { setDepError('Montant invalide'); return }
     setDepSaving(true); setDepError(null)
     try {
-      const res = await fetch(`/api/epargne/projets/${depenseProjet.id}/depense`, {
+      const res = await fetch(`/api/butin/projets/${depenseProjet.id}/depense`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount, month: depMonth, isExpense: depIsExpense }),
       })
@@ -99,7 +99,7 @@ export default function ProjetsPage(): ReactElement {
     if (!reaffectProjet || !reaffectTarget) { setReaffectError('Sélectionne un projet cible'); return }
     setReaffectSaving(true); setReaffectError(null)
     try {
-      const res = await fetch(`/api/epargne/projets/${reaffectProjet.id}/reaffecter`, {
+      const res = await fetch(`/api/butin/projets/${reaffectProjet.id}/reaffecter`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetProjectId: reaffectTarget, month: reaffectMonth }),
       })
@@ -123,12 +123,12 @@ export default function ProjetsPage(): ReactElement {
   const reaffectTargets = activeProjets.filter((p) => p.id !== reaffectProjet?.id)
 
   return (
-    <EpargneLayout>
+    <ButinLayout>
       <div className="flex flex-col gap-6">
 
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
-            Projets d'épargne
+            Projets de butin
           </h1>
           <Button variant="primary" size="md" onClick={() => { setIsNewOpen(true); setNewError(null) }}>
             + Nouveau projet
@@ -182,7 +182,7 @@ export default function ProjetsPage(): ReactElement {
       </div>
 
       {/* ── Modal nouveau projet ─────────────────────────────────────────── */}
-      <Modal isOpen={isNewOpen} onClose={() => setIsNewOpen(false)} title="Nouveau projet d'épargne">
+      <Modal isOpen={isNewOpen} onClose={() => setIsNewOpen(false)} title="Nouveau projet de butin">
         <div className="flex flex-col gap-4">
           <Input label="Nom du projet" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Mariage, Voiture..." autoFocus />
           <Input label="Objectif (€) — optionnel" type="text" inputMode="decimal" value={newTarget} onChange={(e) => setNewTarget(e.target.value)} placeholder="Ex: 5000" />
@@ -295,6 +295,6 @@ export default function ProjetsPage(): ReactElement {
           </div>
         </div>
       </Modal>
-    </EpargneLayout>
+    </ButinLayout>
   )
 }

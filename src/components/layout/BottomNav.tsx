@@ -5,13 +5,13 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { LayoutDashboard, Calendar, BarChart3, Scale, Settings, Wallet, ChefHat, ShoppingCart, BookOpen, Archive, Layers } from 'lucide-react'
 
-const EPARGNE_ITEMS = [
-  { label: 'Dash',    href: '/epargne',          icon: LayoutDashboard },
-  { label: 'Mois',    href: '/epargne/mois',     icon: Calendar },
-  { label: 'Budget',  href: '/epargne/budget',   icon: Wallet },
-  { label: 'Analyse', href: '/epargne/analyses', icon: BarChart3 },
-  { label: 'Régul',   href: '/epargne/regul',    icon: Scale },
-  { label: 'Gestion', href: '/epargne/gestion',  icon: Settings },
+const BUTIN_ITEMS = [
+  { label: 'Dash',    href: '/butin',          icon: LayoutDashboard },
+  { label: 'Mois',    href: '/butin/mois',     icon: Calendar },
+  { label: 'Budget',  href: '/butin/budget',   icon: Wallet },
+  { label: 'Analyse', href: '/butin/analyses', icon: BarChart3 },
+  { label: 'Régul',   href: '/butin/regul',    icon: Scale },
+  { label: 'Gestion', href: '/butin/gestion',  icon: Settings },
 ]
 
 const GAMELLE_ITEMS = [
@@ -101,12 +101,12 @@ export function BottomNav(): React.ReactElement {
     )
   }
 
-  if (!pathname.startsWith('/epargne')) return <></>
+  if (!pathname.startsWith('/butin')) return <></>
 
   return (
     <>
-      <MobileNav items={EPARGNE_ITEMS} pathname={pathname} />
-      <DesktopFloatingNav items={EPARGNE_ITEMS} pathname={pathname} />
+      <MobileNav items={BUTIN_ITEMS} pathname={pathname} />
+      <DesktopFloatingNav items={BUTIN_ITEMS} pathname={pathname} />
     </>
   )
 }

@@ -24,7 +24,7 @@ export default async function DashboardPage(): Promise<ReactElement> {
     },
     { 
       label: 'Butin',    
-      href: '/epargne',   
+      href: '/butin',
       icon: <PiggyBank size={20} strokeWidth={1.5} />, 
       description: "Suivre la trace de chaque écu, pour faire fructifier la réserve du Fief.", 
       soon: false 

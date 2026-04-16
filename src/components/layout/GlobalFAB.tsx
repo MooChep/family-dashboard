@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, X, CalendarClock, CheckCircle, PenLine, UtensilsCrossed, ListTodo, ArrowLeftRight } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
-import { TransactionForm } from '@/components/epargne/TransactionForm'
+import { TransactionForm } from '@/components/butin/TransactionForm'
 import { NewNoteModal } from '@/components/parchemin/NewNoteModal'
 import { type Category } from '@prisma/client'
 
@@ -30,7 +30,7 @@ const FAB_ACTIONS = [
     href:  '/gamelle/menu',
   },
   {
-    id:    'epargne',
+    id:    'butin',
     label: 'Nouvelle transaction',
     icon:  ArrowLeftRight,
     type:  'sheet' as const,
@@ -163,9 +163,9 @@ export function GlobalFAB() {
         onClose={() => setActiveSheet(null)}
       />
 
-      {/* ── Bottom sheet Épargne ── */}
-      {activeSheet === 'epargne' && (
-        <EpargneTransactionSheet onClose={() => setActiveSheet(null)} />
+      {/* ── Bottom sheet Butin ── */}
+      {activeSheet === 'butin' && (
+        <ButinTransactionSheet onClose={() => setActiveSheet(null)} />
       )}
     </>
   )
@@ -355,19 +355,19 @@ function LabeurQuickAddSheet({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ─── Bottom sheet Épargne : nouvelle transaction ──────────────────────────────
+// ─── Bottom sheet Butin : nouvelle transaction ──────────────────────────────
 
 function getCurrentMonth(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
-function EpargneTransactionSheet({ onClose }: { onClose: () => void }) {
+function ButinTransactionSheet({ onClose }: { onClose: () => void }) {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading,    setLoading]    = useState(true)
 
   useEffect(() => {
-    fetch('/api/epargne/categories')
+    fetch('/api/butin/categories')
       .then((r) => r.json())
       .then((data: Category[]) => setCategories(data))
       .catch(() => setCategories([]))
@@ -380,7 +380,7 @@ function EpargneTransactionSheet({ onClose }: { onClose: () => void }) {
     tags: string[]
     pointed: boolean
   }): Promise<void> {
-    const res = await fetch('/api/epargne/transactions', {
+    const res = await fetch('/api/butin/transactions', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...f, month: getCurrentMonth() }),

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { Period } from '@/components/epargne/analyses/PeriodPicker'
+import type { Period } from '@/components/butin/analyses/PeriodPicker'
 
 export interface TransactionRow {
   id: string
@@ -46,9 +46,9 @@ export interface AnalysesData {
 
 function buildUrl(period: Period): string {
   if (period.type === 'custom') {
-    return `/api/epargne/analyses?from=${period.from}&to=${period.to}`
+    return `/api/butin/analyses?from=${period.from}&to=${period.to}`
   }
-  return `/api/epargne/analyses?period=${period.value}`
+  return `/api/butin/analyses?period=${period.value}`
 }
 
 export function useAnalyses(period: Period) {
