@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import {
@@ -105,12 +106,13 @@ export function NavPanelContent({ onClose, onProfileOpen }: NavPanelContentProps
             ✕
           </button>
         ) : (
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0"
-            style={{ backgroundColor: 'var(--accent)', color: 'var(--bg)', fontFamily: 'var(--font-mono)' }}
-          >
-            F
-          </div>
+          <Image
+            src="/icon1.png"
+            alt="Fief"
+            width={32}
+            height={32}
+            className="rounded-lg shrink-0"
+          />
         )}
         <span
           className="text-base font-semibold tracking-wide"
