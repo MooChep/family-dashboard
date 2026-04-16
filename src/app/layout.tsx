@@ -5,15 +5,21 @@ import {SessionProvider} from '@/components/providers/SessionProvider'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  // ... tes métadonnées existantes ...
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Family Dashboard',
+    title: 'Fief',
   },
   icons: {
-    apple: '/icons/icon-192.png',
+    icon: [
+      { url: '/icon0.svg', type: 'image/svg+xml' },
+      { url: '/icon1.png', type: 'image/png' },
+    ],
+    apple: '/apple-icon.png',
+  },
+  other: {
+    'apple-mobile-web-app-title': 'Fief',
   },
 }
 
